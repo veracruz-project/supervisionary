@@ -24,6 +24,10 @@
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ErrorCode {
     /* Dangling objects. */
+    /// A handle was supplied that did not reference a registered constant.
+    NoSuchConstantRegistered,
+    /// A handle was supplied that did not reference a registered term.
+    NoSuchTermRegistered,
     /// A handle was supplied that did not reference a registered type-former.
     NoSuchTypeFormerRegistered,
     /* Type-former related errors. */
@@ -37,14 +41,14 @@ pub enum ErrorCode {
     NoSuchTypeRegistered,
     /// A type was expected to be a functional type, but it was not.
     NotAFunctionType,
+    /// A type was expected to be a type-combination, but it was not.
+    NotATypeCombination,
+    /// A type was expected to be a type-variable, but it was not.
+    NotATypeVariable,
     /// A type passed to a function as an argument was not well-formed.
     TypeNotWellformed,
     /* -- Constant related errors. */
-    /// A handle was supplied that did not reference a registered constant.
-    NoSuchConstantRegistered,
     /* -- Term related errors. */
-    /// A handle was supplied that did not reference a registered term.
-    NoSuchTermRegistered,
     /// A term passed to a function as an argument did not have propositional
     /// type.
     NotAProposition,

@@ -6,10 +6,6 @@
 //! simply machine words suitable for passing across the kernel/prover-space ABI
 //! boundary.
 //!
-//! This module contains material related to handles: specifically code for
-//! issuing new, fresh handles, and also a series of pre-allocated handles that
-//! are used to refer to primitive objects that are built-in to the kernel.
-//!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
@@ -23,9 +19,6 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use lazy_static::lazy_static;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 ////////////////////////////////////////////////////////////////////////////////
 // Handles.
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,32 +27,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 /// systems this is implemented as a 64-bit unsigned integer.
 pub type Handle = usize;
 
-lazy_static! {
-    static ref NEXT_AVAILABLE_HANDLE: AtomicUsize = AtomicUsize::new(28);
-    static ref LAST_ISSUED_HANDLE: AtomicUsize = AtomicUsize::new(27);
-}
-
-/// Issues the next available fresh handle.  Note prover-space code must not
-/// rely on fresh handles being issued incrementally.
-///
-/// This will **panic** if the kernel's handle counter overflows, breaking the
-/// invariant that handles always uniquely identify any kernel object.
-pub fn issue_handle() -> usize {
-    let current = LAST_ISSUED_HANDLE.fetch_add(1, Ordering::SeqCst);
-    let next = NEXT_AVAILABLE_HANDLE.fetch_add(1, Ordering::SeqCst);
-
-    if next < current {
-        panic!("The kernel has exhausted its supply of fresh handles.");
-    } else {
-        next
-    }
-}
-
 /// Returns `true` iff the handle is a pre-allocated handle built into the
 /// kernel.
 #[inline]
 pub fn is_preallocated(handle: Handle) -> bool {
-    handle >= 0usize && handle < 28usize
+    handle <= 32_usize
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,30 +77,41 @@ pub const PREALLOCATED_HANDLE_CONSTANT_IMPLICATION: Handle = 16;
 pub const PREALLOCATED_HANDLE_CONSTANT_FORALL: Handle = 17;
 /// A pre-allocated handle used to refer to the existential quantifier constant.
 pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle = 18;
+/// A pre-allocated handle used to refer to the equality constant.
+pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle = 19;
 /// A pre-allocated handle used to refer to the truth term, the truth constant
 /// lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_TRUE: Handle = 19;
+pub const PREALLOCATED_HANDLE_TERM_TRUE: Handle = 20;
 /// A pre-allocated handle used to refer to the falsity term, the falsity
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_FALSE: Handle = 20;
+pub const PREALLOCATED_HANDLE_TERM_FALSE: Handle = 21;
 /// A pre-allocated handle used to refer to the negation term, the negation
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_NEGATION: Handle = 21;
+pub const PREALLOCATED_HANDLE_TERM_NEGATION: Handle = 22;
 /// A pre-allocated handle used to refer to the conjunction term, the
 /// conjunction constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_CONJUNCTION: Handle = 22;
+pub const PREALLOCATED_HANDLE_TERM_CONJUNCTION: Handle = 23;
 /// A pre-allocated handle used to refer to the disjunction term, the
 /// disjunction constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_DISJUNCTION: Handle = 23;
+pub const PREALLOCATED_HANDLE_TERM_DISJUNCTION: Handle = 24;
 /// A pre-allocated handle used to refer to the implication term, the
 /// implication constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_IMPLICATION: Handle = 24;
+pub const PREALLOCATED_HANDLE_TERM_IMPLICATION: Handle = 25;
 /// A pre-allocated handle used to refer to the equality term, the equality
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_EQUALITY: Handle = 25;
+pub const PREALLOCATED_HANDLE_TERM_EQUALITY: Handle = 26;
 /// A pre-allocated handle used to refer to the universal quantifier term, the
 /// universal quantifier constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_FORALL: Handle = 26;
+pub const PREALLOCATED_HANDLE_TERM_FORALL: Handle = 27;
 /// A pre-allocated handle used to refer to the existential quantifier term, the
 /// existential quantifier constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle = 27;
+pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle = 28;
+/// A pre-allocated handle used to refer to the truth introduction theorem.
+pub const PREALLOCATED_HANDLE_THEOREM_TRUE_INTRO: Handle = 29;
+/// A pre-allocated handle used to refer to the beta-conversion theorem.
+pub const PREALLOCATED_HANDLE_THEOREM_BETA_CONV: Handle = 30;
+/// A pre-allocated handle used to refer to the eta-conversion theorem.
+pub const PREALLOCATED_HANDLE_THEOREM_ETA_CONV: Handle = 31;
+/// A pre-allocated handle used to refer to the Hilbert-choice introduction
+/// theorem.
+pub const PREALLOCATED_HANDLE_THEOREM_CHOICE_INTRO: Handle = 32;
