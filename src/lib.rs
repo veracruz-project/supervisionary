@@ -264,5 +264,7 @@
 //! [WASMI]: https://paritytech.github.io/wasmi/wasmi/index.html
 //! [WebAssembly]: https://webassembly.org
 
-/// The trusted kernel module.
+#[deny(clippy::all, clippy::style, clippy::pedantic)]
+
+/// The integration into the WASMI interpreter.
 pub mod kernel;

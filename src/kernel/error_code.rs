@@ -28,6 +28,8 @@ pub enum ErrorCode {
     NoSuchConstantRegistered,
     /// A handle was supplied that did not reference a registered term.
     NoSuchTermRegistered,
+    /// A handle was supplied that did not reference a registered theorem.
+    NoSuchTheoremRegistered,
     /// A handle was supplied that did not reference a registered type-former.
     NoSuchTypeFormerRegistered,
     /* Type-former related errors. */
@@ -49,12 +51,27 @@ pub enum ErrorCode {
     TypeNotWellformed,
     /* -- Constant related errors. */
     /* -- Term related errors. */
+    /// A term passed to a function was expected to be a constant but it was
+    /// not.
+    NotAConstant,
+    /// A term passed to a function was expected to be a lambda-abstraction but
+    /// it was not.
+    NotALambda,
+    /// A term passed to a function was expected to be an application but it was
+    /// not.
+    NotAnApplication,
     /// A term passed to a function as an argument did not have propositional
     /// type.
     NotAProposition,
+    /// A term passed to a function was expected to be a variable but it was
+    /// not.
+    NotAVariable,
     /// A term passed to a function as an argument was not well-formed.
     TermNotWellformed,
     /* -- Theorem related errors. */
+    /// An inference rule expected its hypotheses to be in a certain shape, but
+    /// they were not.
+    ShapeMismatch,
     /// A theorem passed to a function as an argument was not well-formed.
     TheoremNotWellformed,
 }

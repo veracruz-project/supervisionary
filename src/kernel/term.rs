@@ -13,7 +13,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::wasmi::{
+use crate::kernel::{
     handle::{
         Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION, PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
         PREALLOCATED_HANDLE_CONSTANT_EQUALITY, PREALLOCATED_HANDLE_CONSTANT_FALSE,
@@ -103,10 +103,7 @@ impl Term {
 
     #[inline]
     pub fn constant(handle: Handle, _type: Option<Handle>) -> Self {
-        Term::Constant {
-            handle: constant,
-            _type,
-        }
+        Term::Constant { handle, _type }
     }
 
     #[inline]
