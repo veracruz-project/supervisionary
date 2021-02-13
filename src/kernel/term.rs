@@ -13,6 +13,14 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
+use crate::kernel::handle::{
+    PREALLOCATED_HANDLE_TERM_CONJUNCTION, PREALLOCATED_HANDLE_TERM_DISJUNCTION,
+    PREALLOCATED_HANDLE_TERM_EQUALITY, PREALLOCATED_HANDLE_TERM_EXISTS,
+    PREALLOCATED_HANDLE_TERM_FORALL, PREALLOCATED_HANDLE_TERM_IMPLICATION,
+    PREALLOCATED_HANDLE_TERM_NEGATION, PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+    PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE, PREALLOCATED_HANDLE_TYPE_PROP,
+    PREALLOCATED_HANDLE_TYPE_QUANTIFIER, PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
+};
 use crate::kernel::{
     handle::{
         Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION, PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
@@ -49,17 +57,13 @@ pub enum Term {
     /// constants are equal when their names are equal and their types are
     /// equal.
     ///
-    /// Note that the kernel should ensure that the `handle` handle should not
-    /// dangle, and if `_type` is `Some(h)` for some handle `h` then `h` should
-    /// not dangle, either.
+    /// Note that the kernel should ensure that the `handle` and `_type` handles
+    /// should not dangle.
     Constant {
         /// A handle to the declared constant.
         handle: Handle,
-        /// Either `None`, indicating that the constant is being used at its
-        /// declared type, or `Some(h)` indicating that the constant is being
-        /// used at a specialized type, where `h` is the corresponding handle to
-        /// this type.
-        _type: Option<Handle>,
+        /// A handle pointing-to the type of the constant.
+        _type: Handle,
     },
     /// An application of one type, `left`, to another, `right`.  Left must be
     /// of functional type for this term to be type-correct.
@@ -102,7 +106,7 @@ impl Term {
     }
 
     #[inline]
-    pub fn constant(handle: Handle, _type: Option<Handle>) -> Self {
+    pub fn constant(handle: Handle, _type: Handle) -> Self {
         Term::Constant { handle, _type }
     }
 
@@ -138,7 +142,7 @@ impl Term {
     /// handle pointing to a type, `opt`.  If `opt` is `None` then the constant
     /// has the type registered in the constant-table under the handle,
     /// `handle`.
-    pub fn split_constant(&self) -> Option<(&Handle, &Option<Handle>)> {
+    pub fn split_constant(&self) -> Option<(&Handle, &Handle)> {
         if let Term::Constant { handle, _type } = self {
             Some((handle, _type))
         } else {
@@ -198,65 +202,45 @@ impl Term {
 
 pub const TERM_TRUE_CONSTANT: Term = Term::Constant {
     handle: PREALLOCATED_HANDLE_CONSTANT_TRUE,
-    _type: None,
+    _type: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
 pub const TERM_FALSE_CONSTANT: Term = Term::Constant {
     handle: PREALLOCATED_HANDLE_CONSTANT_FALSE,
-    _type: None,
+    _type: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
-/*
-    #[inline]
-    pub fn _true() -> Self {
+pub const TERM_NEGATION_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_NEGATION,
+    _type: PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
+};
 
-    }
+pub const TERM_CONJUNCTION_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_CONJUNCTION,
+    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+};
 
-    #[inline]
-    pub fn _false() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_FALSE,
-            _type: None,
-        }
-    }
+pub const TERM_DISJUNCTION_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_DISJUNCTION,
+    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+};
 
-    pub fn conjunction() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
-            _type: None,
-        }
-    }
+pub const TERM_IMPLICATION_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_IMPLICATION,
+    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+};
 
-    pub fn disjunction() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
-            _type: None,
-        }
-    }
+pub const TERM_FORALL_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_FORALL,
+    _type: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
+};
 
-    pub fn implication() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
-            _type: None,
-        }
-    }
+pub const TERM_EXISTS_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_EXISTS,
+    _type: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
+};
 
-    pub fn equality() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
-            _type: None,
-        }
-    }
-
-    pub fn negation() -> Self {
-        Term::Constant {
-            handle: PREALLOCATED_HANDLE_CONSTANT_NEGATION,
-            _type: None,
-        }
-    }
-
-    pub fn forall() -> Self {
-        Term
-    }
-}
-*/
+pub const TERM_EQUALITY_CONSTANT: Term = Term::Constant {
+    handle: PREALLOCATED_HANDLE_TERM_EQUALITY,
+    _type: PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
+};

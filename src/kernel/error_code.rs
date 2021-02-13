@@ -51,15 +51,24 @@ pub enum ErrorCode {
     TypeNotWellformed,
     /* -- Constant related errors. */
     /* -- Term related errors. */
+    NotAConjunction,
     /// A term passed to a function was expected to be a constant but it was
     /// not.
     NotAConstant,
+    NotAForall,
+    NotADisjunction,
     /// A term passed to a function was expected to be a lambda-abstraction but
     /// it was not.
     NotALambda,
     /// A term passed to a function was expected to be an application but it was
     /// not.
     NotAnApplication,
+    NotAnEquality,
+    NotAnExists,
+    NotAnImplication,
+    /// A term passed to a function was expected to be a negation but it was
+    /// not.
+    NotANegation,
     /// A term passed to a function as an argument did not have propositional
     /// type.
     NotAProposition,
