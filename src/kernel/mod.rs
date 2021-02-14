@@ -22,7 +22,6 @@ pub mod error_code;
 /// handles are also defined in this module, used to refer to primitive kernel
 /// objects.
 pub mod handle;
-pub mod host_interface;
 pub mod kernel_panic;
 pub mod name;
 pub mod runtime_state;

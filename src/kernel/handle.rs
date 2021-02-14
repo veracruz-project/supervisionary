@@ -31,7 +31,7 @@ pub type Handle = usize;
 /// kernel.
 #[inline]
 pub fn is_preallocated(handle: Handle) -> bool {
-    handle <= 32_usize
+    handle <= 31_usize
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,68 +50,65 @@ pub const PREALLOCATED_HANDLE_TYPE_BETA: Handle = 3;
 pub const PREALLOCATED_HANDLE_TYPE_PROP: Handle = 4;
 /// A pre-allocated handle used to refer to the type of unary predicates.
 pub const PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE: Handle = 5;
-/// A pre-allocated handle used to refer to the type of the polymorphic equality
-/// symbol.
-pub const PREALLOCATED_HANDLE_TYPE_EQUALITY: Handle = 6;
 /// A pre-allocated handle used to refer to the type of binary predicates.
-pub const PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE: Handle = 7;
+pub const PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE: Handle = 6;
 /// A pre-allocated handle used to refer to the type of unary connectives.
-pub const PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE: Handle = 8;
+pub const PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE: Handle = 7;
 /// A pre-allocated handle used to refer to the type of binary connectives.
-pub const PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE: Handle = 9;
+pub const PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE: Handle = 8;
 /// A pre-allocated handle used to refer to the type of polymorphic quantifiers.
-pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle = 10;
+pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle = 9;
 /// A pre-allocated handle used to refer to the truth constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_TRUE: Handle = 11;
+pub const PREALLOCATED_HANDLE_CONSTANT_TRUE: Handle = 10;
 /// A pre-allocated handle used to refer to the falsity constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_FALSE: Handle = 12;
+pub const PREALLOCATED_HANDLE_CONSTANT_FALSE: Handle = 11;
 /// A pre-allocated handle used to refer to the negation constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_NEGATION: Handle = 13;
+pub const PREALLOCATED_HANDLE_CONSTANT_NEGATION: Handle = 12;
 /// A pre-allocated handle used to refer to the binary conjunction connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION: Handle = 14;
+pub const PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION: Handle = 13;
 /// A pre-allocated handle used to refer to the binary disjunction connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION: Handle = 15;
+pub const PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION: Handle = 14;
 /// A pre-allocated handle used to refer to the binary implication connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_IMPLICATION: Handle = 16;
+pub const PREALLOCATED_HANDLE_CONSTANT_IMPLICATION: Handle = 15;
 /// A pre-allocated handle used to refer to the universal quantifier constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_FORALL: Handle = 17;
+pub const PREALLOCATED_HANDLE_CONSTANT_FORALL: Handle = 16;
 /// A pre-allocated handle used to refer to the existential quantifier constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle = 18;
+pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle = 17;
 /// A pre-allocated handle used to refer to the equality constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle = 19;
+pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle = 18;
 /// A pre-allocated handle used to refer to the truth term, the truth constant
 /// lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_TRUE: Handle = 20;
+pub const PREALLOCATED_HANDLE_TERM_TRUE: Handle = 19;
 /// A pre-allocated handle used to refer to the falsity term, the falsity
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_FALSE: Handle = 21;
+pub const PREALLOCATED_HANDLE_TERM_FALSE: Handle = 20;
 /// A pre-allocated handle used to refer to the negation term, the negation
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_NEGATION: Handle = 22;
+pub const PREALLOCATED_HANDLE_TERM_NEGATION: Handle = 21;
 /// A pre-allocated handle used to refer to the conjunction term, the
 /// conjunction constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_CONJUNCTION: Handle = 23;
+pub const PREALLOCATED_HANDLE_TERM_CONJUNCTION: Handle = 22;
 /// A pre-allocated handle used to refer to the disjunction term, the
 /// disjunction constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_DISJUNCTION: Handle = 24;
+pub const PREALLOCATED_HANDLE_TERM_DISJUNCTION: Handle = 23;
 /// A pre-allocated handle used to refer to the implication term, the
 /// implication constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_IMPLICATION: Handle = 25;
+pub const PREALLOCATED_HANDLE_TERM_IMPLICATION: Handle = 24;
 /// A pre-allocated handle used to refer to the equality term, the equality
 /// constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_EQUALITY: Handle = 26;
+pub const PREALLOCATED_HANDLE_TERM_EQUALITY: Handle = 25;
 /// A pre-allocated handle used to refer to the universal quantifier term, the
 /// universal quantifier constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_FORALL: Handle = 27;
+pub const PREALLOCATED_HANDLE_TERM_FORALL: Handle = 26;
 /// A pre-allocated handle used to refer to the existential quantifier term, the
 /// existential quantifier constant lifted into a term.
-pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle = 28;
+pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle = 27;
 /// A pre-allocated handle used to refer to the truth introduction theorem.
-pub const PREALLOCATED_HANDLE_THEOREM_TRUE_INTRO: Handle = 29;
+pub const PREALLOCATED_HANDLE_THEOREM_TRUE_INTRO: Handle = 28;
 /// A pre-allocated handle used to refer to the beta-conversion theorem.
-pub const PREALLOCATED_HANDLE_THEOREM_BETA_CONV: Handle = 30;
+pub const PREALLOCATED_HANDLE_THEOREM_BETA_CONV: Handle = 29;
 /// A pre-allocated handle used to refer to the eta-conversion theorem.
-pub const PREALLOCATED_HANDLE_THEOREM_ETA_CONV: Handle = 31;
+pub const PREALLOCATED_HANDLE_THEOREM_ETA_CONV: Handle = 30;
 /// A pre-allocated handle used to refer to the Hilbert-choice introduction
 /// theorem.
-pub const PREALLOCATED_HANDLE_THEOREM_CHOICE_INTRO: Handle = 32;
+pub const PREALLOCATED_HANDLE_THEOREM_CHOICE_INTRO: Handle = 31;

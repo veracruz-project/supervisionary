@@ -18,6 +18,10 @@
 use std::{collections::HashMap, iter::FromIterator};
 
 use crate::kernel::kernel_panic::PRIMITIVE_CONSTRUCTION_ERROR;
+use crate::kernel::term::{
+    TERM_CONJUNCTION_CONSTANT, TERM_DISJUNCTION_CONSTANT, TERM_EQUALITY_CONSTANT,
+    TERM_EXISTS_CONSTANT, TERM_FORALL_CONSTANT, TERM_IMPLICATION_CONSTANT, TERM_NEGATION_CONSTANT,
+};
 use crate::kernel::{
     _type::{
         Type, TYPE_ALPHA, TYPE_BETA, TYPE_BINARY_CONNECTIVE, TYPE_POLYMORPHIC_BINARY_PREDICATE,
@@ -46,7 +50,6 @@ use crate::kernel::{
     term::{Term, TERM_FALSE_CONSTANT, TERM_TRUE_CONSTANT},
     theorem::Theorem,
 };
-use env_logger::DEFAULT_FILTER_ENV;
 
 ////////////////////////////////////////////////////////////////////////////////
 // The runtime state.
@@ -118,21 +121,18 @@ impl RuntimeState {
         handle
     }
 
-    /// Returns the arity of the type-former pointed-to by `handle`.  Returns
-    /// `Err(ErrorCode::NoSuchTypeFormerRegistered)` if `handle` does not
-    /// point-to any such type-former registered with the runtime state.
+    /// Returns Some(`arity`) if the type-former pointed-to by `handle` has
+    /// arity `arity`.
     #[inline]
-    pub fn resolve_type_former_handle(&self, handle: &Handle) -> Result<&usize, ErrorCode> {
-        self.type_formers
-            .get(handle)
-            .ok_or(ErrorCode::NoSuchTypeFormerRegistered)
+    pub fn resolve_type_former_handle(&self, handle: &Handle) -> Option<&usize> {
+        self.type_formers.get(handle)
     }
 
     /// Returns `true` iff `handle` points to a type-former registered with the
     /// runtime state.
     #[inline]
     pub fn is_type_former_registered(&self, handle: &Handle) -> bool {
-        self.resolve_type_former_handle(handle).is_ok()
+        self.resolve_type_former_handle(handle).is_some()
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -204,19 +204,19 @@ impl RuntimeState {
         former: Handle,
         arguments: Vec<Handle>,
     ) -> Result<Handle, ErrorCode> {
-        if let Ok(arity) = self.resolve_type_former_handle(&former) {
-            if !arguments.iter().all(|a| self.is_type_registered(a)) {
-                return Err(ErrorCode::NoSuchTypeRegistered);
-            }
+        let arity = self
+            .resolve_type_former_handle(&former)
+            .ok_or(ErrorCode::NoSuchTypeFormerRegistered)?;
 
-            if arguments.len() != *arity {
-                return Err(ErrorCode::MismatchedArity);
-            }
-
-            Ok(self.admit_type(Type::Combination { former, arguments }))
-        } else {
-            return Err(ErrorCode::NoSuchTypeFormerRegistered);
+        if !arguments.iter().all(|a| self.is_type_registered(a)) {
+            return Err(ErrorCode::NoSuchTypeRegistered);
         }
+
+        if arguments.len() != *arity {
+            return Err(ErrorCode::MismatchedArity);
+        }
+
+        Ok(self.admit_type(Type::combination(former, arguments.iter().cloned())))
     }
 
     /// Registers a new function type out of a domain and range type in the
@@ -791,12 +791,15 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
+        if !self.is_type_registered(&_type) {
+            return Err(ErrorCode::NoSuchTypeRegistered);
+        }
+
         if !self.is_proposition(&body)? {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let tau = self.resolve_type_former_handle(&_type)?;
-        let sigma = vec![(String::from("A"), *tau)];
+        let sigma = vec![(String::from("A"), _type.clone())];
 
         let lambda = self
             .register_lambda(name, _type, body)
@@ -805,6 +808,7 @@ impl RuntimeState {
         let univ = self
             .instantiation(&PREALLOCATED_HANDLE_TERM_FORALL, sigma.iter().cloned())
             .expect(DANGLING_HANDLE_ERROR);
+
         self.register_application(univ, lambda)
     }
 
@@ -830,12 +834,15 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
+        if !self.is_type_registered(&_type) {
+            return Err(ErrorCode::NoSuchTypeRegistered);
+        }
+
         if !self.is_proposition(&body)? {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let tau = self.resolve_type_former_handle(&_type)?;
-        let sigma = vec![(String::from("A"), *tau)];
+        let sigma = vec![(String::from("A"), _type.clone())];
 
         let lambda = self
             .register_lambda(name, _type, body)
@@ -844,6 +851,7 @@ impl RuntimeState {
         let univ = self
             .instantiation(&PREALLOCATED_HANDLE_TERM_EXISTS, sigma.iter().cloned())
             .expect(DANGLING_HANDLE_ERROR);
+
         self.register_application(univ, lambda)
     }
 
@@ -1214,13 +1222,13 @@ impl RuntimeState {
         Ok(ftv)
     }
 
-    pub fn term_fv(&self, handle: &Handle) -> Result<Vec<&Name>, ErrorCode> {
+    pub fn term_fv(&self, handle: &Handle) -> Result<Vec<(&Name, &Handle)>, ErrorCode> {
         let term = self
             .resolve_term_handle(handle)
             .ok_or(ErrorCode::NoSuchTermRegistered)?;
 
         match term {
-            Term::Variable { name, .. } => Ok(vec![name]),
+            Term::Variable { name, _type } => Ok(vec![(name, _type)]),
             Term::Constant { .. } => Ok(vec![]),
             Term::Application { left, right } => {
                 let mut left = self.term_fv(left).expect(DANGLING_HANDLE_ERROR);
@@ -1230,10 +1238,14 @@ impl RuntimeState {
 
                 Ok(left)
             }
-            Term::Lambda { name, body, .. } => {
+            Term::Lambda { name, _type, body } => {
                 let body = self.term_fv(body).expect(DANGLING_HANDLE_ERROR);
 
-                Ok(body.iter().filter(|v| **v != name).cloned().collect())
+                Ok(body
+                    .iter()
+                    .filter(|v| **v != (name, _type))
+                    .cloned()
+                    .collect())
             }
         }
     }
@@ -1396,7 +1408,7 @@ impl RuntimeState {
                 } else if !self
                     .term_fv(body1)
                     .expect(DANGLING_HANDLE_ERROR)
-                    .contains(&name0)
+                    .contains(&(name0, _type0))
                 {
                     let body1 = self
                         .swap(body1, name0.clone(), name1.clone())
@@ -1660,7 +1672,7 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        if self.term_fv(func)?.contains(&name1) {
+        if self.term_fv(func)?.contains(&(name1, _type)) {
             return Err(ErrorCode::ShapeMismatch);
         }
 
@@ -2098,7 +2110,7 @@ impl RuntimeState {
 
 impl Default for RuntimeState {
     /// Creates a new, default runtime state with all primitive kernel objects
-    /// registered.
+    /// registered and the next handle counter suitably initialized.
     fn default() -> RuntimeState {
         let type_formers = HashMap::from_iter(vec![
             (PREALLOCATED_HANDLE_TYPE_FORMER_PROP, 0),
@@ -2173,12 +2185,28 @@ impl Default for RuntimeState {
         let terms = HashMap::from_iter(vec![
             (PREALLOCATED_HANDLE_TERM_TRUE, TERM_TRUE_CONSTANT),
             (PREALLOCATED_HANDLE_TERM_FALSE, TERM_FALSE_CONSTANT),
+            (PREALLOCATED_HANDLE_TERM_FORALL, TERM_FORALL_CONSTANT),
+            (PREALLOCATED_HANDLE_TERM_EXISTS, TERM_EXISTS_CONSTANT),
+            (PREALLOCATED_HANDLE_TERM_NEGATION, TERM_NEGATION_CONSTANT),
+            (
+                PREALLOCATED_HANDLE_TERM_IMPLICATION,
+                TERM_IMPLICATION_CONSTANT,
+            ),
+            (
+                PREALLOCATED_HANDLE_TERM_CONJUNCTION,
+                TERM_CONJUNCTION_CONSTANT,
+            ),
+            (
+                PREALLOCATED_HANDLE_TERM_DISJUNCTION,
+                TERM_DISJUNCTION_CONSTANT,
+            ),
+            (PREALLOCATED_HANDLE_TERM_EQUALITY, TERM_EQUALITY_CONSTANT),
         ]);
 
         let theorems = HashMap::from_iter(vec![]);
 
         RuntimeState {
-            next_handle: 0,
+            next_handle: 32,
             type_formers,
             types,
             constants,
@@ -2186,4 +2214,346 @@ impl Default for RuntimeState {
             theorems,
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::kernel::{
+        handle::{
+            PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION, PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
+            PREALLOCATED_HANDLE_CONSTANT_EQUALITY, PREALLOCATED_HANDLE_CONSTANT_EXISTS,
+            PREALLOCATED_HANDLE_CONSTANT_FALSE, PREALLOCATED_HANDLE_CONSTANT_FORALL,
+            PREALLOCATED_HANDLE_CONSTANT_IMPLICATION, PREALLOCATED_HANDLE_CONSTANT_NEGATION,
+            PREALLOCATED_HANDLE_CONSTANT_TRUE, PREALLOCATED_HANDLE_TERM_CONJUNCTION,
+            PREALLOCATED_HANDLE_TERM_DISJUNCTION, PREALLOCATED_HANDLE_TERM_EQUALITY,
+            PREALLOCATED_HANDLE_TERM_EXISTS, PREALLOCATED_HANDLE_TERM_FALSE,
+            PREALLOCATED_HANDLE_TERM_FORALL, PREALLOCATED_HANDLE_TERM_IMPLICATION,
+            PREALLOCATED_HANDLE_TERM_NEGATION, PREALLOCATED_HANDLE_TERM_TRUE,
+            PREALLOCATED_HANDLE_TYPE_ALPHA, PREALLOCATED_HANDLE_TYPE_BETA,
+            PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
+            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
+            PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE,
+        },
+        runtime_state::RuntimeState,
+    };
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Initial theory tests.
+    ////////////////////////////////////////////////////////////////////////////
+
+    /// Tests all primitive type-formers are registered in the initial theory.
+    #[test]
+    pub fn initial_theory0() {
+        let mut state = RuntimeState::new();
+
+        assert!(state
+            .resolve_type_former_handle(&PREALLOCATED_HANDLE_TYPE_FORMER_PROP)
+            .is_some());
+        assert!(state
+            .resolve_type_former_handle(&PREALLOCATED_HANDLE_TYPE_FORMER_ARROW)
+            .is_some());
+    }
+
+    /// Tests all primitive constants are registered in the initial theory.
+    #[test]
+    pub fn initial_theory1() {
+        let mut state = RuntimeState::new();
+
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_EXISTS)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_FORALL)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_IMPLICATION)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_TRUE)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_FALSE)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_EQUALITY)
+            .is_some());
+        assert!(state
+            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_NEGATION)
+            .is_some());
+    }
+
+    /// Tests all primitive types are registered in the initial theory.
+    #[test]
+    pub fn initial_theory2() {
+        let mut state = RuntimeState::new();
+
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_PROP)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_QUANTIFIER)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_BETA)
+            .is_some());
+        assert!(state
+            .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_ALPHA)
+            .is_some());
+    }
+
+    /// Tests all primitive terms are registered in the initial theory.
+    #[test]
+    pub fn initial_theory3() {
+        let mut state = RuntimeState::new();
+
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_EXISTS)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_FORALL)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_IMPLICATION)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_CONJUNCTION)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_DISJUNCTION)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_TRUE)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_FALSE)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_EQUALITY)
+            .is_some());
+        assert!(state
+            .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_NEGATION)
+            .is_some());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Free-variable tests.
+    ////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    pub fn free_variables0() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+
+        let fvs = state.term_fv(&v).unwrap();
+
+        assert_eq!(
+            fvs,
+            vec![(&String::from("a"), &PREALLOCATED_HANDLE_TYPE_PROP)]
+        );
+    }
+
+    #[test]
+    pub fn free_variables1() {
+        let mut state = RuntimeState::new();
+
+        let fvs = state.term_fv(&PREALLOCATED_HANDLE_TERM_TRUE).unwrap();
+
+        assert!(fvs.is_empty());
+    }
+
+    #[test]
+    pub fn free_variables2() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let l = state
+            .register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .unwrap();
+
+        let fvs = state.term_fv(&l).unwrap();
+
+        assert!(fvs.is_empty());
+    }
+
+    #[test]
+    pub fn free_variables3() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .unwrap();
+        let l = state
+            .register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .unwrap();
+
+        let fvs = state.term_fv(&l).unwrap();
+
+        assert_eq!(
+            fvs,
+            vec![(
+                &String::from("a"),
+                &PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE
+            )]
+        );
+    }
+
+    #[test]
+    pub fn free_variables4() {
+        let mut state = RuntimeState::new();
+
+        let l = state
+            .register_lambda(
+                "a",
+                PREALLOCATED_HANDLE_TYPE_PROP,
+                PREALLOCATED_HANDLE_TERM_TRUE,
+            )
+            .unwrap();
+
+        let fvs = state.term_fv(&l).unwrap();
+
+        assert!(fvs.is_empty())
+    }
+
+    #[test]
+    pub fn free_variables5() {
+        let mut state = RuntimeState::new();
+
+        let l = state
+            .register_lambda(
+                "a",
+                PREALLOCATED_HANDLE_TYPE_PROP,
+                PREALLOCATED_HANDLE_TERM_TRUE,
+            )
+            .unwrap();
+        let v = state
+            .register_variable("v", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let t = state.register_application(l, v).unwrap();
+
+        let fvs = state.term_fv(&t).unwrap();
+
+        assert_eq!(
+            fvs,
+            vec![(&String::from("v"), &PREALLOCATED_HANDLE_TYPE_PROP)]
+        )
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Alpha-equivalence tests.
+    ////////////////////////////////////////////////////////////////////////////
+
+    #[test]
+    pub fn alpha_equivalence0() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+
+        assert!(state.is_alpha_equivalent(&v, &v).unwrap());
+    }
+
+    #[test]
+    pub fn alpha_equivalence1() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let q = state
+            .register_variable("b", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+
+        assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
+    }
+
+    #[test]
+    pub fn alpha_equivalence2() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let q = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .unwrap();
+
+        assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
+    }
+
+    #[test]
+    pub fn alpha_equivalence3() {
+        let mut state = RuntimeState::new();
+
+        let v = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let l = state
+            .register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v.clone())
+            .unwrap();
+        let c = state.register_application(l, v).unwrap();
+
+        assert!(state.is_alpha_equivalent(&c, &c).unwrap());
+    }
+
+    #[test]
+    pub fn alpha_equivalence4() {
+        let mut state = RuntimeState::new();
+
+        let v0 = state
+            .register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let l0 = state
+            .register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v0.clone())
+            .unwrap();
+        let c0 = state.register_application(l0, v0).unwrap();
+
+        let v1 = state
+            .register_variable("b", PREALLOCATED_HANDLE_TYPE_PROP)
+            .unwrap();
+        let l1 = state
+            .register_lambda("b", PREALLOCATED_HANDLE_TYPE_PROP, v1.clone())
+            .unwrap();
+        let c1 = state.register_application(l1, v1).unwrap();
+
+        assert!(state.is_alpha_equivalent(&c0, &c1).unwrap());
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Substitution tests.
+    ////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Type-checking tests.
+    ////////////////////////////////////////////////////////////////////////////
+
+    pub fn type_checking0() {}
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Inference tests.
+    ////////////////////////////////////////////////////////////////////////////
 }

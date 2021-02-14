@@ -266,5 +266,7 @@
 
 #[deny(clippy::all, clippy::style, clippy::pedantic)]
 
-/// The integration into the WASMI interpreter.
+/// The kernel's runtime state.
 pub mod kernel;
+/// Integration of the Supervisionary kernel with the WASMI WebAssembly runtime.
+pub mod wasmi;

@@ -18,11 +18,23 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
+use std::convert::TryFrom;
+use std::fmt::{Display, Error as DisplayError, Formatter};
+
 /// Error codes, used for passing back information on why a kernel operation
 /// failed to prover-space.  These codes are intra-convertible between the `i32`
 /// type.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[repr(i32)]
 pub enum ErrorCode {
+    /* ABI errors. */
+    /// The operation completed successfully.
+    Success,
+    /// The type-signature of an ABI function was not as expected.
+    SignatureFailure,
+    /// The WASM guest program tried to call a host function that does not
+    /// exist.
+    NoSuchFunction,
     /* Dangling objects. */
     /// A handle was supplied that did not reference a registered constant.
     NoSuchConstantRegistered,
@@ -88,3 +100,39 @@ pub enum ErrorCode {
 ////////////////////////////////////////////////////////////////////////////////
 // Trait implementations.
 ////////////////////////////////////////////////////////////////////////////////
+
+impl Display for ErrorCode {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
+        match self {
+            ErrorCode::Success => write!(f, "Success"),
+            ErrorCode::SignatureFailure => write!(f, "SignatureFailure"),
+            ErrorCode::NoSuchFunction => write!(f, "NoSuchFunction"),
+            ErrorCode::NoSuchConstantRegistered => write!(f, "NoSuchConstantRegistered"),
+            ErrorCode::NoSuchTermRegistered => write!(f, "NoSuchTermRegistered"),
+            ErrorCode::NoSuchTheoremRegistered => write!(f, "NoSuchTheoremRegistered"),
+            ErrorCode::NoSuchTypeFormerRegistered => write!(f, "NoSuchTypeFormerRegistered"),
+            ErrorCode::MismatchedArity => write!(f, "MismatchedArity"),
+            ErrorCode::DomainTypeMismatch => write!(f, "DomainTypeMismatch"),
+            ErrorCode::NoSuchTypeRegistered => write!(f, "NoSuchTypeRegistered"),
+            ErrorCode::NotAFunctionType => write!(f, "NotAFunctionType"),
+            ErrorCode::NotATypeCombination => write!(f, "NotATypeCombination"),
+            ErrorCode::NotATypeVariable => write!(f, "NotATypeVariable"),
+            ErrorCode::TypeNotWellformed => write!(f, "TypeNotWellformed"),
+            ErrorCode::NotAConjunction => write!(f, "NotAConjunction"),
+            ErrorCode::NotAConstant => write!(f, "NotAConstant"),
+            ErrorCode::NotAForall => write!(f, "NotAForall"),
+            ErrorCode::NotADisjunction => write!(f, "NotADisjunction"),
+            ErrorCode::NotALambda => write!(f, "NotALambda"),
+            ErrorCode::NotAnApplication => write!(f, "NotAnApplication"),
+            ErrorCode::NotAnEquality => write!(f, "NotAnEquality"),
+            ErrorCode::NotAnExists => write!(f, "NotAnExists"),
+            ErrorCode::NotAnImplication => write!(f, "NotAnImplication"),
+            ErrorCode::NotANegation => write!(f, "NotANegation"),
+            ErrorCode::NotAProposition => write!(f, "NotAProposition"),
+            ErrorCode::NotAVariable => write!(f, "NotAVariable"),
+            ErrorCode::TermNotWellformed => write!(f, "TermNotWellformed"),
+            ErrorCode::ShapeMismatch => write!(f, "ShapeMismatch"),
+            ErrorCode::TheoremNotWellformed => write!(f, "TheoremNotWellformed"),
+        }
+    }
+}
