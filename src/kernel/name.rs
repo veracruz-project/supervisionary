@@ -53,3 +53,24 @@ where
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests.
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod test {
+    use crate::kernel::name::{fresh, FRESH_NAME_STEM};
+    use std::convert::TryFrom;
+
+    /// Tests that fresh-name generation is indeed fresh.
+    #[test]
+    pub fn name_test0() {
+        let a = (0..100)
+            .map(|c| format!("{}{}", FRESH_NAME_STEM, c))
+            .collect::<Vec<_>>();
+        let n = fresh(Some(FRESH_NAME_STEM), a.iter().cloned());
+
+        assert!(!a.contains(&n));
+    }
+}

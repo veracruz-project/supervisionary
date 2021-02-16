@@ -213,3 +213,96 @@ lazy_static! {
         ],
     };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests.
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod test {
+    use crate::kernel::{
+        _type::Type,
+        handle::{
+            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP,
+        },
+    };
+
+    /// Tests the various type construction methods align with the
+    /// discriminators, both in positive and negative forms.
+    #[test]
+    pub fn type_test0() {
+        assert!(Type::variable("a").is_variable());
+        assert!(
+            Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, vec![].iter().cloned())
+                .is_combination()
+        );
+        assert!(
+            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
+                .is_function()
+        );
+        assert!(
+            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
+                .is_combination()
+        );
+
+        assert!(!Type::variable("a").is_combination());
+        assert!(!Type::variable("a").is_function());
+        assert!(
+            !Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, vec![].iter().cloned())
+                .is_variable()
+        );
+        assert!(
+            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
+                .is_variable()
+        );
+    }
+
+    /// Tests that splitting a variable gets you back to where you started.
+    #[test]
+    pub fn type_test1() {
+        let v = Type::variable("a");
+        assert_eq!(v.split_variable(), Some(&String::from("a")));
+    }
+
+    /// Tests that splitting a combination gets you back to where you started.
+    #[test]
+    pub fn type_test2() {
+        let v = Type::combination(
+            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+            vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
+                .iter()
+                .cloned(),
+        );
+        assert_eq!(
+            v.split_combination(),
+            Some((
+                &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+                &vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
+            ))
+        );
+    }
+
+    /// Tests that splitting a function type (a combination in disguise) gets
+    /// you back to where you started.
+    #[test]
+    pub fn type_test3() {
+        let v = Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP);
+
+        assert_eq!(
+            v.split_combination(),
+            Some((
+                &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+                &vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
+            ))
+        );
+
+        assert_eq!(
+            v.split_function(),
+            Some((
+                &PREALLOCATED_HANDLE_TYPE_PROP,
+                &PREALLOCATED_HANDLE_TYPE_PROP
+            ))
+        );
+    }
+}

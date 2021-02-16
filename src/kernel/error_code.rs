@@ -21,11 +21,13 @@
 use std::convert::TryFrom;
 use std::fmt::{Display, Error as DisplayError, Formatter};
 
+/// The upper limit (exclusive) on the encoding space of the `ErrorCode` type.
+pub const ERRORCODE_ENCODING_UPPER_BOUND: usize = 29;
+
 /// Error codes, used for passing back information on why a kernel operation
 /// failed to prover-space.  These codes are intra-convertible between the `i32`
 /// type.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[repr(i32)]
 pub enum ErrorCode {
     /* ABI errors. */
     /// The operation completed successfully.
@@ -134,5 +136,375 @@ impl Display for ErrorCode {
             ErrorCode::ShapeMismatch => write!(f, "ShapeMismatch"),
             ErrorCode::TheoremNotWellformed => write!(f, "TheoremNotWellformed"),
         }
+    }
+}
+
+/// Conversion into an `i32` type for ABI transport.
+impl Into<i32> for ErrorCode {
+    fn into(self) -> i32 {
+        match self {
+            ErrorCode::Success => 0,
+            ErrorCode::SignatureFailure => 1,
+            ErrorCode::NoSuchFunction => 2,
+            ErrorCode::NoSuchConstantRegistered => 3,
+            ErrorCode::NoSuchTermRegistered => 4,
+            ErrorCode::NoSuchTheoremRegistered => 5,
+            ErrorCode::NoSuchTypeFormerRegistered => 6,
+            ErrorCode::MismatchedArity => 7,
+            ErrorCode::DomainTypeMismatch => 8,
+            ErrorCode::NoSuchTypeRegistered => 9,
+            ErrorCode::NotAFunctionType => 10,
+            ErrorCode::NotATypeCombination => 11,
+            ErrorCode::NotATypeVariable => 12,
+            ErrorCode::TypeNotWellformed => 13,
+            ErrorCode::NotAConjunction => 14,
+            ErrorCode::NotAConstant => 15,
+            ErrorCode::NotAForall => 16,
+            ErrorCode::NotADisjunction => 17,
+            ErrorCode::NotALambda => 18,
+            ErrorCode::NotAnApplication => 19,
+            ErrorCode::NotAnEquality => 20,
+            ErrorCode::NotAnExists => 21,
+            ErrorCode::NotAnImplication => 22,
+            ErrorCode::NotANegation => 23,
+            ErrorCode::NotAProposition => 24,
+            ErrorCode::NotAVariable => 25,
+            ErrorCode::TermNotWellformed => 26,
+            ErrorCode::ShapeMismatch => 27,
+            ErrorCode::TheoremNotWellformed => 28,
+        }
+    }
+}
+
+impl TryFrom<i32> for ErrorCode {
+    type Error = ();
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ErrorCode::Success),
+            1 => Ok(ErrorCode::SignatureFailure),
+            2 => Ok(ErrorCode::NoSuchFunction),
+            3 => Ok(ErrorCode::NoSuchConstantRegistered),
+            4 => Ok(ErrorCode::NoSuchTermRegistered),
+            5 => Ok(ErrorCode::NoSuchTheoremRegistered),
+            6 => Ok(ErrorCode::NoSuchTypeFormerRegistered),
+            7 => Ok(ErrorCode::MismatchedArity),
+            8 => Ok(ErrorCode::DomainTypeMismatch),
+            9 => Ok(ErrorCode::NoSuchTypeRegistered),
+            10 => Ok(ErrorCode::NotAFunctionType),
+            11 => Ok(ErrorCode::NotATypeCombination),
+            12 => Ok(ErrorCode::NotATypeVariable),
+            13 => Ok(ErrorCode::TypeNotWellformed),
+            14 => Ok(ErrorCode::NotAConjunction),
+            15 => Ok(ErrorCode::NotAConstant),
+            16 => Ok(ErrorCode::NotAForall),
+            17 => Ok(ErrorCode::NotADisjunction),
+            18 => Ok(ErrorCode::NotALambda),
+            19 => Ok(ErrorCode::NotAnApplication),
+            20 => Ok(ErrorCode::NotAnEquality),
+            21 => Ok(ErrorCode::NotAnExists),
+            22 => Ok(ErrorCode::NotAnImplication),
+            23 => Ok(ErrorCode::NotANegation),
+            24 => Ok(ErrorCode::NotAProposition),
+            25 => Ok(ErrorCode::NotAVariable),
+            26 => Ok(ErrorCode::TermNotWellformed),
+            27 => Ok(ErrorCode::ShapeMismatch),
+            28 => Ok(ErrorCode::TheoremNotWellformed),
+            _otherwise => Err(()),
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests.
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod test {
+    use crate::kernel::error_code::{ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND};
+    use std::convert::{TryFrom, TryInto};
+
+    /// Tests conversion from an `i32` and back again gets you back to where you
+    /// started.
+    #[test]
+    pub fn errorcode_test0() {
+        for i in (0..29) {
+            assert_eq!(ErrorCode::try_from(i).unwrap().try_into(), Ok(i));
+        }
+    }
+
+    /// Tests that the upper bound on the encoding space really is the upper
+    /// bound.
+    #[test]
+    pub fn errorcode_test1() {
+        assert!(ErrorCode::try_from(ERRORCODE_ENCODING_UPPER_BOUND as i32).is_err());
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test2() {
+        let i: i32 = ErrorCode::into(ErrorCode::Success);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::Success);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test3() {
+        let i: i32 = ErrorCode::into(ErrorCode::SignatureFailure);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::SignatureFailure);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test4() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchFunction);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchFunction);
+    }
+
+    #[test]
+    pub fn errorcode_test5() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchConstantRegistered);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchConstantRegistered);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test6() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchTermRegistered);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchTermRegistered);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test7() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchTheoremRegistered);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchTheoremRegistered);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test8() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchTypeFormerRegistered);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchTypeFormerRegistered);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test9() {
+        let i: i32 = ErrorCode::into(ErrorCode::MismatchedArity);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::MismatchedArity);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test10() {
+        let i: i32 = ErrorCode::into(ErrorCode::DomainTypeMismatch);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::DomainTypeMismatch);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test11() {
+        let i: i32 = ErrorCode::into(ErrorCode::NoSuchTypeRegistered);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NoSuchTypeRegistered);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test12() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAFunctionType);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAFunctionType);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test13() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotATypeCombination);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotATypeCombination);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test14() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotATypeVariable);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotATypeVariable);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test15() {
+        let i: i32 = ErrorCode::into(ErrorCode::TypeNotWellformed);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::TypeNotWellformed);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test16() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAConjunction);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAConjunction);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test17() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAConstant);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAConstant);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test18() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAForall);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAForall);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test19() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotADisjunction);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotADisjunction);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test20() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAConjunction);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAConjunction);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test21() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotALambda);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotALambda);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test22() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAnApplication);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAnApplication);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test23() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAnEquality);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAnEquality);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test24() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAnExists);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAnExists);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test25() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAnImplication);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAnImplication);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test26() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotANegation);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotANegation);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test27() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAProposition);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAProposition);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test28() {
+        let i: i32 = ErrorCode::into(ErrorCode::NotAVariable);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::NotAVariable);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test29() {
+        let i: i32 = ErrorCode::into(ErrorCode::TermNotWellformed);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::TermNotWellformed);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test30() {
+        let i: i32 = ErrorCode::into(ErrorCode::ShapeMismatch);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::ShapeMismatch);
+    }
+
+    /// Pointwise test that conversion to an `i32` and back again gets you back
+    /// to where you started.
+    #[test]
+    pub fn errorcode_test31() {
+        let i: i32 = ErrorCode::into(ErrorCode::TheoremNotWellformed);
+        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
+        assert_eq!(e, ErrorCode::TheoremNotWellformed);
     }
 }

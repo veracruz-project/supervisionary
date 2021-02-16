@@ -63,3 +63,22 @@ impl Theorem {
         &self.hypotheses
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Tests.
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(test)]
+mod test {
+    use crate::kernel::{handle::PREALLOCATED_HANDLE_TERM_TRUE, theorem::Theorem};
+
+    /// Tests that constructing then deconstructing a theorem object gets you
+    /// back to where you started.
+    #[test]
+    pub fn theorem_test0() {
+        let t = Theorem::new(vec![].iter().cloned(), PREALLOCATED_HANDLE_TERM_TRUE);
+
+        assert_eq!(t.hypotheses(), &Vec::new());
+        assert_eq!(t.conclusion(), &PREALLOCATED_HANDLE_TERM_TRUE);
+    }
+}

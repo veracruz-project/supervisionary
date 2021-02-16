@@ -27,11 +27,14 @@
 /// systems this is implemented as a 64-bit unsigned integer.
 pub type Handle = usize;
 
+/// The upper-bound (exclusive) of the preallocated handles.
+pub const PREALLOCATED_HANDLE_UPPER_BOUND: usize = 32;
+
 /// Returns `true` iff the handle is a pre-allocated handle built into the
 /// kernel.
 #[inline]
 pub fn is_preallocated(handle: Handle) -> bool {
-    handle <= 31_usize
+    handle < PREALLOCATED_HANDLE_UPPER_BOUND
 }
 
 ////////////////////////////////////////////////////////////////////////////////

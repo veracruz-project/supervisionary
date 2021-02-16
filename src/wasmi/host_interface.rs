@@ -1,4 +1,7 @@
-//! # Host interface to WASM code.
+//! # WASMI host interface
+//!
+//! This binds the kernel code, proper, to the guest WASM program-facing ABI
+//! interface, routing host-calls as appropriate.
 //!
 //! # Authors
 //!
@@ -13,14 +16,14 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::fmt::{Display, Error as DisplayError, Formatter};
+use std::{mem::size_of, convert::TryInto, fmt::{Display, Error as DisplayError, Formatter}};
 
 use crate::kernel::{
+    handle::Handle,
     error_code::ErrorCode as KernelErrorCode, runtime_state::RuntimeState as KernelRuntimeState,
 };
 
-use crate::kernel::handle::Handle;
-use crate::kernel::runtime_state::RuntimeState;
+use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
     Error as WasmiError, Externals, FuncInstance, FuncRef, HostError, LittleEndianConvert,
     MemoryInstance, ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap, TrapKind,
@@ -32,7 +35,7 @@ use wasmi::{
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A WASM address, used for reading-from and writing-to the guest WASM program
-/// heap.
+/// heap, assuming the `wasm32-abi`.
 pub type Address = u32;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,13 +44,19 @@ pub type Address = u32;
 
 /* Type-former related calls. */
 
-pub const ABI_TYPE_FORMER_RESOLVE_HANDLE_NAME: &'static str = "__type_former_resolve_handle";
+/// The name of the `TypeFormer.Handle.Resolve` ABI call.
+pub const ABI_TYPE_FORMER_RESOLVE_HANDLE_NAME: &'static str = "__type_former_handle_register";
+/// The name of the `TypeFormer.Handle.IsRegistered` ABI call.
 pub const ABI_TYPE_FORMER_IS_HANDLE_REGISTERED_NAME: &'static str =
-    "__type_former_is_handle_registered";
-pub const ABI_TYPE_FORMER_REGISTER_HANDLE_NAME: &'static str = "__type_former_register_handle";
+    "__type_former_handle_is_registered";
+/// The name of the `TypeFormer.Handle.Register` ABI call.
+pub const ABI_TYPE_FORMER_REGISTER_HANDLE_NAME: &'static str = "__type_former_handle_register";
 
+/// The host-call number of the `TypeFormer.Handle.Resolve` ABI call.
 pub const ABI_TYPE_FORMER_RESOLVE_HANDLE_INDEX: usize = 0;
+/// The host-call number of the `TypeFormer.Handle.IsRegistered` ABI call.
 pub const ABI_TYPE_FORMER_IS_HANDLE_REGISTERED_INDEX: usize = 1;
+/// The host-call number of the `TypeFormer.Handle.Register` ABI call.
 pub const ABI_TYPE_FORMER_REGISTER_HANDLE_INDEX: usize = 2;
 
 /* Type-related calls. */
@@ -56,6 +65,9 @@ pub const ABI_TYPE_FORMER_REGISTER_HANDLE_INDEX: usize = 2;
 // Errors and traps.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Runtime traps are unrecoverable errors raised by the WASM program host.
+/// These are equivalent, essentially, to kernel panics in a typical operating
+/// system.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RuntimeTrap {
     /// The WASM guest's memory was not registered with the runtime state.
@@ -156,7 +168,8 @@ impl WasmiRuntimeState {
         self
     }
 
-    /// Writes a value to the WASM guest's memory module at a specified address.
+    /// Writes a `u32` value to the WASM guest's memory module at a specified
+    /// address.
     ///
     /// # Errors
     ///
@@ -165,10 +178,10 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_memory<T, U>(&mut self, address: T, value: U) -> Result<(), RuntimeTrap>
+    pub fn write_u32<T, U>(&mut self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
-        U: LittleEndianConvert,
+        U: Into<u32>,
     {
         let mut memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
@@ -176,15 +189,99 @@ impl WasmiRuntimeState {
         };
 
         let mut buffer = Vec::new();
-        value.into_little_endian(&mut buffer);
+        LittleEndian::write_u32(&mut buffer, value.into());
 
         memory
             .set(address.into(), &buffer)
             .map_err(|_e| RuntimeTrap::MemoryWriteFailed)
     }
 
-    /// Reads a value to the WASM guest's memory module at a specified address,
-    /// with a given byte-count.
+    /// Writes an `i32` value to the WASM guest's memory module at a specified
+    /// address.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
+    /// address, `address`, failed.
+    pub fn write_i32<T, U>(&mut self, address: T, value: U) -> Result<(), RuntimeTrap>
+        where
+            T: Into<Address>,
+            U: Into<i32>,
+    {
+        let mut memory = match &self.memory {
+            None => return Err(RuntimeTrap::MemoryNotRegistered),
+            Some(memory) => memory,
+        };
+
+        let mut buffer = Vec::new();
+        LittleEndian::write_i32(&mut buffer, value.into());
+
+        memory
+            .set(address.into(), &buffer)
+            .map_err(|_e| RuntimeTrap::MemoryWriteFailed)
+    }
+
+    /// Writes a `u64` value to the WASM guest's memory module at a specified
+    /// address.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
+    /// address, `address`, failed.
+    pub fn write_u64<T, U>(&mut self, address: T, value: U) -> Result<(), RuntimeTrap>
+        where
+            T: Into<Address>,
+            U: Into<u64>,
+    {
+        let mut memory = match &self.memory {
+            None => return Err(RuntimeTrap::MemoryNotRegistered),
+            Some(memory) => memory,
+        };
+
+        let mut buffer = Vec::new();
+        LittleEndian::write_u64(&mut buffer, value.into());
+
+        memory
+            .set(address.into(), &buffer)
+            .map_err(|_e| RuntimeTrap::MemoryWriteFailed)
+    }
+
+    /// Writes a `i64` value to the WASM guest's memory module at a specified
+    /// address.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
+    /// address, `address`, failed.
+    pub fn write_i64<T, U>(&mut self, address: T, value: U) -> Result<(), RuntimeTrap>
+        where
+            T: Into<Address>,
+            U: Into<i64>,
+    {
+        let mut memory = match &self.memory {
+            None => return Err(RuntimeTrap::MemoryNotRegistered),
+            Some(memory) => memory,
+        };
+
+        let mut buffer = Vec::new();
+        LittleEndian::write_i64(&mut buffer, value.into());
+
+        memory
+            .set(address.into(), &buffer)
+            .map_err(|_e| RuntimeTrap::MemoryWriteFailed)
+    }
+
+    /// Reads a fixed `byte_count` of bytes from the WASM guest's memory module
+    /// at a specified `address`.
     ///
     /// # Errors
     ///
@@ -192,13 +289,11 @@ impl WasmiRuntimeState {
     /// memory module has not been registered with the runtime state.
     ///
     /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
-    /// address, `address`, failed or if the value cannot be converted from the
-    /// read slice of bytes.
-    pub fn read_memory<T, U, V>(&self, address: T, byte_count: U) -> Result<V, RuntimeTrap>
+    /// address, `address`, failed.
+    fn read_bytes<T, U>(&self, address: T, byte_count: U) -> Result<Vec<u8>, RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<usize>,
-        V: LittleEndianConvert,
     {
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
@@ -209,7 +304,27 @@ impl WasmiRuntimeState {
             .get(address.into(), byte_count.into())
             .map_err(|_e| RuntimeTrap::MemoryReadFailed)?;
 
-        LittleEndianConvert::from_little_endian(&bytes).map_err(|_e| RuntimeTrap::MemoryReadFailed)
+        Ok(bytes)
+    }
+
+    pub fn read_u32<T>(&self, address: T) -> Result<u32, RuntimeTrap> where T: Into<Address> {
+        let buffer = self.read_bytes(address, size_of::<u32>())?;
+        Ok(LittleEndian::read_u32(&buffer))
+    }
+
+    pub fn read_u64<T>(&self, address: T) -> Result<u64, RuntimeTrap> where T: Into<Address> {
+        let buffer = self.read_bytes(address, size_of::<u64>())?;
+        Ok(LittleEndian::read_u64(&buffer))
+    }
+
+    pub fn read_i32<T>(&self, address: T) -> Result<i32, RuntimeTrap> where T: Into<Address> {
+        let buffer = self.read_bytes(address, size_of::<i32>())?;
+        Ok(LittleEndian::read_i32(&buffer))
+    }
+
+    pub fn read_i64<T>(&self, address: T) -> Result<i64, RuntimeTrap> where T: Into<Address> {
+        let buffer = self.read_bytes(address, size_of::<i32>())?;
+        Ok(LittleEndian::read_i64(&buffer))
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -285,13 +400,13 @@ impl Externals for WasmiRuntimeState {
                 let result = args.nth::<u32>(1);
 
                 let arity = match self.type_former_resolve_handle(&handle) {
-                    None => return Ok(Some(KernelErrorCode::NoSuchTypeFormerRegistered.into())),
+                    None => unimplemented!(),
                     Some(arity) => arity.clone(),
                 };
 
-                self.write_memory(result, arity)?;
+                self.write_u64(result, arity as u64)?;
 
-                Ok(Some(KernelErrorCode::Success.into()))
+                unimplemented!()
             }
             ABI_TYPE_FORMER_IS_HANDLE_REGISTERED_INDEX => unimplemented!(),
             ABI_TYPE_FORMER_REGISTER_HANDLE_INDEX => unimplemented!(),
@@ -303,7 +418,7 @@ impl Externals for WasmiRuntimeState {
 /// Maps an ABI host-call to its associated host-call number.  Also checks that
 /// the function's signature is as expected, otherwise produces a runtime error
 /// that is reported back to the WASM program.
-impl ModuleImportResolver for RuntimeState {
+impl ModuleImportResolver for WasmiRuntimeState {
     fn resolve_func(&self, field_name: &str, signature: &Signature) -> Result<FuncRef, WasmiError> {
         match field_name {
             ABI_TYPE_FORMER_RESOLVE_HANDLE_NAME => {
