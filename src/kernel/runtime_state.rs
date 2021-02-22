@@ -112,7 +112,7 @@ impl RuntimeState {
 
     /// Registers a new type-former with a declared arity with the runtime
     /// state.  Returns the handle to the newly-registered type-former.
-    pub fn register_type_former<T>(&mut self, arity: T) -> Handle
+    pub fn type_former_handle_register<T>(&mut self, arity: T) -> Handle
     where
         T: Into<usize>,
     {
@@ -124,15 +124,15 @@ impl RuntimeState {
     /// Returns Some(`arity`) if the type-former pointed-to by `handle` has
     /// arity `arity`.
     #[inline]
-    pub fn resolve_type_former_handle(&self, handle: &Handle) -> Option<&usize> {
+    pub fn type_former_handle_resolve(&self, handle: &Handle) -> Option<&usize> {
         self.type_formers.get(handle)
     }
 
     /// Returns `true` iff `handle` points to a type-former registered with the
     /// runtime state.
     #[inline]
-    pub fn is_type_former_registered(&self, handle: &Handle) -> bool {
-        self.resolve_type_former_handle(handle).is_some()
+    pub fn type_former_handle_is_registered(&self, handle: &Handle) -> bool {
+        self.type_former_handle_resolve(handle).is_some()
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -167,7 +167,7 @@ impl RuntimeState {
     /// Returns `true` iff the handle points to a type, `tau`, in the runtime
     /// state's type-table.
     #[inline]
-    pub fn is_type_registered(&self, handle: &Handle) -> bool {
+    pub fn type_handle_is_registered(&self, handle: &Handle) -> bool {
         self.resolve_type_handle(handle).is_some()
     }
 
@@ -175,7 +175,7 @@ impl RuntimeState {
     /// name.  Returns the handle of the newly-allocated type (or the existing
     /// handle, if the type-variable already appears in the type-table).
     #[inline]
-    pub fn register_type_variable<T>(&mut self, name: T) -> Handle
+    pub fn type_handle_register_variable<T>(&mut self, name: T) -> Handle
     where
         T: Into<Name>,
     {
@@ -199,16 +199,16 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::MismatchedArity)` if the length of `arguments`
     /// does not match the registered arity of `former` in the runtime state's
     /// type-former table.
-    pub fn register_type_combination(
+    pub fn type_handle_register_combination(
         &mut self,
         former: Handle,
         arguments: Vec<Handle>,
     ) -> Result<Handle, ErrorCode> {
         let arity = self
-            .resolve_type_former_handle(&former)
+            .type_former_handle_resolve(&former)
             .ok_or(ErrorCode::NoSuchTypeFormerRegistered)?;
 
-        if !arguments.iter().all(|a| self.is_type_registered(a)) {
+        if !arguments.iter().all(|a| self.type_handle_is_registered(a)) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -230,12 +230,12 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if either `domain` or
     /// `range` do not point-to a type in the runtime state's type-table.
-    pub fn register_function_type(
+    pub fn type_handle_register_function(
         &mut self,
         domain: Handle,
         range: Handle,
     ) -> Result<Handle, ErrorCode> {
-        if !self.is_type_registered(&domain) || !self.is_type_registered(&range) {
+        if !self.type_handle_is_registered(&domain) || !self.type_handle_is_registered(&range) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -255,7 +255,7 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotATypeVariable)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a type-variable.
-    pub fn split_type_variable(&self, handle: &Handle) -> Result<&Name, ErrorCode> {
+    pub fn type_split_variable(&self, handle: &Handle) -> Result<&Name, ErrorCode> {
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_variable().ok_or(ErrorCode::NotATypeVariable)
         } else {
@@ -275,7 +275,7 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotATypeCombination)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a combination type.
-    pub fn split_type_combination(
+    pub fn type_split_combination(
         &self,
         handle: &Handle,
     ) -> Result<(&Handle, &Vec<Handle>), ErrorCode> {
@@ -297,7 +297,7 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAFunctionType)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a function type.
-    pub fn split_function_type(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn type_split_function(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_function().ok_or(ErrorCode::NotAFunctionType)
         } else {
@@ -313,7 +313,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn is_type_variable(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_variable(&self, handle: &Handle) -> Result<bool, ErrorCode> {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -329,7 +329,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn is_type_combination(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_combination(&self, handle: &Handle) -> Result<bool, ErrorCode> {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -345,7 +345,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn is_function_type(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_function(&self, handle: &Handle) -> Result<bool, ErrorCode> {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -403,7 +403,7 @@ impl RuntimeState {
     /// type-table.
     ///
     /// Will raise a kernel panic if any of the manipulated types are malformed.
-    pub fn type_instantiate<T>(&mut self, tau: &Handle, sigma: T) -> Result<Handle, ErrorCode>
+    pub fn type_substitute<T>(&mut self, tau: &Handle, sigma: T) -> Result<Handle, ErrorCode>
     where
         T: Iterator<Item = (Name, Handle)> + Clone,
     {
@@ -427,7 +427,7 @@ impl RuntimeState {
                     let mut args = vec![];
 
                     for a in arguments.iter() {
-                        let argument = self.type_instantiate(a, sigma.clone())?;
+                        let argument = self.type_substitute(a, sigma.clone())?;
                         args.push(argument);
                     }
 
@@ -454,8 +454,8 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point to a registered type in the runtime state's type-table.
-    pub fn register_constant(&mut self, handle: Handle) -> Result<Handle, ErrorCode> {
-        if !self.is_type_registered(&handle) {
+    pub fn constant_handle_register(&mut self, handle: Handle) -> Result<Handle, ErrorCode> {
+        if !self.type_handle_is_registered(&handle) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -464,18 +464,25 @@ impl RuntimeState {
         Ok(fresh)
     }
 
-    /// Returns `Some(tau)` iff `handle` points to a registered constant, with
+    /// Returns `Ok(tau)` iff `handle` points to a registered constant, with
     /// type handle `tau`, in the runtime state's type-table.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchConstantRegistered)` if `handle` does not
+    /// point-to any constant in the runtime state's constant-table.
     #[inline]
-    pub fn resolve_constant_handle(&self, handle: &Handle) -> Option<&Handle> {
-        self.constants.get(handle)
+    pub fn constant_handle_resolve(&self, handle: &Handle) -> Result<&Handle, ErrorCode> {
+        self.constants
+            .get(handle)
+            .ok_or(ErrorCode::NoSuchConstantRegistered)
     }
 
     /// Returns `true` iff `handle` points-to a registered constant in the
     /// runtime state's constant table.
     #[inline]
-    pub fn is_constant_registered(&self, handle: &Handle) -> bool {
-        self.resolve_constant_handle(handle).is_some()
+    pub fn constant_handle_is_registered(&self, handle: &Handle) -> bool {
+        self.constant_handle_resolve(handle).is_some()
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -514,7 +521,7 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
-        if !self.is_type_registered(&handle) {
+        if !self.type_handle_is_registered(&handle) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -533,9 +540,7 @@ impl RuntimeState {
         &mut self,
         handle: Handle,
     ) -> Result<Handle, ErrorCode> {
-        let tau = self
-            .resolve_constant_handle(&handle)
-            .ok_or(ErrorCode::NoSuchConstantRegistered)?;
+        let tau = self.constant_handle_resolve(&handle)?;
 
         let tau = tau.clone();
 
@@ -563,12 +568,9 @@ impl RuntimeState {
     where
         T: Iterator<Item = (Name, Handle)> + Clone,
     {
-        if let Some(tau) = self.clone().resolve_constant_handle(&handle) {
-            let tau = self.type_instantiate(tau, type_substitution)?;
-            Ok(self.admit_term(Term::constant(handle, tau)))
-        } else {
-            Err(ErrorCode::NoSuchConstantRegistered)
-        }
+        let tau = self.clone().constant_handle_resolve(&handle)?;
+        let tau = self.type_substitute(tau, type_substitution)?;
+        Ok(self.admit_term(Term::constant(handle, tau)))
     }
 
     /// Registers a new application of the term pointed-to by `left` to the term
@@ -601,7 +603,7 @@ impl RuntimeState {
         let ltau = self.infer_type(&left)?;
         let rtau = self.infer_type(&right)?;
 
-        let (dom, _rng) = self.split_function_type(&ltau)?;
+        let (dom, _rng) = self.type_split_function(&ltau)?;
 
         if dom != &rtau {
             return Err(ErrorCode::DomainTypeMismatch);
@@ -630,7 +632,7 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
-        if !self.is_type_registered(&_type) {
+        if !self.type_handle_is_registered(&_type) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -791,7 +793,7 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
-        if !self.is_type_registered(&_type) {
+        if !self.type_handle_is_registered(&_type) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -834,7 +836,7 @@ impl RuntimeState {
     where
         T: Into<Name>,
     {
-        if !self.is_type_registered(&_type) {
+        if !self.type_handle_is_registered(&_type) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -855,18 +857,25 @@ impl RuntimeState {
         self.register_application(univ, lambda)
     }
 
-    /// Returns `Some(trm)` iff `handle` points-to the term `trm` in the runtime
+    /// Returns `Ok(trm)` iff `handle` points-to the term `trm` in the runtime
     /// state's term-table.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `handle` does not
+    /// point-to any registered term in the runtime state's term-table.
     #[inline]
-    pub fn resolve_term_handle(&self, handle: &Handle) -> Option<&Term> {
-        self.terms.get(handle)
+    pub fn resolve_term_handle(&self, handle: &Handle) -> Result<&Term, ErrorCode> {
+        self.terms
+            .get(handle)
+            .ok_or(ErrorCode::NoSuchTermRegistered)
     }
 
     /// Returns `true` iff `handle` points-to a registered term in the runtime
     /// state's term-table.
     #[inline]
     pub fn is_term_registered(&self, handle: &Handle) -> bool {
-        self.resolve_term_handle(handle).is_some()
+        self.resolve_term_handle(handle).is_ok()
     }
 
     /// Returns `Some((name, _type))` if `handle` points-to a variable in the
@@ -881,9 +890,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NotAVariable)` if the term pointed-to by
     /// `handle` is not a variable.
     pub fn split_variable(&self, handle: &Handle) -> Result<(&Name, &Handle), ErrorCode> {
-        let trm = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Variable { name, _type } = trm {
             Ok((name, _type))
@@ -904,9 +911,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NotAConstant)` if the term pointed-to by
     /// `handle` is not a constant.
     pub fn split_constant(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
-        let trm = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Constant { handle, _type } = trm {
             Ok((handle, _type))
@@ -916,9 +921,7 @@ impl RuntimeState {
     }
 
     pub fn split_application(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
-        let trm = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Application { left, right } = trm {
             Ok((left, right))
@@ -928,9 +931,7 @@ impl RuntimeState {
     }
 
     pub fn split_lambda(&self, handle: &Handle) -> Result<(&Name, &Handle, &Handle), ErrorCode> {
-        let trm = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Lambda { name, _type, body } = trm {
             Ok((name, _type, body))
@@ -946,7 +947,7 @@ impl RuntimeState {
             .split_application()
             .ok_or(ErrorCode::NotANegation)?;
 
-        let (constant, tau) = self
+        let (constant, _tau) = self
             .split_constant(left)
             .map_err(|_e| ErrorCode::NotANegation)?;
 
@@ -1180,9 +1181,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `handle` does not
     /// point-to any term in the runtime state's term-table.
     pub fn term_ftv(&self, handle: &Handle) -> Result<Vec<&Name>, ErrorCode> {
-        let trm = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let trm = self.resolve_term_handle(handle)?;
 
         let mut work_list = vec![trm];
         let mut ftv = vec![];
@@ -1223,9 +1222,7 @@ impl RuntimeState {
     }
 
     pub fn term_fv(&self, handle: &Handle) -> Result<Vec<(&Name, &Handle)>, ErrorCode> {
-        let term = self
-            .resolve_term_handle(handle)
-            .ok_or(ErrorCode::NoSuchTermRegistered)?;
+        let term = self.resolve_term_handle(handle)?;
 
         match term {
             Term::Variable { name, _type } => Ok(vec![(name, _type)]),
@@ -1279,7 +1276,7 @@ impl RuntimeState {
                 let rtau = self.infer_type(&right)?;
 
                 let (dom, rng) = self
-                    .split_function_type(&ltau)
+                    .type_split_function(&ltau)
                     .map_err(|_e| ErrorCode::NotAFunctionType)?;
 
                 if dom == &rtau {
@@ -1288,7 +1285,7 @@ impl RuntimeState {
                     Err(ErrorCode::DomainTypeMismatch)
                 }
             }
-            Term::Lambda { name, _type, body } => {
+            Term::Lambda { _type, body, .. } => {
                 let btau = self.infer_type(&body)?;
                 Ok(self.admit_type(Type::function(_type, btau)))
             }
@@ -1595,7 +1592,7 @@ impl RuntimeState {
     where
         T: Into<Name> + Clone,
     {
-        if !self.is_type_registered(&_type) {
+        if !self.type_handle_is_registered(&_type) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -2245,54 +2242,54 @@ mod test {
     /// Tests all primitive type-formers are registered in the initial theory.
     #[test]
     pub fn initial_theory0() {
-        let mut state = RuntimeState::new();
+        let state = RuntimeState::new();
 
         assert!(state
-            .resolve_type_former_handle(&PREALLOCATED_HANDLE_TYPE_FORMER_PROP)
+            .type_former_handle_resolve(&PREALLOCATED_HANDLE_TYPE_FORMER_PROP)
             .is_some());
         assert!(state
-            .resolve_type_former_handle(&PREALLOCATED_HANDLE_TYPE_FORMER_ARROW)
+            .type_former_handle_resolve(&PREALLOCATED_HANDLE_TYPE_FORMER_ARROW)
             .is_some());
     }
 
     /// Tests all primitive constants are registered in the initial theory.
     #[test]
     pub fn initial_theory1() {
-        let mut state = RuntimeState::new();
+        let state = RuntimeState::new();
 
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_EXISTS)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_EXISTS)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_FORALL)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_FORALL)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_IMPLICATION)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_IMPLICATION)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_TRUE)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_TRUE)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_FALSE)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_FALSE)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_EQUALITY)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_EQUALITY)
             .is_some());
         assert!(state
-            .resolve_constant_handle(&PREALLOCATED_HANDLE_CONSTANT_NEGATION)
+            .constant_handle_resolve(&PREALLOCATED_HANDLE_CONSTANT_NEGATION)
             .is_some());
     }
 
     /// Tests all primitive types are registered in the initial theory.
     #[test]
     pub fn initial_theory2() {
-        let mut state = RuntimeState::new();
+        let state = RuntimeState::new();
 
         assert!(state
             .resolve_type_handle(&PREALLOCATED_HANDLE_TYPE_PROP)
@@ -2323,7 +2320,7 @@ mod test {
     /// Tests all primitive terms are registered in the initial theory.
     #[test]
     pub fn initial_theory3() {
-        let mut state = RuntimeState::new();
+        let state = RuntimeState::new();
 
         assert!(state
             .resolve_term_handle(&PREALLOCATED_HANDLE_TERM_EXISTS)
@@ -2376,7 +2373,7 @@ mod test {
 
     #[test]
     pub fn free_variables1() {
-        let mut state = RuntimeState::new();
+        let state = RuntimeState::new();
 
         let fvs = state.term_fv(&PREALLOCATED_HANDLE_TERM_TRUE).unwrap();
 

@@ -61,7 +61,6 @@ where
 #[cfg(test)]
 mod test {
     use crate::kernel::name::{fresh, FRESH_NAME_STEM};
-    use std::convert::TryFrom;
 
     /// Tests that fresh-name generation is indeed fresh.
     #[test]
