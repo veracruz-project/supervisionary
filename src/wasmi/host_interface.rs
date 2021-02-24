@@ -47,33 +47,30 @@ pub type Address = u32;
 
 /* Type-former related calls. */
 
-/// The name of the `TypeFormer.Handle.Resolve` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_RESOLVE_NAME: &'static str = "__type_former_handle_resolve";
-/// The name of the `TypeFormer.Handle.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_IS_REGISTERED_NAME: &'static str =
-    "__type_former_handle_is_registered";
-/// The name of the `TypeFormer.Handle.Register` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_REGISTER_NAME: &'static str = "__type_former_handle_register";
+/// The name of the `TypeFormer.Resolve` ABI call.
+pub const ABI_TYPE_FORMER_RESOLVE_NAME: &'static str = "__type_former_resolve";
+/// The name of the `TypeFormer.IsRegistered` ABI call.
+pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &'static str = "__type_former_is_registered";
+/// The name of the `TypeFormer.Register` ABI call.
+pub const ABI_TYPE_FORMER_REGISTER_NAME: &'static str = "__type_former_register";
 
-/// The host-call number of the `TypeFormer.Handle.Resolve` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_RESOLVE_INDEX: usize = 0;
-/// The host-call number of the `TypeFormer.Handle.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_IS_REGISTERED_INDEX: usize = 1;
-/// The host-call number of the `TypeFormer.Handle.Register` ABI call.
-pub const ABI_TYPE_FORMER_HANDLE_REGISTER_INDEX: usize = 2;
+/// The host-call number of the `TypeFormer.Resolve` ABI call.
+pub const ABI_TYPE_FORMER_RESOLVE_INDEX: usize = 0;
+/// The host-call number of the `TypeFormer.IsRegistered` ABI call.
+pub const ABI_TYPE_FORMER_IS_REGISTERED_INDEX: usize = 1;
+/// The host-call number of the `TypeFormer.Register` ABI call.
+pub const ABI_TYPE_FORMER_REGISTER_INDEX: usize = 2;
 
 /* Type-related calls. */
 
-/// The name of the `Type.Handle.IsRegistered` ABI call.
-pub const ABI_TYPE_HANDLE_IS_REGISTERED_NAME: &'static str = "__type_handle_is_registered";
-/// The name of the `Type.Handle.Register.Variable` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_VARIABLE_NAME: &'static str = "__type_handle_register_variable";
-/// The name of the `Type.Handle.Register.Combination` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_COMBINATION_NAME: &'static str =
-    "__type_handle_register_combination_name";
-/// The name of the `Type.Handle.Register.Function` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_FUNCTION_NAME: &'static str =
-    "__type_handle_register_function_name";
+/// The name of the `Type.IsRegistered` ABI call.
+pub const ABI_TYPE_IS_REGISTERED_NAME: &'static str = "__type_is_registered";
+/// The name of the `Type.Register.Variable` ABI call.
+pub const ABI_TYPE_REGISTER_VARIABLE_NAME: &'static str = "__type_register_variable";
+/// The name of the `Type.Register.Combination` ABI call.
+pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &'static str = "__type_register_combination_name";
+/// The name of the `Type.Register.Function` ABI call.
+pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &'static str = "__type_register_function_name";
 
 /// The name of the `Type.Split.Variable` ABI call.
 pub const ABI_TYPE_SPLIT_VARIABLE_NAME: &'static str = "__type_split_variable_name";
@@ -89,19 +86,19 @@ pub const ABI_TYPE_TEST_COMBINATION_NAME: &'static str = "__type_test_combinatio
 /// The name of the `Type.Test.Function` ABI call.
 pub const ABI_TYPE_TEST_FUNCTION_NAME: &'static str = "__type_test_function";
 
-/// The name of the `Type.FTV` ABI call.
-pub const ABI_TYPE_FTV_NAME: &'static str = "__type_ftv";
+/// The name of the `Type.Variables` ABI call.
+pub const ABI_TYPE_FTV_NAME: &'static str = "__type_variables";
 /// The name of the `Type.Substitute` ABI call.
 pub const ABI_TYPE_SUBSTITUTE_NAME: &'static str = "__type_substitute";
 
-/// The host-call number of the `Type.Handle.IsRegistered` ABI call.
-pub const ABI_TYPE_HANDLE_IS_REGISTERED_INDEX: usize = 3;
-/// The host-call number of the `Type.Handle.Register.Variable` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_VARIABLE_INDEX: usize = 4;
-/// The host-call number of the `Type.Handle.Register.Combination` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_COMBINATION_INDEX: usize = 5;
-/// The host-call number of the `Type.Handle.Register.Function` ABI call.
-pub const ABI_TYPE_HANDLE_REGISTER_FUNCTION_INDEX: usize = 6;
+/// The host-call number of the `Type.IsRegistered` ABI call.
+pub const ABI_TYPE_IS_REGISTERED_INDEX: usize = 3;
+/// The host-call number of the `Type.Register.Variable` ABI call.
+pub const ABI_TYPE_REGISTER_VARIABLE_INDEX: usize = 4;
+/// The host-call number of the `Type.Register.Combination` ABI call.
+pub const ABI_TYPE_REGISTER_COMBINATION_INDEX: usize = 5;
+/// The host-call number of the `Type.Register.Function` ABI call.
+pub const ABI_TYPE_REGISTER_FUNCTION_INDEX: usize = 6;
 
 /// The host-call number of the `Type.Split.Variable` ABI call.
 pub const ABI_TYPE_SPLIT_VARIABLE_INDEX: usize = 7;
@@ -124,48 +121,44 @@ pub const ABI_TYPE_SUBSTITUTE_INDEX: usize = 14;
 
 /* Constant-related calls. */
 
-/// The name of the `Constant.Handle.Resolve` ABI call.
-pub const ABI_CONSTANT_HANDLE_RESOLVE_NAME: &'static str = "__constant_handle_resolve";
-/// The name of the `Constant.Handle.IsRegistered` ABI call.
-pub const ABI_CONSTANT_HANDLE_IS_REGISTERED_NAME: &'static str = "__constant_handle_is_registered";
-/// The name of the `Constant.Handle.Register` ABI call.
-pub const ABI_CONSTANT_HANDLE_REGISTER_NAME: &'static str = "__constant_handle_register";
+/// The name of the `Constant.Resolve` ABI call.
+pub const ABI_CONSTANT_RESOLVE_NAME: &'static str = "__constant_resolve";
+/// The name of the `Constant.IsRegistered` ABI call.
+pub const ABI_CONSTANT_IS_REGISTERED_NAME: &'static str = "__constant_is_registered";
+/// The name of the `Constant.Register` ABI call.
+pub const ABI_CONSTANT_REGISTER_NAME: &'static str = "__constant_register";
 
-/// The host-call number of the `Constant.Handle.Register` ABI call.
-pub const ABI_CONSTANT_HANDLE_RESOLVE_INDEX: usize = 15;
-/// The host-call number of the `Constant.Handle.IsRegistered` ABI call.
-pub const ABI_CONSTANT_HANDLE_IS_REGISTERED_INDEX: usize = 16;
-/// The host-call number of the `Constant.Handle.Register` ABI call.
-pub const ABI_CONSTANT_HANDLE_REGISTER_INDEX: usize = 17;
+/// The host-call number of the `Constant.Resolve` ABI call.
+pub const ABI_CONSTANT_RESOLVE_INDEX: usize = 15;
+/// The host-call number of the `Constant.IsRegistered` ABI call.
+pub const ABI_CONSTANT_IS_REGISTERED_INDEX: usize = 16;
+/// The host-call number of the `Constant.Register` ABI call.
+pub const ABI_CONSTANT_REGISTER_INDEX: usize = 17;
 
 /* Term-related calls. */
 
-/// The name of the `Term.Handle.Register.Variable` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_VARIABLE_NAME: &'static str = "__term_handle_register_variable";
-/// The name of the `Term.Handle.Register.Constant` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_CONSTANT_NAME: &'static str = "__term_handle_register_constant";
-/// The name of the `Term.Handle.Register.Application` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_APPLICATION_NAME: &'static str =
-    "__term_handle_register_application";
-/// The name of the `Term.Handle.Register.Lambda` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_LAMBDA_NAME: &'static str = "__term_handle_register_lambda";
-/// The name of the `Term.Handle.Register.Negation` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_NEGATION_NAME: &'static str = "__term_handle_register_negation";
-/// The name of the `Term.Handle.Register.Conjunction` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_CONJUNCTION_NAME: &'static str =
-    "__term_handle_register_conjunction";
-/// The name of the `Term.Handle.Register.Disjunction` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_DISJUNCTION_NAME: &'static str =
-    "__term_handle_register_disjunction";
-/// The name of the `Term.Handle.Register.Implication` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_IMPLICATION_NAME: &'static str =
-    "__term_handle_register_implication";
-/// The name of the `Term.Handle.Register.Equality` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_EQUALITY_NAME: &'static str = "__term_handle_register_equality";
-/// The name of the `Term.Handle.Register.Forall` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_FORALL_NAME: &'static str = "__term_handle_register_forall";
-/// The name of the `Term.Handle.Register.Exists` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_EXISTS_NAME: &'static str = "__term_handle_register_exists";
+/// The name of the `Term.Register.Variable` ABI call.
+pub const ABI_TERM_REGISTER_VARIABLE_NAME: &'static str = "__term_register_variable";
+/// The name of the `Term.Register.Constant` ABI call.
+pub const ABI_TERM_REGISTER_CONSTANT_NAME: &'static str = "__term_register_constant";
+/// The name of the `Term.Register.Application` ABI call.
+pub const ABI_TERM_REGISTER_APPLICATION_NAME: &'static str = "__term_register_application";
+/// The name of the `Term.Register.Lambda` ABI call.
+pub const ABI_TERM_REGISTER_LAMBDA_NAME: &'static str = "__term_register_lambda";
+/// The name of the `Term.Register.Negation` ABI call.
+pub const ABI_TERM_REGISTER_NEGATION_NAME: &'static str = "__term_register_negation";
+/// The name of the `Term.Register.Conjunction` ABI call.
+pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &'static str = "__term_register_conjunction";
+/// The name of the `Term.Register.Disjunction` ABI call.
+pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &'static str = "__term_register_disjunction";
+/// The name of the `Term.Register.Implication` ABI call.
+pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &'static str = "__term_register_implication";
+/// The name of the `Term.Register.Equality` ABI call.
+pub const ABI_TERM_REGISTER_EQUALITY_NAME: &'static str = "__term_register_equality";
+/// The name of the `Term.Register.Forall` ABI call.
+pub const ABI_TERM_REGISTER_FORALL_NAME: &'static str = "__term_register_forall";
+/// The name of the `Term.Register.Exists` ABI call.
+pub const ABI_TERM_REGISTER_EXISTS_NAME: &'static str = "__term_register_exists";
 
 /// The name of the `Term.Split.Variable` ABI call.
 pub const ABI_TERM_SPLIT_VARIABLE_NAME: &'static str = "__term_split_variable";
@@ -227,28 +220,28 @@ pub const ABI_TERM_TYPE_INFER_NAME: &'static str = "__term_type_infer";
 /// The name of the `Term.Type.IsProposition` ABI call.
 pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &'static str = "__term_type_is_proposition";
 
-/// The host-call number of the `Term.Handle.Register.Variable` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_VARIABLE_INDEX: usize = 18;
-/// The host-call number of the `Term.Handle.Register.Constant` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_CONSTANT_INDEX: usize = 19;
-/// The host-call number of the `Term.Handle.Register.Application` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_APPLICATION_INDEX: usize = 20;
-/// The host-call number of the `Term.Handle.Register.Lambda` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_LAMBDA_INDEX: usize = 21;
-/// The host-call number of the `Term.Handle.Register.Negation` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_NEGATION_INDEX: usize = 22;
-/// The host-call number of the `Term.Handle.Register.Conjunction` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_CONJUNCTION_INDEX: usize = 23;
-/// The host-call number of the `Term.Handle.Register.Disjunction` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_DISJUNCTION_INDEX: usize = 24;
-/// The host-call number of the `Term.Handle.Register.Implication` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_IMPLICATION_INDEX: usize = 25;
-/// The host-call number of the `Term.Handle.Register.Equality` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_EQUALITY_INDEX: usize = 26;
-/// The host-call number of the `Term.Handle.Register.Forall` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_FORALL_INDEX: usize = 27;
-/// The host-call number of the `Term.Handle.Register.Exists` ABI call.
-pub const ABI_TERM_HANDLE_REGISTER_EXISTS_INDEX: usize = 28;
+/// The host-call number of the `Term.Register.Variable` ABI call.
+pub const ABI_TERM_REGISTER_VARIABLE_INDEX: usize = 18;
+/// The host-call number of the `Term.Register.Constant` ABI call.
+pub const ABI_TERM_REGISTER_CONSTANT_INDEX: usize = 19;
+/// The host-call number of the `Term.Register.Application` ABI call.
+pub const ABI_TERM_REGISTER_APPLICATION_INDEX: usize = 20;
+/// The host-call number of the `Term.Register.Lambda` ABI call.
+pub const ABI_TERM_REGISTER_LAMBDA_INDEX: usize = 21;
+/// The host-call number of the `Term.Register.Negation` ABI call.
+pub const ABI_TERM_REGISTER_NEGATION_INDEX: usize = 22;
+/// The host-call number of the `Term.Register.Conjunction` ABI call.
+pub const ABI_TERM_REGISTER_CONJUNCTION_INDEX: usize = 23;
+/// The host-call number of the `Term.Register.Disjunction` ABI call.
+pub const ABI_TERM_REGISTER_DISJUNCTION_INDEX: usize = 24;
+/// The host-call number of the `Term.Register.Implication` ABI call.
+pub const ABI_TERM_REGISTER_IMPLICATION_INDEX: usize = 25;
+/// The host-call number of the `Term.Register.Equality` ABI call.
+pub const ABI_TERM_REGISTER_EQUALITY_INDEX: usize = 26;
+/// The host-call number of the `Term.Register.Forall` ABI call.
+pub const ABI_TERM_REGISTER_FORALL_INDEX: usize = 27;
+/// The host-call number of the `Term.Register.Exists` ABI call.
+pub const ABI_TERM_REGISTER_EXISTS_INDEX: usize = 28;
 
 /// The host-call number of the `Term.Split.Variable` ABI call.
 pub const ABI_TERM_SPLIT_VARIABLE_INDEX: usize = 29;
@@ -312,12 +305,95 @@ pub const ABI_TERM_TYPE_IS_PROPOSITION_INDEX: usize = 56;
 
 /* Theorem-related calls. */
 
-pub const ABI_THEOREM_HANDLE_REGISTER_EQUALITY_REFLEXIVITY_NAME: &'static str =
-    "__theorem_handle_register_equality_reflexivity";
-pub const ABI_THEOREM_HANDLE_REGISTER_EQUALITY_SYMMETRY_NAME: &'static str =
-    "__theorem_handle_register_equality_symmetry";
-pub const ABI_THEOREM_HANDLE_REGISTER_EQUALITY_TRANSITIVITY_NAME: &'static str =
-    "__theorem_handle_register_equality_transitivity";
+/// The name of the `Theorem.IsRegistered` ABI call.
+pub const ABI_THEOREM_IS_REGISTERED_NAME: &'static str = "__theorem_is_registered";
+
+/// The name of the `Theorem.Register.Reflexivity` ABI call.
+pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &'static str = "__theorem_register_reflexivity";
+/// The name of the `Theorem.Register.Symmetry` ABI call.
+pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &'static str = "__theorem_register_symmetry";
+/// The name of the `Theorem.Register.Transitivity` ABI call.
+pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &'static str = "__theorem_register_transitivity";
+/// The name of the `Theorem.Register.Beta` ABI call.
+pub const ABI_THEOREM_REGISTER_BETA_NAME: &'static str = "__theorem_register_beta";
+/// The name of the `Theorem.Register.Eta` ABI call.
+pub const ABI_THEOREM_REGISTER_ETA_NAME: &'static str = "__theorem_register_eta";
+/// The name of the `Theorem.Register.Application` ABI call.
+pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &'static str = "__theorem_register_application";
+/// The name of the `Theorem.Register.Lambda` ABI call.
+pub const ABI_THEOREM_REGISTER_LAMBDA_NAME: &'static str = "__theorem_register_lambda";
+
+/// The name of the `Theorem.Register.Substitution` ABI call.
+pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &'static str = "__theorem_register_substitution";
+/// The name of the `Theorem.Register.TypeSubstitution` ABI call.
+pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &'static str =
+    "__theorem_register_type_substitution";
+
+/// The name of the `Theorem.Register.Truth.Introduction` ABI call.
+pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_truth_introduction";
+/// The name of the `Theorem.Register.Falsity.Elimination` ABI call.
+pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME: &'static str =
+    "__theorem_register_falsity_elimination";
+
+/// The name of the `Theorem.Register.ConjunctionIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_conjunction_introduction";
+/// The name of the `Theorem.Register.ConjunctionLeftElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME: &'static str =
+    "__theorem_register_conjunction_left_elimination";
+/// The name of the `Theorem.Register.ConjunctionRightElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME: &'static str =
+    "__theorem_register_conjunction_right_elimination";
+
+/// The name of the `Theorem.Register.DisjunctionIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_disjunction_introduction";
+/// The name of the `Theorem.Register.DisjunctionLeftIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_ELIMINATION_NAME: &'static str =
+    "__theorem_register_disjunction_left_elimination";
+/// The name of the `Theorem.Register.DisjunctionRightIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_ELIMINATION_NAME: &'static str =
+    "__theorem_register_disjunction_right_elimination";
+
+/// The name of the `Theorem.Register.ImplicationIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_implication_introduction";
+/// The name of the `Theorem.Register.ImplicationElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME: &'static str =
+    "__theorem_register_implication_elimination";
+
+/// The name of the `Theorem.Register.Iff.Introduction` ABI call.
+pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_iff_elimination";
+/// The name of the `Theorem.Register.Iff.LeftElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME: &'static str =
+    "__theorem_register_iff_left_elimination";
+
+/// The name of the `Theorem.Register.NegationIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_negation_introduction";
+/// The name of the `Theorem.Register.NegationElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME: &'static str =
+    "__theorem_register_negation_elimination";
+
+/// The name of the `Theorem.Register.ForallIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_forall_introduction";
+/// The name of the `Theorem.Register.ForallElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME: &'static str =
+    "__theorem_register_forall_elimination";
+/// The name of the `Theorem.Register.ExistsIntroduction` ABI call.
+pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &'static str =
+    "__theorem_register_exists_introduction";
+/// The name of the `Theorem.Register.ExistsElimination` ABI call.
+pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &'static str =
+    "__theorem_register_exists_elimination";
+
+/// The name of the `Theorem.Split.Hypotheses` ABI call.
+pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &'static str = "__theorem_split_hypotheses";
+/// The name of the `Theorem.Split.Conclusion` ABI call.
+pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &'static str = "__theorem_split_conclusion";
 
 ////////////////////////////////////////////////////////////////////////////////
 // Errors and traps.
@@ -602,33 +678,33 @@ impl WasmiRuntimeState {
     ////////////////////////////////////////////////////////////////////////////
 
     #[inline]
-    pub fn type_former_handle_resolve(&self, handle: &Handle) -> Option<&usize> {
-        self.kernel.type_former_handle_resolve(handle)
+    pub fn type_former_resolve(&self, handle: &Handle) -> Option<&usize> {
+        self.kernel.type_former_resolve(handle)
     }
 
     #[inline]
-    pub fn type_former_handle_is_registered(&self, handle: &Handle) -> bool {
-        self.kernel.type_former_handle_is_registered(handle)
+    pub fn type_former_is_registered(&self, handle: &Handle) -> bool {
+        self.kernel.type_former_is_registered(handle)
     }
 
     #[inline]
-    pub fn type_former_handle_register<T>(&mut self, arity: T) -> Handle
+    pub fn type_former_register<T>(&mut self, arity: T) -> Handle
     where
         T: Into<usize>,
     {
-        self.kernel.type_former_handle_register(arity)
+        self.kernel.type_former_register(arity)
     }
 
     #[inline]
-    pub fn type_handle_register_variable<T>(&mut self, name: T) -> Handle
+    pub fn type_register_variable<T>(&mut self, name: T) -> Handle
     where
         T: Into<Name>,
     {
-        self.kernel.type_handle_register_variable(name)
+        self.kernel.type_register_variable(name)
     }
 
     #[inline]
-    pub fn type_handle_register_combination<T>(
+    pub fn type_register_combination<T>(
         &mut self,
         type_former: T,
         arguments: Vec<T>,
@@ -636,14 +712,14 @@ impl WasmiRuntimeState {
     where
         T: Into<Handle> + Clone,
     {
-        self.kernel.type_handle_register_combination(
+        self.kernel.type_register_combination(
             type_former.into(),
             arguments.iter().cloned().map(|a| a.into()).collect(),
         )
     }
 
     #[inline]
-    pub fn type_handle_register_function<T>(
+    pub fn type_register_function<T>(
         &mut self,
         domain: T,
         range: T,
@@ -652,15 +728,15 @@ impl WasmiRuntimeState {
         T: Into<Handle>,
     {
         self.kernel
-            .type_handle_register_function(domain.into(), range.into())
+            .type_register_function(domain.into(), range.into())
     }
 
     #[inline]
-    pub fn type_handle_is_registered<'a, T>(&'a self, handle: T) -> bool
+    pub fn type_is_registered<'a, T>(&'a self, handle: T) -> bool
     where
         T: Into<&'a Handle>,
     {
-        self.kernel.type_handle_is_registered(handle.into())
+        self.kernel.type_is_registered(handle.into())
     }
 
     #[inline]
@@ -739,29 +815,443 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn constant_handle_register<T>(&mut self, handle: T) -> Result<Handle, KernelErrorCode>
+    pub fn constant_register<T>(&mut self, handle: T) -> Result<Handle, KernelErrorCode>
     where
         T: Into<Handle>,
     {
-        self.kernel.constant_handle_register(handle.into())
+        self.kernel.constant_register(handle.into())
     }
 
     #[inline]
-    pub fn constant_handle_resolve<'a, T>(&'a self, handle: T) -> Result<&Handle, KernelErrorCode>
+    pub fn constant_resolve<'a, T>(&'a self, handle: T) -> Result<&Handle, KernelErrorCode>
     where
         T: Into<&'a Handle>,
+    {
+        self.kernel.constant_resolve(handle.into())
+    }
+
+    #[inline]
+    pub fn constant_is_registered<'a, T>(&'a self, handle: T) -> bool
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.constant_is_registered(handle.into())
+    }
+
+    #[inline]
+    pub fn term_register_variable<T, U>(
+        &mut self,
+        name: T,
+        tau: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<String>,
+        U: Into<Handle>,
+    {
+        self.kernel.term_register_variable(name, tau.into())
+    }
+
+    #[inline]
+    pub fn term_register_constant<T, U>(
+        &mut self,
+        constant: T,
+        substitution: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+        U: Iterator<Item = (Name, Handle)> + Clone,
     {
         self.kernel
-            .constant_handle_resolve(handle.into())
-            .ok_or(KernelErrorCode::NoSuchConstantRegistered)
+            .term_register_constant(constant.into(), substitution)
     }
 
     #[inline]
-    pub fn constant_handle_is_registered<'a, T>(&'a self, handle: T) -> bool
+    pub fn term_register_application<T>(
+        &mut self,
+        left: T,
+        right: T,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel
+            .term_register_application(left.into(), right.into())
+    }
+
+    #[inline]
+    pub fn term_register_lambda<T, U>(
+        &mut self,
+        name: T,
+        tau: U,
+        body: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<String>,
+        U: Into<Handle>,
+    {
+        self.kernel
+            .term_register_lambda(name, tau.into(), body.into())
+    }
+
+    #[inline]
+    pub fn term_register_negation<T>(&mut self, body: T) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel.term_register_negation(body.into())
+    }
+
+    #[inline]
+    pub fn term_register_conjunction<T>(
+        &mut self,
+        left: T,
+        right: T,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel
+            .term_register_conjunction(left.into(), right.into())
+    }
+
+    #[inline]
+    pub fn term_register_disjunction<T>(
+        &mut self,
+        left: T,
+        right: T,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel
+            .term_register_disjunction(left.into(), right.into())
+    }
+
+    #[inline]
+    pub fn term_register_implication<T>(
+        &mut self,
+        left: T,
+        right: T,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel
+            .term_register_implication(left.into(), right.into())
+    }
+
+    #[inline]
+    pub fn term_register_equality<T>(
+        &mut self,
+        left: T,
+        right: T,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+    {
+        self.kernel
+            .term_register_equality(left.into(), right.into())
+    }
+
+    #[inline]
+    pub fn term_register_forall<T, U>(
+        &mut self,
+        name: T,
+        tau: U,
+        body: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<String>,
+        U: Into<Handle>,
+    {
+        self.kernel
+            .term_register_forall(name, tau.into(), body.into())
+    }
+
+    #[inline]
+    pub fn term_register_exists<T, U>(
+        &mut self,
+        name: T,
+        tau: U,
+        body: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<String>,
+        U: Into<Handle>,
+    {
+        self.kernel
+            .term_register_exists(name, tau.into(), body.into())
+    }
+
+    #[inline]
+    pub fn term_split_variable<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&String, &Handle), KernelErrorCode>
     where
         T: Into<&'a Handle>,
     {
-        self.kernel.constant_handle_is_registered(handle.into())
+        self.kernel.term_split_variable(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_constant<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_constant(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_application<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_application(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_lambda<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_lambda(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_negation<'a, T>(&'a self, handle: T) -> Result<&Handle, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_negation(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_conjunction<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_conjunction(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_disjunction<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_disjunction(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_implication<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_implication(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_equality<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_equality(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_forall<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_forall(handle.into())
+    }
+
+    #[inline]
+    pub fn term_split_exists<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_split_exists(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_variable<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_variable(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_constant<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_constant(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_application<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_application(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_lambda<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_lambda(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_negation<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_negation(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_conjunction<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_conjunction(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_disjunction<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_disjunction(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_implication<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_implication(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_equality<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_equality(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_forall<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_forall(handle.into())
+    }
+
+    #[inline]
+    pub fn term_test_exists<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_test_exists(handle.into())
+    }
+
+    #[inline]
+    pub fn term_free_variables<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<Vec<(&String, &Handle)>, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_free_variables(handle.into())
+    }
+
+    #[inline]
+    pub fn term_type_variables<'a, T>(
+        &'a self,
+        handle: T,
+    ) -> Result<Vec<(&String)>, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_type_variables(handle.into())
+    }
+
+    #[inline]
+    pub fn term_substitution<T, U>(
+        &mut self,
+        handle: T,
+        substitution: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+        U: Iterator<Item = (Name, Handle)>,
+    {
+        self.kernel.substitution(handle.into(), substitution)
+    }
+
+    #[inline]
+    pub fn term_type_substitution<T, U>(
+        &mut self,
+        handle: T,
+        substitution: U,
+    ) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<Handle>,
+        U: Iterator<Item = (Name, Handle)>,
+    {
+        self.kernel
+            .term_type_substitution(handle.into(), substitution)
+    }
+
+    #[inline]
+    pub fn term_type_infer<'a, T>(&'a mut self, handle: T) -> Result<Handle, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_type_infer(handle.into())
+    }
+
+    #[inline]
+    pub fn term_type_is_proposition<'a, T>(&'a mut self, handle: T) -> Result<bool, KernelErrorCode>
+    where
+        T: Into<&'a Handle>,
+    {
+        self.kernel.term_type_is_proposition(handle.into())
     }
 }
 
@@ -769,47 +1259,47 @@ impl WasmiRuntimeState {
 // Signature checking.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Checks the signature of the `TypeFormer.Handle.Resolve` ABI function.
+/// Checks the signature of the `TypeFormer.Resolve` ABI function.
 #[inline]
-fn check_type_former_handle_resolve_signature(signature: &Signature) -> bool {
+fn check_type_former_resolve_signature(signature: &Signature) -> bool {
     signature.params() == &[ValueType::I64, ValueType::I32]
         && signature.return_type() == Some(ValueType::I32)
 }
 
-/// Checks the signature of the `TypeFormer.Handle.Register` ABI function.
+/// Checks the signature of the `TypeFormer.Register` ABI function.
 #[inline]
-fn check_type_former_handle_register_signature(signature: &Signature) -> bool {
+fn check_type_former_register_signature(signature: &Signature) -> bool {
     signature.params() == &[ValueType::I64, ValueType::I32]
         && signature.return_type() == Some(ValueType::I32)
 }
 
-/// Checks the signature of the `TypeFormer.Handle.IsRegistered` ABI function.
+/// Checks the signature of the `TypeFormer.IsRegistered` ABI function.
 #[inline]
-fn check_type_former_handle_is_registered_signature(signature: &Signature) -> bool {
+fn check_type_former_is_registered_signature(signature: &Signature) -> bool {
     signature.params() == &[ValueType::I64] && signature.return_type() == Some(ValueType::I32)
 }
 
-/// Checks the signature of the `Type.Handle.Register.Variable` ABI function.
+/// Checks the signature of the `Type.Register.Variable` ABI function.
 #[inline]
-fn check_type_handle_register_variable_signature(signature: &Signature) -> bool {
+fn check_type_register_variable_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Type.Handle.Register.Combination` ABI function.
+/// Checks the signature of the `Type.Register.Combination` ABI function.
 #[inline]
-fn check_type_handle_register_combination_signature(signature: &Signature) -> bool {
+fn check_type_register_combination_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Type.Handle.Register.Function` ABI function.
+/// Checks the signature of the `Type.Register.Function` ABI function.
 #[inline]
-fn check_type_handle_register_function_signature(signature: &Signature) -> bool {
+fn check_type_register_function_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Type.Handle.IsRegistered` ABI function.
+/// Checks the signature of the `Type.IsRegistered` ABI function.
 #[inline]
-fn check_type_handle_is_registered_signature(signature: &Signature) -> bool {
+fn check_type_is_registered_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
@@ -861,21 +1351,21 @@ fn check_type_substitute_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Constant.Handle.Register` ABI function.
+/// Checks the signature of the `Constant.Register` ABI function.
 #[inline]
-fn check_constant_handle_register_signature(signature: &Signature) -> bool {
+fn check_constant_register_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Constant.Handle.Resolve` ABI function.
+/// Checks the signature of the `Constant.Resolve` ABI function.
 #[inline]
-fn check_constant_handle_resolve_signature(signature: &Signature) -> bool {
+fn check_constant_resolve_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
-/// Checks the signature of the `Constant.Handle.IsRegistered` ABI function.
+/// Checks the signature of the `Constant.IsRegistered` ABI function.
 #[inline]
-fn check_constant_handle_is_registered_signature(signature: &Signature) -> bool {
+fn check_constant_is_registered_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
@@ -892,11 +1382,11 @@ impl Externals for WasmiRuntimeState {
         args: RuntimeArgs,
     ) -> Result<Option<RuntimeValue>, Trap> {
         match index {
-            ABI_TYPE_FORMER_HANDLE_RESOLVE_INDEX => {
+            ABI_TYPE_FORMER_RESOLVE_INDEX => {
                 let handle = args.nth::<u64>(0) as usize;
                 let result_addr = args.nth::<u32>(1);
 
-                let arity = match self.type_former_handle_resolve(&handle) {
+                let arity = match self.type_former_resolve(&handle) {
                     None => {
                         return Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::NoSuchTypeFormerRegistered.into(),
@@ -909,22 +1399,22 @@ impl Externals for WasmiRuntimeState {
 
                 Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
             }
-            ABI_TYPE_FORMER_HANDLE_IS_REGISTERED_INDEX => {
+            ABI_TYPE_FORMER_IS_REGISTERED_INDEX => {
                 let handle = args.nth::<u64>(0) as usize;
-                let result = self.type_former_handle_is_registered(&handle);
+                let result = self.type_former_is_registered(&handle);
 
                 Ok(Some(RuntimeValue::I32(result.into())))
             }
-            ABI_TYPE_FORMER_HANDLE_REGISTER_INDEX => {
+            ABI_TYPE_FORMER_REGISTER_INDEX => {
                 let arity = args.nth::<u64>(0) as usize;
-                let result = self.type_former_handle_register(arity);
+                let result = self.type_former_register(arity);
 
                 Ok(Some(RuntimeValue::I64(result as i64)))
             }
-            ABI_TYPE_HANDLE_REGISTER_VARIABLE_INDEX => unimplemented!(),
-            ABI_TYPE_HANDLE_REGISTER_COMBINATION_INDEX => unimplemented!(),
-            ABI_TYPE_HANDLE_REGISTER_FUNCTION_INDEX => unimplemented!(),
-            ABI_TYPE_HANDLE_IS_REGISTERED_INDEX => unimplemented!(),
+            ABI_TYPE_REGISTER_VARIABLE_INDEX => unimplemented!(),
+            ABI_TYPE_REGISTER_COMBINATION_INDEX => unimplemented!(),
+            ABI_TYPE_REGISTER_FUNCTION_INDEX => unimplemented!(),
+            ABI_TYPE_IS_REGISTERED_INDEX => unimplemented!(),
             ABI_TYPE_SPLIT_VARIABLE_INDEX => unimplemented!(),
             ABI_TYPE_SPLIT_COMBINATION_INDEX => unimplemented!(),
             ABI_TYPE_SPLIT_FUNCTION_INDEX => unimplemented!(),
@@ -933,20 +1423,20 @@ impl Externals for WasmiRuntimeState {
             ABI_TYPE_TEST_FUNCTION_INDEX => unimplemented!(),
             ABI_TYPE_VARIABLES_INDEX => unimplemented!(),
             ABI_TYPE_SUBSTITUTE_INDEX => unimplemented!(),
-            ABI_CONSTANT_HANDLE_REGISTER_INDEX => unimplemented!(),
-            ABI_CONSTANT_HANDLE_IS_REGISTERED_INDEX => unimplemented!(),
-            ABI_CONSTANT_HANDLE_RESOLVE_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_VARIABLE_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_CONSTANT_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_APPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_LAMBDA_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_NEGATION_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_CONJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_DISJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_IMPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_EQUALITY_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_FORALL_INDEX => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_EXISTS_INDEX => unimplemented!(),
+            ABI_CONSTANT_REGISTER_INDEX => unimplemented!(),
+            ABI_CONSTANT_IS_REGISTERED_INDEX => unimplemented!(),
+            ABI_CONSTANT_RESOLVE_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_VARIABLE_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_CONSTANT_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_APPLICATION_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_LAMBDA_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_NEGATION_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_CONJUNCTION_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_DISJUNCTION_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_IMPLICATION_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_EQUALITY_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_FORALL_INDEX => unimplemented!(),
+            ABI_TERM_REGISTER_EXISTS_INDEX => unimplemented!(),
             ABI_TERM_SPLIT_VARIABLE_INDEX => unimplemented!(),
             ABI_TERM_SPLIT_CONSTANT_INDEX => unimplemented!(),
             ABI_TERM_SPLIT_APPLICATION_INDEX => unimplemented!(),
@@ -986,74 +1476,74 @@ impl Externals for WasmiRuntimeState {
 impl ModuleImportResolver for WasmiRuntimeState {
     fn resolve_func(&self, field_name: &str, signature: &Signature) -> Result<FuncRef, WasmiError> {
         match field_name {
-            ABI_TYPE_FORMER_HANDLE_RESOLVE_NAME => {
-                if !check_type_former_handle_resolve_signature(signature) {
+            ABI_TYPE_FORMER_RESOLVE_NAME => {
+                if !check_type_former_resolve_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_FORMER_HANDLE_RESOLVE_INDEX,
+                    ABI_TYPE_FORMER_RESOLVE_INDEX,
                 ))
             }
-            ABI_TYPE_FORMER_HANDLE_REGISTER_NAME => {
-                if !check_type_former_handle_register_signature(signature) {
+            ABI_TYPE_FORMER_REGISTER_NAME => {
+                if !check_type_former_register_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_FORMER_HANDLE_REGISTER_INDEX,
+                    ABI_TYPE_FORMER_REGISTER_INDEX,
                 ))
             }
-            ABI_TYPE_FORMER_HANDLE_IS_REGISTERED_NAME => {
-                if !check_type_former_handle_is_registered_signature(signature) {
+            ABI_TYPE_FORMER_IS_REGISTERED_NAME => {
+                if !check_type_former_is_registered_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_FORMER_HANDLE_IS_REGISTERED_INDEX,
+                    ABI_TYPE_FORMER_IS_REGISTERED_INDEX,
                 ))
             }
-            ABI_TYPE_HANDLE_IS_REGISTERED_NAME => {
-                if !check_type_handle_is_registered_signature(signature) {
+            ABI_TYPE_IS_REGISTERED_NAME => {
+                if !check_type_is_registered_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_HANDLE_IS_REGISTERED_INDEX,
+                    ABI_TYPE_IS_REGISTERED_INDEX,
                 ))
             }
-            ABI_TYPE_HANDLE_REGISTER_VARIABLE_NAME => {
-                if !check_type_handle_register_variable_signature(signature) {
+            ABI_TYPE_REGISTER_VARIABLE_NAME => {
+                if !check_type_register_variable_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_HANDLE_REGISTER_VARIABLE_INDEX,
+                    ABI_TYPE_REGISTER_VARIABLE_INDEX,
                 ))
             }
-            ABI_TYPE_HANDLE_REGISTER_COMBINATION_NAME => {
-                if !check_type_handle_register_combination_signature(signature) {
+            ABI_TYPE_REGISTER_COMBINATION_NAME => {
+                if !check_type_register_combination_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_HANDLE_REGISTER_COMBINATION_INDEX,
+                    ABI_TYPE_REGISTER_COMBINATION_INDEX,
                 ))
             }
-            ABI_TYPE_HANDLE_REGISTER_FUNCTION_NAME => {
-                if !check_type_handle_register_function_signature(signature) {
+            ABI_TYPE_REGISTER_FUNCTION_NAME => {
+                if !check_type_register_function_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TYPE_HANDLE_REGISTER_FUNCTION_INDEX,
+                    ABI_TYPE_REGISTER_FUNCTION_INDEX,
                 ))
             }
             ABI_TYPE_SPLIT_VARIABLE_NAME => {
@@ -1136,47 +1626,47 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TYPE_SUBSTITUTE_INDEX,
                 ))
             }
-            ABI_CONSTANT_HANDLE_RESOLVE_NAME => {
-                if !check_constant_handle_resolve_signature(signature) {
+            ABI_CONSTANT_RESOLVE_NAME => {
+                if !check_constant_resolve_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_CONSTANT_HANDLE_RESOLVE_INDEX,
+                    ABI_CONSTANT_RESOLVE_INDEX,
                 ))
             }
-            ABI_CONSTANT_HANDLE_IS_REGISTERED_NAME => {
-                if !check_constant_handle_is_registered_signature(signature) {
+            ABI_CONSTANT_IS_REGISTERED_NAME => {
+                if !check_constant_is_registered_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_CONSTANT_HANDLE_IS_REGISTERED_INDEX,
+                    ABI_CONSTANT_IS_REGISTERED_INDEX,
                 ))
             }
-            ABI_CONSTANT_HANDLE_REGISTER_NAME => {
-                if !check_constant_handle_register_signature(signature) {
+            ABI_CONSTANT_REGISTER_NAME => {
+                if !check_constant_register_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_CONSTANT_HANDLE_REGISTER_INDEX,
+                    ABI_CONSTANT_REGISTER_INDEX,
                 ))
             }
-            ABI_TERM_HANDLE_REGISTER_VARIABLE_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_CONSTANT_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_APPLICATION_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_LAMBDA_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_NEGATION_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_CONJUNCTION_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_DISJUNCTION_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_IMPLICATION_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_EQUALITY_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_FORALL_NAME => unimplemented!(),
-            ABI_TERM_HANDLE_REGISTER_EXISTS_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_VARIABLE_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_CONSTANT_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_APPLICATION_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_LAMBDA_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_NEGATION_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_CONJUNCTION_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_DISJUNCTION_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_IMPLICATION_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_EQUALITY_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_FORALL_NAME => unimplemented!(),
+            ABI_TERM_REGISTER_EXISTS_NAME => unimplemented!(),
             ABI_TERM_SPLIT_VARIABLE_NAME => unimplemented!(),
             ABI_TERM_SPLIT_CONSTANT_NAME => unimplemented!(),
             ABI_TERM_SPLIT_APPLICATION_NAME => unimplemented!(),
@@ -1205,6 +1695,34 @@ impl ModuleImportResolver for WasmiRuntimeState {
             ABI_TERM_TYPE_SUBSTITUTION_NAME => unimplemented!(),
             ABI_TERM_TYPE_INFER_NAME => unimplemented!(),
             ABI_TERM_TYPE_IS_PROPOSITION_NAME => unimplemented!(),
+            ABI_THEOREM_IS_REGISTERED_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_REFLEXIVITY_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_SYMMETRY_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_TRANSITIVITY_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_APPLICATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_LAMBDA_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_BETA_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_ETA_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_DISJUNCTION_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME => unimplemented!(),
+            ABI_THEOREM_SPLIT_CONCLUSION_NAME => unimplemented!(),
+            ABI_THEOREM_SPLIT_HYPOTHESES_NAME => unimplemented!(),
             _otherwise => Err(host_error(KernelErrorCode::NoSuchFunction)),
         }
     }
