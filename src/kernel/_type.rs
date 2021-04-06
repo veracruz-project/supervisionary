@@ -15,7 +15,7 @@
 
 use crate::kernel::{
     handle::{
-        Handle, PREALLOCATED_HANDLE_TYPE_ALPHA, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+        tags, Handle, PREALLOCATED_HANDLE_TYPE_ALPHA, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
         PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
         PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE,
     },
@@ -51,10 +51,10 @@ pub enum Type {
     Combination {
         /// The reference to a previously-declared type-former in the kernel's
         /// type-former table.
-        former: Handle,
+        former: Handle<tags::TypeFormer>,
         /// The arguments to the type-former: a list of references to
         /// previously-defined types in the kernel's type table.
-        arguments: Vec<Handle>,
+        arguments: Vec<Handle<tags::Type>>,
     },
 }
 
@@ -71,23 +71,26 @@ impl Type {
     /// Creates a new type combination, applying a type-former to a collection
     /// of arguments.  Note that no checking for well-formedness is made, here.
     #[inline]
-    pub fn combination<T>(former: Handle, arguments: T) -> Self
+    pub fn combination<T, U>(former: T, arguments: Vec<U>) -> Self
     where
-        T: Iterator<Item = Handle>,
+        T: Into<Handle<tags::TypeFormer>>,
+        U: Into<Handle<tags::Type>> + Clone,
     {
+        let arguments = arguments.iter().map(|a| a.clone().into()).collect();
+
         Type::Combination {
-            former,
-            arguments: arguments.collect(),
+            former: former.into(),
+            arguments,
         }
     }
 
     /// Constructs a function type from a domain and range type.
     #[inline]
-    pub fn function(domain: Handle, range: Handle) -> Self {
-        Type::combination(
-            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
-            vec![domain, range].into_iter(),
-        )
+    pub fn function<T>(domain: T, range: T) -> Self
+    where
+        T: Into<Handle<tags::Type>> + Clone,
+    {
+        Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, vec![domain, range])
     }
 
     /// Returns `Some(name)` iff the type is a type-variable with name, `name`.
@@ -102,7 +105,9 @@ impl Type {
     /// Returns `Some((former, arguments))` iff the type is a fully-applied
     /// type-former, with handle `handle`, applied to a list of arguments,
     /// `arguments`.
-    pub fn split_combination(&self) -> Option<(&Handle, &Vec<Handle>)> {
+    pub fn split_combination(
+        &self,
+    ) -> Option<(&Handle<tags::TypeFormer>, &Vec<Handle<tags::Type>>)> {
         if let Type::Combination { former, arguments } = self {
             Some((former, arguments))
         } else {
@@ -112,7 +117,7 @@ impl Type {
 
     /// Returns `Some((dom, rng))` iff the type is a function type between
     /// domain type `dom` and range type `rng`.
-    pub fn split_function(&self) -> Option<(&Handle, &Handle)> {
+    pub fn split_function(&self) -> Option<(&Handle<tags::Type>, &Handle<tags::Type>)> {
         let (handle, args) = self.split_combination()?;
 
         if handle == &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW && args.len() == 2 {
@@ -223,9 +228,10 @@ mod test {
     use crate::kernel::{
         _type::Type,
         handle::{
-            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
-            PREALLOCATED_HANDLE_TYPE_PROP,
+            tags, Handle, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+            PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
         },
+        term::Term,
     };
 
     /// Tests the various type construction methods align with the
@@ -234,8 +240,11 @@ mod test {
     pub fn type_test0() {
         assert!(Type::variable("a").is_variable());
         assert!(
-            Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, vec![].iter().cloned())
-                .is_combination()
+            Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
+                PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
+                Vec::new()
+            )
+            .is_combination()
         );
         assert!(
             Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
@@ -249,8 +258,11 @@ mod test {
         assert!(!Type::variable("a").is_combination());
         assert!(!Type::variable("a").is_function());
         assert!(
-            !Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, vec![].iter().cloned())
-                .is_variable()
+            !Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
+                PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
+                Vec::new()
+            )
+            .is_variable()
         );
         assert!(
             Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
@@ -270,9 +282,7 @@ mod test {
     pub fn type_test2() {
         let v = Type::combination(
             PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
-            vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
-                .iter()
-                .cloned(),
+            vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP],
         );
         assert_eq!(
             v.split_combination(),

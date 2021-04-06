@@ -13,20 +13,16 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::handle::{
-    PREALLOCATED_HANDLE_TERM_CONJUNCTION, PREALLOCATED_HANDLE_TERM_DISJUNCTION,
-    PREALLOCATED_HANDLE_TERM_EQUALITY, PREALLOCATED_HANDLE_TERM_EXISTS,
-    PREALLOCATED_HANDLE_TERM_FORALL, PREALLOCATED_HANDLE_TERM_IMPLICATION,
-    PREALLOCATED_HANDLE_TERM_NEGATION, PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
-    PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE, PREALLOCATED_HANDLE_TYPE_PROP,
-    PREALLOCATED_HANDLE_TYPE_QUANTIFIER, PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
-};
 use crate::kernel::{
     handle::{
-        Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION, PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
-        PREALLOCATED_HANDLE_CONSTANT_EQUALITY, PREALLOCATED_HANDLE_CONSTANT_FALSE,
-        PREALLOCATED_HANDLE_CONSTANT_IMPLICATION, PREALLOCATED_HANDLE_CONSTANT_NEGATION,
-        PREALLOCATED_HANDLE_CONSTANT_TRUE,
+        tags, Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
+        PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION, PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
+        PREALLOCATED_HANDLE_CONSTANT_EXISTS, PREALLOCATED_HANDLE_CONSTANT_FALSE,
+        PREALLOCATED_HANDLE_CONSTANT_FORALL, PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
+        PREALLOCATED_HANDLE_CONSTANT_NEGATION, PREALLOCATED_HANDLE_CONSTANT_TRUE,
+        PREALLOCATED_HANDLE_TERM_DISJUNCTION, PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+        PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE, PREALLOCATED_HANDLE_TYPE_PROP,
+        PREALLOCATED_HANDLE_TYPE_QUANTIFIER, PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
     },
     name::Name,
 };
@@ -47,7 +43,7 @@ pub enum Term {
         /// The name of the variable.
         name: Name,
         /// A handle to the explicit type of the variable.
-        _type: Handle,
+        tau: Handle<tags::Type>,
     },
     /// Constants.  Constants can either be used at their declared type, in the
     /// constant-table, in which case we set the `_type` field to be `None` to
@@ -61,9 +57,9 @@ pub enum Term {
     /// should not dangle.
     Constant {
         /// A handle to the declared constant.
-        handle: Handle,
+        constant: Handle<tags::Constant>,
         /// A handle pointing-to the type of the constant.
-        _type: Handle,
+        tau: Handle<tags::Type>,
     },
     /// An application of one type, `left`, to another, `right`.  Left must be
     /// of functional type for this term to be type-correct.
@@ -73,10 +69,10 @@ pub enum Term {
     Application {
         /// A handle to the functional term being applied to the argument,
         /// `right`.
-        left: Handle,
+        left: Handle<tags::Term>,
         /// A handle to the argument term being consumed by the functional term,
         /// `left`.
-        right: Handle,
+        right: Handle<tags::Term>,
     },
     /// A lambda-abstraction, introducing a new function with argument `name`
     /// of type `_type`, with body `body`.
@@ -87,50 +83,66 @@ pub enum Term {
         /// The name of the newly-introduced function's formal parameter.
         name: Name,
         /// A handle to the type of the function's formal parameter.
-        _type: Handle,
+        tau: Handle<tags::Type>,
         /// A handle to the lambda-term representing the function's body.
-        body: Handle,
+        body: Handle<tags::Term>,
     },
 }
 
 impl Term {
     #[inline]
-    pub fn variable<T>(name: T, handle: Handle) -> Self
+    pub fn variable<T, U>(name: T, tau: U) -> Self
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
     {
         Term::Variable {
             name: name.into(),
-            _type: handle,
+            tau: tau.into(),
         }
     }
 
     #[inline]
-    pub fn constant(handle: Handle, _type: Handle) -> Self {
-        Term::Constant { handle, _type }
+    pub fn constant<T, U>(handle: T, tau: U) -> Self
+    where
+        T: Into<Handle<tags::Constant>>,
+        U: Into<Handle<tags::Type>>,
+    {
+        Term::Constant {
+            constant: handle.into(),
+            tau: tau.into(),
+        }
     }
 
     #[inline]
-    pub fn application(left: Handle, right: Handle) -> Self {
-        Term::Application { left, right }
+    pub fn application<T>(left: T, right: T) -> Self
+    where
+        T: Into<Handle<tags::Term>>,
+    {
+        Term::Application {
+            left: left.into(),
+            right: right.into(),
+        }
     }
 
     #[inline]
-    pub fn lambda<T>(name: T, _type: Handle, body: Handle) -> Self
+    pub fn lambda<T, U, V>(name: T, tau: U, body: V) -> Self
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
         Term::Lambda {
             name: name.into(),
-            _type,
-            body,
+            tau: tau.into(),
+            body: body.into(),
         }
     }
 
     /// Returns `Some((name, handle))` iff the term is a variable with name,
     /// `name`, and a handle pointing to its type, `handle`.
-    pub fn split_variable(&self) -> Option<(&Name, &Handle)> {
-        if let Term::Variable { name, _type } = self {
+    pub fn split_variable(&self) -> Option<(&Name, &Handle<tags::Type>)> {
+        if let Term::Variable { name, tau: _type } = self {
             Some((name, _type))
         } else {
             None
@@ -142,9 +154,9 @@ impl Term {
     /// handle pointing to a type, `opt`.  If `opt` is `None` then the constant
     /// has the type registered in the constant-table under the handle,
     /// `handle`.
-    pub fn split_constant(&self) -> Option<(&Handle, &Handle)> {
-        if let Term::Constant { handle, _type } = self {
-            Some((handle, _type))
+    pub fn split_constant(&self) -> Option<(&Handle<tags::Constant>, &Handle<tags::Type>)> {
+        if let Term::Constant { constant, tau } = self {
+            Some((constant, tau))
         } else {
             None
         }
@@ -152,7 +164,7 @@ impl Term {
 
     /// Returns `Some((left, right))` iff the term is an application of one term
     /// to another.
-    pub fn split_application(&self) -> Option<(&Handle, &Handle)> {
+    pub fn split_application(&self) -> Option<(&Handle<tags::Term>, &Handle<tags::Term>)> {
         if let Term::Application { left, right } = self {
             Some((left, right))
         } else {
@@ -163,9 +175,9 @@ impl Term {
     /// Returns `Some((name, type, body))` iff the term is a lambda-abstraction
     /// with bound name, `name`, handle to a type, `type`, and handle to a body
     /// expression, `body`.
-    pub fn split_lambda(&self) -> Option<(&Name, &Handle, &Handle)> {
-        if let Term::Lambda { name, _type, body } = self {
-            Some((name, _type, body))
+    pub fn split_lambda(&self) -> Option<(&Name, &Handle<tags::Type>, &Handle<tags::Term>)> {
+        if let Term::Lambda { name, tau, body } = self {
+            Some((name, tau, body))
         } else {
             None
         }
@@ -201,46 +213,46 @@ impl Term {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub const TERM_TRUE_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_CONSTANT_TRUE,
-    _type: PREALLOCATED_HANDLE_TYPE_PROP,
+    constant: PREALLOCATED_HANDLE_CONSTANT_TRUE,
+    tau: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
 pub const TERM_FALSE_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_CONSTANT_FALSE,
-    _type: PREALLOCATED_HANDLE_TYPE_PROP,
+    constant: PREALLOCATED_HANDLE_CONSTANT_FALSE,
+    tau: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
 pub const TERM_NEGATION_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_NEGATION,
-    _type: PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
+    constant: PREALLOCATED_HANDLE_CONSTANT_NEGATION,
+    tau: PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
 };
 
 pub const TERM_CONJUNCTION_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_CONJUNCTION,
-    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+    constant: PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
+    tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
 pub const TERM_DISJUNCTION_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_DISJUNCTION,
-    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+    constant: PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
+    tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
 pub const TERM_IMPLICATION_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_IMPLICATION,
-    _type: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+    constant: PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
+    tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
 pub const TERM_FORALL_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_FORALL,
-    _type: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
+    constant: PREALLOCATED_HANDLE_CONSTANT_FORALL,
+    tau: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
 };
 
 pub const TERM_EXISTS_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_EXISTS,
-    _type: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
+    constant: PREALLOCATED_HANDLE_CONSTANT_EXISTS,
+    tau: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
 };
 
 pub const TERM_EQUALITY_CONSTANT: Term = Term::Constant {
-    handle: PREALLOCATED_HANDLE_TERM_EQUALITY,
-    _type: PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
+    constant: PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
+    tau: PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
 };

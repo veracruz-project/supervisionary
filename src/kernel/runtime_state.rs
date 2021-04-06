@@ -25,21 +25,21 @@ use crate::kernel::{
     },
     error_code::ErrorCode,
     handle::{
-        Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION, PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
-        PREALLOCATED_HANDLE_CONSTANT_EQUALITY, PREALLOCATED_HANDLE_CONSTANT_EXISTS,
-        PREALLOCATED_HANDLE_CONSTANT_FALSE, PREALLOCATED_HANDLE_CONSTANT_FORALL,
-        PREALLOCATED_HANDLE_CONSTANT_IMPLICATION, PREALLOCATED_HANDLE_CONSTANT_NEGATION,
-        PREALLOCATED_HANDLE_CONSTANT_TRUE, PREALLOCATED_HANDLE_TERM_CONJUNCTION,
-        PREALLOCATED_HANDLE_TERM_DISJUNCTION, PREALLOCATED_HANDLE_TERM_EQUALITY,
-        PREALLOCATED_HANDLE_TERM_EXISTS, PREALLOCATED_HANDLE_TERM_FALSE,
-        PREALLOCATED_HANDLE_TERM_FORALL, PREALLOCATED_HANDLE_TERM_IMPLICATION,
-        PREALLOCATED_HANDLE_TERM_NEGATION, PREALLOCATED_HANDLE_TERM_TRUE,
-        PREALLOCATED_HANDLE_TYPE_ALPHA, PREALLOCATED_HANDLE_TYPE_BETA,
-        PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
-        PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
-        PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
-        PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE,
-        PREALLOCATED_HANDLE_UPPER_BOUND,
+        tags, Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
+        PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION, PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
+        PREALLOCATED_HANDLE_CONSTANT_EXISTS, PREALLOCATED_HANDLE_CONSTANT_FALSE,
+        PREALLOCATED_HANDLE_CONSTANT_FORALL, PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
+        PREALLOCATED_HANDLE_CONSTANT_NEGATION, PREALLOCATED_HANDLE_CONSTANT_TRUE,
+        PREALLOCATED_HANDLE_TERM_CONJUNCTION, PREALLOCATED_HANDLE_TERM_DISJUNCTION,
+        PREALLOCATED_HANDLE_TERM_EQUALITY, PREALLOCATED_HANDLE_TERM_EXISTS,
+        PREALLOCATED_HANDLE_TERM_FALSE, PREALLOCATED_HANDLE_TERM_FORALL,
+        PREALLOCATED_HANDLE_TERM_IMPLICATION, PREALLOCATED_HANDLE_TERM_NEGATION,
+        PREALLOCATED_HANDLE_TERM_TRUE, PREALLOCATED_HANDLE_TYPE_ALPHA,
+        PREALLOCATED_HANDLE_TYPE_BETA, PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+        PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+        PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
+        PREALLOCATED_HANDLE_TYPE_QUANTIFIER, PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
+        PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE, PREALLOCATED_HANDLE_UPPER_BOUND,
     },
     kernel_panic::{DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR, PRIMITIVE_CONSTRUCTION_ERROR},
     name::Name,
@@ -62,27 +62,27 @@ use crate::kernel::{
 pub struct RuntimeState {
     /// The next handle to issue by the runtime state when a new kernel object
     /// is registered.
-    next_handle: Handle,
+    next_handle: usize,
     /// The table of registered type-formers.  Handles are essentially names for
     /// type-formers.
-    type_formers: HashMap<Handle, usize>,
+    type_formers: HashMap<Handle<tags::TypeFormer>, usize>,
     /// The table of types.  The kernel enforces maximal sharing, wherein any
     /// attempt to register a previously-registered type means that the handle
     /// pointing to the registered type is returned.
-    types: HashMap<Handle, Type>,
+    types: HashMap<Handle<tags::Type>, Type>,
     /// The table of constants, associating handles for constants to handles for
     /// types.  Handles are essentially names for constants.
-    constants: HashMap<Handle, Handle>,
+    constants: HashMap<Handle<tags::Constant>, Handle<tags::Type>>,
     /// The table of terms.  The kernel enforces maximal sharing, wherein any
     /// attempt to register a previously-registered term (up-to
     /// alpha-equivalence) means that the handle pointing to the registered term
     /// is returned.
-    terms: HashMap<Handle, Term>,
+    terms: HashMap<Handle<tags::Term>, Term>,
     /// The table of theorems.  The kernel enforces maximal sharing, wherein any
     /// attempt to register a previously-registered theorem (up-to
     /// alpha-equivalence of the conclusion and hypotheses) means that the
     /// handle pointing to the registered theorem is returned.
-    theorems: HashMap<Handle, Theorem>,
+    theorems: HashMap<Handle<tags::Theorem>, Theorem>,
 }
 
 impl RuntimeState {
@@ -95,7 +95,10 @@ impl RuntimeState {
     /// consecutive handles.
     ///
     /// Will **panic** if issued handles are exhausted.
-    fn issue_handle(&mut self) -> Handle {
+    fn issue_handle<T>(&mut self) -> Handle<T>
+    where
+        T: tags::IsTag,
+    {
         let next = self.next_handle;
 
         match self.next_handle.checked_add(1) {
@@ -103,7 +106,7 @@ impl RuntimeState {
             Some(next) => self.next_handle = next,
         }
 
-        return next;
+        return Handle::from(next);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -112,26 +115,32 @@ impl RuntimeState {
 
     /// Registers a new type-former with a declared arity with the runtime
     /// state.  Returns the handle to the newly-registered type-former.
-    pub fn type_former_register<T>(&mut self, arity: T) -> Handle
+    pub fn type_former_register<T>(&mut self, arity: T) -> Handle<tags::TypeFormer>
     where
         T: Into<usize>,
     {
         let handle = self.issue_handle();
-        self.type_formers.insert(handle, arity.into());
+        self.type_formers.insert(handle.clone(), arity.into());
         handle
     }
 
     /// Returns Some(`arity`) if the type-former pointed-to by `handle` has
     /// arity `arity`.
     #[inline]
-    pub fn type_former_resolve(&self, handle: &Handle) -> Option<&usize> {
-        self.type_formers.get(handle)
+    pub fn type_former_resolve<T>(&self, handle: T) -> Option<&usize>
+    where
+        T: AsRef<Handle<tags::TypeFormer>>,
+    {
+        self.type_formers.get(handle.as_ref())
     }
 
     /// Returns `true` iff `handle` points to a type-former registered with the
     /// runtime state.
     #[inline]
-    pub fn type_former_is_registered(&self, handle: &Handle) -> bool {
+    pub fn type_former_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::TypeFormer>>,
+    {
         self.type_former_resolve(handle).is_some()
     }
 
@@ -145,29 +154,35 @@ impl RuntimeState {
     ///
     /// Functions calling this should ensure that the type argument, `tau`, is
     /// well-formed before calling.
-    fn admit_type(&mut self, tau: Type) -> Handle {
+    fn admit_type(&mut self, tau: Type) -> Handle<tags::Type> {
         for (handle, registered) in self.types.iter() {
             if registered == &tau {
-                return *handle;
+                return handle.clone();
             }
         }
 
         let handle = self.issue_handle();
-        self.types.insert(handle, tau);
+        self.types.insert(handle.clone(), tau);
         handle
     }
 
     /// Returns `Some(tau)` iff the handle points to a type, `tau` in the
     /// runtime state's type-table.
     #[inline]
-    pub fn resolve_type_handle(&self, handle: &Handle) -> Option<&Type> {
-        self.types.get(handle)
+    pub fn resolve_type_handle<T>(&self, handle: T) -> Option<&Type>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
+        self.types.get(handle.as_ref())
     }
 
     /// Returns `true` iff the handle points to a type, `tau`, in the runtime
     /// state's type-table.
     #[inline]
-    pub fn type_is_registered(&self, handle: &Handle) -> bool {
+    pub fn type_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         self.resolve_type_handle(handle).is_some()
     }
 
@@ -175,7 +190,7 @@ impl RuntimeState {
     /// name.  Returns the handle of the newly-allocated type (or the existing
     /// handle, if the type-variable already appears in the type-table).
     #[inline]
-    pub fn type_register_variable<T>(&mut self, name: T) -> Handle
+    pub fn type_register_variable<T>(&mut self, name: T) -> Handle<tags::Type>
     where
         T: Into<Name>,
     {
@@ -199,13 +214,19 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::MismatchedArity)` if the length of `arguments`
     /// does not match the registered arity of `former` in the runtime state's
     /// type-former table.
-    pub fn type_register_combination(
+    pub fn type_register_combination<T, U>(
         &mut self,
-        former: Handle,
-        arguments: Vec<Handle>,
-    ) -> Result<Handle, ErrorCode> {
+        former: T,
+        arguments: Vec<U>,
+    ) -> Result<Handle<tags::Type>, ErrorCode>
+    where
+        T: Into<Handle<tags::TypeFormer>>,
+        U: Into<Handle<tags::Type>>,
+    {
+        let former = former.into();
+
         let arity = self
-            .type_former_resolve(&former)
+            .type_former_resolve(former)
             .ok_or(ErrorCode::NoSuchTypeFormerRegistered)?;
 
         if !arguments.iter().all(|a| self.type_is_registered(a)) {
@@ -216,7 +237,7 @@ impl RuntimeState {
             return Err(ErrorCode::MismatchedArity);
         }
 
-        Ok(self.admit_type(Type::combination(former, arguments.iter().cloned())))
+        Ok(self.admit_type(Type::combination(former, arguments)))
     }
 
     /// Registers a new function type out of a domain and range type in the
@@ -230,11 +251,17 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if either `domain` or
     /// `range` do not point-to a type in the runtime state's type-table.
-    pub fn type_register_function(
+    pub fn type_register_function<T>(
         &mut self,
-        domain: Handle,
-        range: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        domain: T,
+        range: T,
+    ) -> Result<Handle<tags::Type>, ErrorCode>
+    where
+        T: Into<Handle<tags::Type>>,
+    {
+        let domain = domain.into();
+        let range = range.into();
+
         if !self.type_is_registered(&domain) || !self.type_is_registered(&range) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
@@ -255,7 +282,10 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotATypeVariable)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a type-variable.
-    pub fn type_split_variable(&self, handle: &Handle) -> Result<&Name, ErrorCode> {
+    pub fn type_split_variable<T>(&self, handle: T) -> Result<&Name, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_variable().ok_or(ErrorCode::NotATypeVariable)
         } else {
@@ -275,10 +305,13 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotATypeCombination)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a combination type.
-    pub fn type_split_combination(
+    pub fn type_split_combination<T>(
         &self,
-        handle: &Handle,
-    ) -> Result<(&Handle, &Vec<Handle>), ErrorCode> {
+        handle: T,
+    ) -> Result<(&Handle<tags::TypeFormer>, &Vec<Handle<tags::Type>>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_combination()
                 .ok_or(ErrorCode::NotATypeCombination)
@@ -297,7 +330,13 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAFunctionType)` if the type pointed-to by
     /// `handle` in the runtime state's type-table is not a function type.
-    pub fn type_split_function(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn type_split_function<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Type>, &Handle<tags::Type>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_function().ok_or(ErrorCode::NotAFunctionType)
         } else {
@@ -313,7 +352,10 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_variable(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_variable<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -329,7 +371,10 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_combination(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_combination<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -345,7 +390,10 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_function(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn type_test_is_function<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         Ok(self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?
@@ -363,7 +411,10 @@ impl RuntimeState {
     ///
     /// Will raise a kernel panic if the type pointed-to by `handle` is
     /// malformed.
-    pub fn type_ftv(&self, handle: &Handle) -> Result<Vec<&Name>, ErrorCode> {
+    pub fn type_ftv<T>(&self, handle: T) -> Result<Vec<&Name>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Type>>,
+    {
         let tau = self
             .resolve_type_handle(handle)
             .ok_or(ErrorCode::NoSuchTypeRegistered)?;
@@ -403,9 +454,15 @@ impl RuntimeState {
     /// type-table.
     ///
     /// Will raise a kernel panic if any of the manipulated types are malformed.
-    pub fn type_substitute<T>(&mut self, tau: &Handle, sigma: T) -> Result<Handle, ErrorCode>
+    pub fn type_substitute<T, U, V>(
+        &mut self,
+        tau: T,
+        sigma: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Type>, ErrorCode>
     where
-        T: Iterator<Item = (Name, Handle)> + Clone,
+        T: AsRef<Handle<tags::Type>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
     {
         let mut tau = self
             .resolve_type_handle(tau)
@@ -454,13 +511,16 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point to a registered type in the runtime state's type-table.
-    pub fn constant_register(&mut self, handle: Handle) -> Result<Handle, ErrorCode> {
+    pub fn constant_register<T>(&mut self, handle: T) -> Result<Handle<tags::Constant>, ErrorCode>
+    where
+        T: Into<Handle<tags::Type>>,
+    {
         if !self.type_is_registered(&handle) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         let fresh = self.issue_handle();
-        self.constants.insert(fresh, handle);
+        self.constants.insert(fresh.clone(), handle);
         Ok(fresh)
     }
 
@@ -472,7 +532,10 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchConstantRegistered)` if `handle` does not
     /// point-to any constant in the runtime state's constant-table.
     #[inline]
-    pub fn constant_resolve(&self, handle: &Handle) -> Result<&Handle, ErrorCode> {
+    pub fn constant_resolve<T>(&self, handle: T) -> Result<&Handle<tags::Type>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Constant>>,
+    {
         self.constants
             .get(handle)
             .ok_or(ErrorCode::NoSuchConstantRegistered)
@@ -481,7 +544,10 @@ impl RuntimeState {
     /// Returns `true` iff `handle` points-to a registered constant in the
     /// runtime state's constant table.
     #[inline]
-    pub fn constant_is_registered(&self, handle: &Handle) -> bool {
+    pub fn constant_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::Constant>>,
+    {
         self.constant_resolve(handle).is_ok()
     }
 
@@ -495,18 +561,18 @@ impl RuntimeState {
     /// fresh handle is generated and the term `trm` is admitted.  It is
     /// expected that `trm` has been checked for well-formedness before this
     /// function is called.
-    fn admit_term(&mut self, trm: Term) -> Handle {
+    fn admit_term(&mut self, trm: Term) -> Handle<tags::Term> {
         for (handle, registered) in self.terms.clone().iter() {
             if self
                 .is_alpha_equivalent_inner(&trm, &registered)
                 .expect(DANGLING_HANDLE_ERROR)
             {
-                return *handle;
+                return handle.clone();
             }
         }
 
         let fresh = self.issue_handle();
-        self.terms.insert(fresh, trm);
+        self.terms.insert(fresh.clone(), trm);
         fresh
     }
 
@@ -517,13 +583,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point to any type in the runtime state's type-table.
-    pub fn term_register_variable<T>(
+    pub fn term_register_variable<T, U>(
         &mut self,
         name: T,
-        handle: Handle,
-    ) -> Result<Handle, ErrorCode>
+        handle: U,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
     {
         if !self.type_is_registered(&handle) {
             return Err(ErrorCode::NoSuchTypeRegistered);
@@ -545,30 +612,19 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if any handle appearing
     /// in `sigma` does not point-to a registered type in the runtime state's
     /// type-table.
-    pub fn term_register_constant<T>(
+    pub fn term_register_constant<T, U, V>(
         &mut self,
-        handle: Handle,
-        type_substitution: T,
-    ) -> Result<Handle, ErrorCode>
+        handle: T,
+        type_substitution: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
-        T: Iterator<Item = (Name, Handle)> + Clone,
+        T: Into<Handle<tags::Constant>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
     {
-        let tau = self.constant_resolve(&handle)?.clone();
-        let tau = self.type_substitute(&tau, type_substitution)?;
-        Ok(self.admit_term(Term::constant(handle, tau)))
-    }
+        let tau = self.type_substitute(self.constant_resolve(&handle)?, type_substitution)?;
 
-    /// Registers a new term constant, lifting the handle pointing-to a
-    /// registered constant in the runtime state's constant-table into a term.
-    /// Uses the constant's registered type as the type of the lifted constant.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(ErrorCode::NoSuchConstantRegistered)` if `handle` does not
-    /// point-to a registered constant in the runtime state's constant-table.
-    #[inline]
-    pub fn term_register_constant_default(&mut self, handle: Handle) -> Result<Handle, ErrorCode> {
-        self.term_register_constant(handle, vec![].iter().cloned())
+        Ok(self.admit_term(Term::constant(handle, tau)))
     }
 
     /// Registers a new application of the term pointed-to by `left` to the term
@@ -585,11 +641,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::DomainTypeMismatch)` if `left`, `right`, or the
     /// application of `left` to `right` are not typeable.
-    pub fn term_register_application(
+    pub fn term_register_application<T>(
         &mut self,
-        left: Handle,
-        right: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         if !self.is_term_registered(&left) {
             return Err(ErrorCode::NoSuchTermRegistered);
         }
@@ -611,26 +670,28 @@ impl RuntimeState {
     }
 
     /// Registers a new lambda-abstraction into the runtime state's term-table
-    /// with a name, a type pointed-to by the handle `_type`, and a body term
+    /// with a name, a type pointed-to by the handle `tau`, and a body term
     /// pointed-to by the handle `handle`.
     ///
     /// # Errors
     ///
-    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `_type` does not
+    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `tau` does not
     /// point-to a registered type in the runtime state's type-table.
     ///
     /// Returns `Err(ErrorCode::NoSuchTermRegistered)`  if `handle` does not
     /// point-to a registered term in the runtime state's term-table.
-    pub fn term_register_lambda<T>(
+    pub fn term_register_lambda<T, U, V>(
         &mut self,
         name: T,
-        _type: Handle,
-        body: Handle,
-    ) -> Result<Handle, ErrorCode>
+        tau: U,
+        body: V,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
-        if !self.type_is_registered(&_type) {
+        if !self.type_is_registered(&tau) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -638,7 +699,7 @@ impl RuntimeState {
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
-        Ok(self.admit_term(Term::lambda(name, _type, body)))
+        Ok(self.admit_term(Term::lambda(name, tau, body)))
     }
 
     /// Registers a new negation of the term pointed-to by `term` in the runtime
@@ -651,7 +712,10 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAProposition)` if the term pointed-to by
     /// `term` is not a proposition.
-    pub fn term_register_negation(&mut self, term: Handle) -> Result<Handle, ErrorCode> {
+    pub fn term_register_negation<T>(&mut self, term: T) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         if !self.term_type_is_proposition(&term)? {
             return Err(ErrorCode::NotAProposition);
         }
@@ -671,11 +735,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::DomainTypeMismatch)` if the types of the terms
     /// pointed-to by `left` and `right` are not equal.
-    pub fn term_register_equality(
+    pub fn term_register_equality<T>(
         &mut self,
-        left: Handle,
-        right: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         let ltau = self.term_type_infer(&left)?;
         let rtau = self.term_type_infer(&right)?;
 
@@ -683,11 +750,12 @@ impl RuntimeState {
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
-        let sigma = vec![(String::from("A"), ltau)];
-        let spec =
-            self.term_type_substitution(PREALLOCATED_HANDLE_TERM_EQUALITY, sigma.iter().cloned())?;
-        let inner = self.term_register_application(spec, left)?;
-        self.term_register_application(inner, right)
+        let spec = self.term_type_substitution(
+            PREALLOCATED_HANDLE_TERM_EQUALITY,
+            vec![(String::from("A"), ltau)],
+        )?;
+
+        self.term_register_application(self.term_register_application(spec, left)?, right)
     }
 
     /// Registers a new disjunction between the terms pointed-to by `left` and
@@ -701,11 +769,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAProposition)` if either of the terms
     /// pointed-to by `left` or `right` are not propositions.
-    pub fn term_register_disjunction(
+    pub fn term_register_disjunction<T>(
         &mut self,
-        left: Handle,
-        right: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         if !self.term_type_is_proposition(&left)? {
             return Err(ErrorCode::NotAProposition);
         }
@@ -714,8 +785,10 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_DISJUNCTION, left)?;
-        self.term_register_application(inner, right)
+        self.term_register_application(
+            self.term_register_application(PREALLOCATED_HANDLE_TERM_DISJUNCTION, left)?,
+            right,
+        )
     }
 
     /// Registers a new conjunction between the terms pointed-to by `left` and
@@ -729,11 +802,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAProposition)` if either of the terms
     /// pointed-to by `left` or `right` are not propositions.
-    pub fn term_register_conjunction(
+    pub fn term_register_conjunction<T>(
         &mut self,
-        left: Handle,
-        right: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         if !self.term_type_is_proposition(&left)? {
             return Err(ErrorCode::NotAProposition);
         }
@@ -742,8 +818,10 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_CONJUNCTION, left)?;
-        self.term_register_application(inner, right)
+        self.term_register_application(
+            self.term_register_application(PREALLOCATED_HANDLE_TERM_CONJUNCTION, left)?,
+            right,
+        )
     }
 
     /// Registers a new implication between the terms pointed-to by `left` and
@@ -757,11 +835,14 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAProposition)` if either of the terms
     /// pointed-to by `left` or `right` are not propositions.
-    pub fn term_register_implication(
+    pub fn term_register_implication<T>(
         &mut self,
-        left: Handle,
-        right: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+    {
         if !self.term_type_is_proposition(&left)? {
             return Err(ErrorCode::NotAProposition);
         }
@@ -770,11 +851,13 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_IMPLICATION, left)?;
-        self.term_register_application(inner, right)
+        self.term_register_application(
+            self.term_register_application(PREALLOCATED_HANDLE_TERM_IMPLICATION, left)?,
+            right,
+        )
     }
 
-    /// Registers a new universal quantifier from a type, pointed-to by `_type`,
+    /// Registers a new universal quantifier from a type, pointed-to by `tau`,
     /// a body, pointed to by `body`, and a name.
     ///
     /// # Errors
@@ -785,18 +868,20 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NotAProposition)` if the term pointed-to by
     /// `body` is not a proposition.
     ///
-    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `_type` does not
+    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `tau` does not
     /// point-to any registered type in the runtime state's type-table.
-    pub fn term_register_forall<T>(
+    pub fn term_register_forall<T, U, V>(
         &mut self,
         name: T,
-        _type: Handle,
-        body: Handle,
-    ) -> Result<Handle, ErrorCode>
+        tau: U,
+        body: V,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
-        if !self.type_is_registered(&_type) {
+        if !self.type_is_registered(&tau) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -804,21 +889,22 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let sigma = vec![(String::from("A"), _type.clone())];
-
         let lambda = self
-            .term_register_lambda(name, _type, body)
+            .term_register_lambda(name, tau, body)
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
-            .term_type_substitution(PREALLOCATED_HANDLE_TERM_FORALL, sigma.iter().cloned())
+            .term_type_substitution(
+                PREALLOCATED_HANDLE_TERM_FORALL,
+                vec![(String::from("A"), tau.clone())],
+            )
             .expect(DANGLING_HANDLE_ERROR);
 
         self.term_register_application(univ, lambda)
     }
 
     /// Registers a new existential quantifier from a type, pointed-to by
-    /// `_type`, a body, pointed to by `body`, and a name.
+    /// `tau`, a body, pointed to by `body`, and a name.
     ///
     /// # Errors
     ///
@@ -828,18 +914,20 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NotAProposition)` if the term pointed-to by
     /// `body` is not a proposition.
     ///
-    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `_type` does not
+    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `tau` does not
     /// point-to any registered type in the runtime state's type-table.
-    pub fn term_register_exists<T>(
+    pub fn term_register_exists<T, U, V>(
         &mut self,
         name: T,
-        _type: Handle,
-        body: Handle,
-    ) -> Result<Handle, ErrorCode>
+        tau: U,
+        body: V,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
-        if !self.type_is_registered(&_type) {
+        if !self.type_is_registered(&tau) {
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -847,14 +935,15 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let sigma = vec![(String::from("A"), _type.clone())];
-
         let lambda = self
-            .term_register_lambda(name, _type, body)
+            .term_register_lambda(name, tau, body)
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
-            .term_type_substitution(PREALLOCATED_HANDLE_TERM_EXISTS, sigma.iter().cloned())
+            .term_type_substitution(
+                PREALLOCATED_HANDLE_TERM_EXISTS,
+                vec![(String::from("A"), tau.clone())],
+            )
             .expect(DANGLING_HANDLE_ERROR);
 
         self.term_register_application(univ, lambda)
@@ -868,7 +957,10 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `handle` does not
     /// point-to any registered term in the runtime state's term-table.
     #[inline]
-    pub fn resolve_term_handle(&self, handle: &Handle) -> Result<&Term, ErrorCode> {
+    pub fn resolve_term_handle<T>(&self, handle: T) -> Result<&Term, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         self.terms
             .get(handle)
             .ok_or(ErrorCode::NoSuchTermRegistered)
@@ -877,7 +969,10 @@ impl RuntimeState {
     /// Returns `true` iff `handle` points-to a registered term in the runtime
     /// state's term-table.
     #[inline]
-    pub fn is_term_registered(&self, handle: &Handle) -> bool {
+    pub fn is_term_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         self.resolve_term_handle(handle).is_ok()
     }
 
@@ -892,10 +987,16 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAVariable)` if the term pointed-to by
     /// `handle` is not a variable.
-    pub fn term_split_variable(&self, handle: &Handle) -> Result<(&Name, &Handle), ErrorCode> {
+    pub fn term_split_variable<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Name, &Handle<tags::Type>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
-        if let Term::Variable { name, _type } = trm {
+        if let Term::Variable { name, tau: _type } = trm {
             Ok((name, _type))
         } else {
             Err(ErrorCode::NotAVariable)
@@ -913,17 +1014,33 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NotAConstant)` if the term pointed-to by
     /// `handle` is not a constant.
-    pub fn term_split_constant(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_constant<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Constant>, &Handle<tags::Type>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
-        if let Term::Constant { handle, _type } = trm {
+        if let Term::Constant {
+            constant: handle,
+            tau: _type,
+        } = trm
+        {
             Ok((handle, _type))
         } else {
             Err(ErrorCode::NotAConstant)
         }
     }
 
-    pub fn term_split_application(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_application<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Application { left, right } = trm {
@@ -933,20 +1050,31 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_lambda(
+    pub fn term_split_lambda<T>(
         &self,
-        handle: &Handle,
-    ) -> Result<(&Name, &Handle, &Handle), ErrorCode> {
+        handle: T,
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
-        if let Term::Lambda { name, _type, body } = trm {
+        if let Term::Lambda {
+            name,
+            tau: _type,
+            body,
+        } = trm
+        {
             Ok((name, _type, body))
         } else {
             Err(ErrorCode::NotALambda)
         }
     }
 
-    pub fn term_split_negation(&self, handle: &Handle) -> Result<&Handle, ErrorCode> {
+    pub fn term_split_negation<T>(&self, handle: T) -> Result<&Handle<tags::Term>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -963,7 +1091,13 @@ impl RuntimeState {
         Ok(right)
     }
 
-    pub fn term_split_equality(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_equality<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -986,7 +1120,13 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_disjunction(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_disjunction<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -1009,7 +1149,13 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_conjunction(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_conjunction<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -1032,7 +1178,13 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_implication(&self, handle: &Handle) -> Result<(&Handle, &Handle), ErrorCode> {
+    pub fn term_split_implication<T>(
+        &self,
+        handle: T,
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -1055,10 +1207,13 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_forall(
+    pub fn term_split_forall<T>(
         &self,
-        handle: &Handle,
-    ) -> Result<(&Name, &Handle, &Handle), ErrorCode> {
+        handle: T,
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -1079,10 +1234,13 @@ impl RuntimeState {
         }
     }
 
-    pub fn term_split_exists(
+    pub fn term_split_exists<T>(
         &self,
-        handle: &Handle,
-    ) -> Result<(&Name, &Handle, &Handle), ErrorCode> {
+        handle: T,
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
@@ -1104,26 +1262,41 @@ impl RuntimeState {
     }
 
     #[inline]
-    pub fn term_test_variable(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_variable<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_variable(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_constant(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_constant<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_constant(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_application(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_application<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_application(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_lambda(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_lambda<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_lambda(handle).is_ok())
     }
 
-    pub fn is_true(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn is_true<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (handle, tau) = self
             .resolve_term_handle(handle)?
             .split_constant()
@@ -1132,7 +1305,10 @@ impl RuntimeState {
         Ok(handle == &PREALLOCATED_HANDLE_CONSTANT_TRUE && tau == &PREALLOCATED_HANDLE_TYPE_PROP)
     }
 
-    pub fn is_false(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn is_false<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let (handle, tau) = self
             .resolve_term_handle(handle)?
             .split_constant()
@@ -1142,37 +1318,58 @@ impl RuntimeState {
     }
 
     #[inline]
-    pub fn term_test_negation(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_negation<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_negation(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_equality(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_equality<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_equality(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_disjunction(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_disjunction(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_conjunction(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_conjunction(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_implication(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_implication<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_implication(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_forall(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_forall<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_forall(handle).is_ok())
     }
 
     #[inline]
-    pub fn term_test_exists(&self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_test_exists<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_split_exists(handle).is_ok())
     }
 
@@ -1183,7 +1380,10 @@ impl RuntimeState {
     ///
     /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `handle` does not
     /// point-to any term in the runtime state's term-table.
-    pub fn term_type_variables(&self, handle: &Handle) -> Result<Vec<&Name>, ErrorCode> {
+    pub fn term_type_variables<T>(&self, handle: T) -> Result<Vec<&Name>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
         let mut work_list = vec![trm];
@@ -1191,11 +1391,11 @@ impl RuntimeState {
 
         while let Some(next) = work_list.pop() {
             match next {
-                Term::Variable { _type, .. } => {
+                Term::Variable { tau: _type, .. } => {
                     let mut fvs = self.type_ftv(_type).expect(DANGLING_HANDLE_ERROR);
                     ftv.append(&mut fvs);
                 }
-                Term::Constant { _type, .. } => {
+                Term::Constant { tau: _type, .. } => {
                     let mut fvs = self.type_ftv(_type).expect(DANGLING_HANDLE_ERROR);
                     ftv.append(&mut fvs);
                 }
@@ -1208,7 +1408,9 @@ impl RuntimeState {
                     work_list.push(left);
                     work_list.push(right);
                 }
-                Term::Lambda { _type, body, .. } => {
+                Term::Lambda {
+                    tau: _type, body, ..
+                } => {
                     let body = self.resolve_term_handle(body).expect(DANGLING_HANDLE_ERROR);
                     let mut fvs = self.type_ftv(_type)?;
 
@@ -1224,11 +1426,17 @@ impl RuntimeState {
         Ok(ftv)
     }
 
-    pub fn term_free_variables(&self, handle: &Handle) -> Result<Vec<(&Name, &Handle)>, ErrorCode> {
+    pub fn term_free_variables<T>(
+        &self,
+        handle: T,
+    ) -> Result<Vec<(&Name, &Handle<tags::Type>)>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let term = self.resolve_term_handle(handle)?;
 
         match term {
-            Term::Variable { name, _type } => Ok(vec![(name, _type)]),
+            Term::Variable { name, tau: _type } => Ok(vec![(name, _type)]),
             Term::Constant { .. } => Ok(vec![]),
             Term::Application { left, right } => {
                 let mut left = self.term_free_variables(left).expect(DANGLING_HANDLE_ERROR);
@@ -1240,7 +1448,11 @@ impl RuntimeState {
 
                 Ok(left)
             }
-            Term::Lambda { name, _type, body } => {
+            Term::Lambda {
+                name,
+                tau: _type,
+                body,
+            } => {
                 let body = self.term_free_variables(body).expect(DANGLING_HANDLE_ERROR);
 
                 Ok(body
@@ -1252,32 +1464,43 @@ impl RuntimeState {
         }
     }
 
-    pub fn substitution<T>(&mut self, handle: Handle, sigma: T) -> Result<Handle, ErrorCode>
-    where
-        T: Iterator<Item = (Name, Handle)>,
-    {
-        unimplemented!()
-    }
-
-    pub fn term_type_substitution<T>(
+    pub fn substitution<T, U, V>(
         &mut self,
-        handle: Handle,
-        sigma: T,
-    ) -> Result<Handle, ErrorCode>
+        handle: T,
+        sigma: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
     where
-        T: Iterator<Item = (Name, Handle)>,
+        T: Into<Handle<tags::Term>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
         unimplemented!()
     }
 
-    pub fn term_type_infer(&mut self, handle: &Handle) -> Result<Handle, ErrorCode> {
+    pub fn term_type_substitution<T, U, V>(
+        &mut self,
+        handle: T,
+        sigma: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Into<Handle<tags::Term>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
+    {
+        unimplemented!()
+    }
+
+    pub fn term_type_infer<T>(&mut self, handle: T) -> Result<Handle<tags::Type>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         let trm = self.resolve_term_handle(handle)?;
 
         let trm = trm.clone();
 
         match trm {
-            Term::Variable { _type, .. } => Ok(_type.clone()),
-            Term::Constant { _type, .. } => Ok(_type.clone()),
+            Term::Variable { tau: _type, .. } => Ok(_type.clone()),
+            Term::Constant { tau: _type, .. } => Ok(_type.clone()),
             Term::Application { left, right } => {
                 let ltau = self.term_type_infer(&left)?;
                 let rtau = self.term_type_infer(&right)?;
@@ -1292,7 +1515,9 @@ impl RuntimeState {
                     Err(ErrorCode::DomainTypeMismatch)
                 }
             }
-            Term::Lambda { _type, body, .. } => {
+            Term::Lambda {
+                tau: _type, body, ..
+            } => {
                 let btau = self.term_type_infer(&body)?;
                 Ok(self.admit_type(Type::function(_type, btau)))
             }
@@ -1310,15 +1535,22 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::DomainTypeMismatch)` if the term pointed-to by
     /// `handle` is not typeable.
     #[inline]
-    pub fn term_type_is_proposition(&mut self, handle: &Handle) -> Result<bool, ErrorCode> {
+    pub fn term_type_is_proposition<T>(&mut self, handle: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         Ok(self.term_type_infer(handle)? == PREALLOCATED_HANDLE_TYPE_PROP)
     }
 
-    fn swap(&mut self, handle: &Handle, a: Name, b: Name) -> Result<Handle, ErrorCode> {
+    fn swap<T, U>(&mut self, handle: T, a: U, b: U) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+        U: Into<Name>,
+    {
         let trm = self.resolve_term_handle(handle)?.clone();
 
         match trm {
-            Term::Variable { name, _type } => {
+            Term::Variable { name, tau: _type } => {
                 if name == a {
                     Ok(self.admit_term(Term::variable(b, _type.clone())))
                 } else if name == b {
@@ -1336,7 +1568,11 @@ impl RuntimeState {
 
                 Ok(self.admit_term(Term::application(left, right)))
             }
-            Term::Lambda { name, _type, body } => {
+            Term::Lambda {
+                name,
+                tau: _type,
+                body,
+            } => {
                 let body = self
                     .swap(&body, a.clone(), b.clone())
                     .expect(DANGLING_HANDLE_ERROR);
@@ -1356,21 +1592,21 @@ impl RuntimeState {
             (
                 Term::Variable {
                     name: name0,
-                    _type: _type0,
+                    tau: _type0,
                 },
                 Term::Variable {
                     name: name1,
-                    _type: _type1,
+                    tau: _type1,
                 },
             ) => Ok(name0 == name1 && _type0 == _type1),
             (
                 Term::Constant {
-                    handle: handle0,
-                    _type: _type0,
+                    constant: handle0,
+                    tau: _type0,
                 },
                 Term::Constant {
-                    handle: handle1,
-                    _type: _type1,
+                    constant: handle1,
+                    tau: _type1,
                 },
             ) => Ok(handle0 == handle1 && _type0 == _type1),
             (
@@ -1394,12 +1630,12 @@ impl RuntimeState {
             (
                 Term::Lambda {
                     name: name0,
-                    _type: _type0,
+                    tau: _type0,
                     body: body0,
                 },
                 Term::Lambda {
                     name: name1,
-                    _type: _type1,
+                    tau: _type1,
                     body: body1,
                 },
             ) => {
@@ -1427,14 +1663,15 @@ impl RuntimeState {
         }
     }
 
-    pub fn is_alpha_equivalent(
-        &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<bool, ErrorCode> {
-        let left = self.resolve_term_handle(left)?.clone();
-        let right = self.resolve_term_handle(right)?.clone();
-        self.is_alpha_equivalent_inner(&left, &right)
+    #[inline]
+    pub fn is_alpha_equivalent<T>(&mut self, left: T, right: T) -> Result<bool, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
+        self.is_alpha_equivalent_inner(
+            self.resolve_term_handle(left)?,
+            self.resolve_term_handle(right)?,
+        )
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1451,33 +1688,40 @@ impl RuntimeState {
     /// 1. Ensure that `thm` is well-formed before calling this function,
     /// 2. The hypotheses of the theorem `thm` should be sorted prior to calling
     /// this function, so that theorems can be compared for structural equality.
-    fn admit_theorem(&mut self, thm: Theorem) -> Handle {
+    fn admit_theorem(&mut self, thm: Theorem) -> Handle<tags::Theorem> {
         let fresh = self.issue_handle();
-        self.theorems.insert(fresh, thm);
+        self.theorems.insert(fresh.clone(), thm);
         fresh
     }
 
     /// Returns `Some(thm)` iff `handle` points-to a registered theorem in the
     /// runtime state's theorem table.
     #[inline]
-    pub fn resolve_theorem_handle(&self, handle: &Handle) -> Option<&Theorem> {
-        self.theorems.get(handle)
+    pub fn resolve_theorem_handle<T>(&self, handle: T) -> Option<&Theorem>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
+        self.theorems.get(handle.as_ref())
     }
 
     /// Returns `true` iff `handle` points to a registered theorem in the
     /// runtime state's theorem table.
     #[inline]
-    pub fn is_theorem_registered(&self, handle: &Handle) -> bool {
+    pub fn is_theorem_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         self.resolve_theorem_handle(handle).is_some()
     }
 
-    pub fn register_reflexivity_theorem<T>(
+    pub fn register_reflexivity_theorem<T, U>(
         &mut self,
-        hypotheses: T,
-        trm: Handle,
-    ) -> Result<Handle, ErrorCode>
+        hypotheses: Vec<T>,
+        trm: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = Handle> + Clone,
+        T: Into<Handle<tags::Term>>,
+        U: Into<Handle<tags::Term>>,
     {
         if !self.term_type_is_proposition(&trm)? {
             return Err(ErrorCode::NotAProposition);
@@ -1494,7 +1738,13 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_symmetry_theorem(&mut self, handle: &Handle) -> Result<Handle, ErrorCode> {
+    pub fn register_symmetry_theorem<T>(
+        &mut self,
+        handle: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1506,16 +1756,19 @@ impl RuntimeState {
         let right = right.clone();
 
         let conclusion = self.term_register_equality(right, left)?;
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_transitivity_theorem(
+    pub fn register_transitivity_theorem<T>(
         &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1529,7 +1782,7 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        let hypotheses = left.hypotheses().iter().cloned();
+        let hypotheses = left.hypotheses().clone();
 
         let (left, mid0) = self.term_split_equality(left.conclusion())?;
         let (mid1, right) = self.term_split_equality(right.conclusion())?;
@@ -1546,11 +1799,14 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_application_congruence_theorem(
+    pub fn register_application_congruence_theorem<T>(
         &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1576,19 +1832,22 @@ impl RuntimeState {
         let left = self.term_register_application(fun_left, arg_left)?;
         let right = self.term_register_application(fun_right, arg_right)?;
 
+        let hypotheses = hypotheses.clone();
         let conclusion = self.term_register_equality(left, right)?;
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conclusion)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_lambda_congruence_theorem<T>(
+    pub fn register_lambda_congruence_theorem<T, U, V>(
         &mut self,
         name: T,
-        _type: Handle,
-        handle: &Handle,
-    ) -> Result<Handle, ErrorCode>
+        _type: U,
+        handle: V,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Into<Name> + Clone,
+        U: Into<Handle<tags::Type>>,
+        V: AsRef<Handle<tags::Term>>,
     {
         if !self.type_is_registered(&_type) {
             return Err(ErrorCode::NoSuchTypeRegistered);
@@ -1608,18 +1867,18 @@ impl RuntimeState {
         let rhandle = self.term_register_lambda(name, _type, right)?;
 
         let conclusion = self.term_register_equality(lhandle, rhandle)?;
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
     pub fn register_beta_theorem<T>(
         &mut self,
-        hypotheses: T,
-        application: Handle,
-    ) -> Result<Handle, ErrorCode>
+        hypotheses: Vec<T>,
+        application: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = Handle> + Clone,
+        T: Into<Handle<tags::Term>>,
     {
         for c in hypotheses.clone() {
             if !self.term_type_is_proposition(&c)? {
@@ -1638,7 +1897,7 @@ impl RuntimeState {
         let rhs = rhs.clone();
         let body = body.clone();
 
-        let subst = self.substitution(body, vec![(name, rhs)].iter().cloned())?;
+        let subst = self.substitution(body, vec![(name, rhs)])?;
         let conclusion = self.term_register_equality(application, subst)?;
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
@@ -1646,11 +1905,11 @@ impl RuntimeState {
 
     pub fn register_eta_theorem<T>(
         &mut self,
-        hypotheses: T,
-        lambda: Handle,
-    ) -> Result<Handle, ErrorCode>
+        hypotheses: Vec<T>,
+        lambda: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = Handle> + Clone,
+        T: Into<Handle<tags::Term>>,
     {
         for c in hypotheses.clone() {
             if !self.term_type_is_proposition(&c)? {
@@ -1678,11 +1937,14 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_equality_introduction_theorem(
+    pub fn register_equality_introduction_theorem<T>(
         &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1709,13 +1971,16 @@ impl RuntimeState {
 
         let conclusion = self.term_register_equality(left0, right1)?;
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conclusion)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_equality_elimination_theorem(
+    pub fn register_equality_elimination_theorem<T>(
         &mut self,
-        handle: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1733,17 +1998,17 @@ impl RuntimeState {
         }
 
         let conclusion = self.term_register_implication(left, right)?;
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
     pub fn register_truth_introduction_theorem<T>(
         &mut self,
-        hypotheses: T,
-    ) -> Result<Handle, ErrorCode>
+        hypotheses: Vec<T>,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = Handle> + Clone,
+        T: Into<Handle<tags::Term>>,
     {
         for c in hypotheses.clone() {
             if !self.is_term_registered(&c) {
@@ -1756,11 +2021,15 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_false_elimination_theorem(
+    pub fn register_false_elimination_theorem<T, U>(
         &mut self,
-        thm: &Handle,
-        conclusion: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        thm: T,
+        conclusion: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
         let thm = self
             .resolve_theorem_handle(thm)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1778,16 +2047,19 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_conjunction_introduction_theorem(
+    pub fn register_conjunction_introduction_theorem<T>(
         &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1805,13 +2077,16 @@ impl RuntimeState {
 
         hypotheses.append(&mut merge);
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conclusion)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_conjunction_elimination0_theorem(
+    pub fn register_conjunction_elimination0_theorem<T>(
         &mut self,
-        handle: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1822,15 +2097,18 @@ impl RuntimeState {
             .map_err(|_e| ErrorCode::ShapeMismatch)?;
 
         let conclusion = left.clone();
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_conjunction_elimination1_theorem(
+    pub fn register_conjunction_elimination1_theorem<T>(
         &mut self,
-        handle: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1841,16 +2119,20 @@ impl RuntimeState {
             .map_err(|_e| ErrorCode::ShapeMismatch)?;
 
         let conclusion = right.clone();
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_disjunction_introduction0_theorem(
+    pub fn register_disjunction_introduction0_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        term: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+        term: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1861,16 +2143,20 @@ impl RuntimeState {
         }
 
         let conclusion = self.term_register_disjunction(thm.conclusion().clone(), term)?;
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_disjunction_introduction1_theorem(
+    pub fn register_disjunction_introduction1_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        term: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+        term: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+        T: Into<Handle<tags::Term>>,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1881,17 +2167,20 @@ impl RuntimeState {
         }
 
         let conclusion = self.term_register_disjunction(term, thm.conclusion().clone())?;
-        let hypotheses = thm.hypotheses().iter().cloned();
+        let hypotheses = thm.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_disjunction_elimination_theorem(
+    pub fn register_disjunction_elimination_theorem<T>(
         &mut self,
-        left: &Handle,
-        mid: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        mid: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1934,16 +2223,19 @@ impl RuntimeState {
         }
 
         let conclusion = right.conclusion().clone();
-        let hypotheses = left.hypotheses().iter().cloned();
+        let hypotheses = left.hypotheses().clone();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_implication_introduction_theorem(
+    pub fn register_implication_introduction_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        intro: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+        intro: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: ,
+    {
         let thm = self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1953,21 +2245,29 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        if !thm.hypotheses().contains(intro) {
+        if !thm.hypotheses().contains(&intro.into()) {
             return Err(ErrorCode::ShapeMismatch);
         }
 
         let conclusion = self.term_register_implication(intro.clone(), thm.conclusion().clone())?;
-        let hypotheses = thm.hypotheses().iter().filter(|h| *h != intro).cloned();
+        let hypotheses = thm
+            .hypotheses()
+            .iter()
+            .filter(|h| *h != intro)
+            .cloned()
+            .collect();
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_implication_elimination_theorem(
+    pub fn register_implication_elimination_theorem<T>(
         &mut self,
-        left: &Handle,
-        right: &Handle,
-    ) -> Result<Handle, ErrorCode> {
+        left: T,
+        right: T,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+    {
         let left = self
             .resolve_theorem_handle(left)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -1992,16 +2292,17 @@ impl RuntimeState {
 
         hypotheses.append(&mut merge);
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conc)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conc)))
     }
 
-    pub fn register_substitution_theorem<T>(
+    pub fn register_substitution_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        sigma: T,
-    ) -> Result<Handle, ErrorCode>
+        handle: T,
+        sigma: Vec<(Name, U)>,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = (Name, Handle)> + Clone,
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
     {
         let thm = self
             .resolve_theorem_handle(handle)
@@ -2015,16 +2316,17 @@ impl RuntimeState {
             hypotheses.push(self.substitution(h, sigma.clone())?);
         }
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conclusion)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_instantiation_theorem<T>(
+    pub fn register_instantiation_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        sigma: T,
-    ) -> Result<Handle, ErrorCode>
+        handle: T,
+        sigma: Vec<(Name, U)>,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Iterator<Item = (Name, Handle)> + Clone,
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Type>>,
     {
         let thm = self
             .resolve_theorem_handle(handle)
@@ -2032,39 +2334,48 @@ impl RuntimeState {
             .clone();
 
         let conclusion = self.term_type_substitution(thm.conclusion().clone(), sigma.clone())?;
-        let mut hypotheses = vec![];
+        let mut hypotheses = Vec::new();
 
         for h in thm.hypotheses().iter().cloned() {
             hypotheses.push(self.term_type_substitution(h, sigma.clone())?);
         }
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses.iter().cloned(), conclusion)))
+        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_universal_elimination_theorem(
+    pub fn register_universal_elimination_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        trm: Handle,
-    ) -> Result<Handle, ErrorCode> {
-        unimplemented!()
-    }
-
-    pub fn register_universal_introduction_theorem<T>(
-        &mut self,
-        handle: &Handle,
-        name: T,
-    ) -> Result<Handle, ErrorCode>
+        handle: T,
+        trm: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
-        T: Into<Name>,
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
     {
         unimplemented!()
     }
 
-    pub fn register_existential_introduction_theorem(
+    pub fn register_universal_introduction_theorem<T, U>(
         &mut self,
-        handle: &Handle,
-        trm: Handle,
-    ) -> Result<Handle, ErrorCode> {
+        handle: T,
+        name: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Name>,
+    {
+        unimplemented!()
+    }
+
+    pub fn register_existential_introduction_theorem<T, U>(
+        &mut self,
+        handle: T,
+        trm: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: AsRef<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
         unimplemented!()
     }
 
@@ -2072,10 +2383,13 @@ impl RuntimeState {
     // Modifying the global theory.
     ////////////////////////////////////////////////////////////////////////////
 
-    pub fn register_new_definition(
+    pub fn register_new_definition<T>(
         &mut self,
-        defn: &Handle,
-    ) -> Result<(Handle, Handle), ErrorCode> {
+        defn: T,
+    ) -> Result<(Handle<tags::Constant>, Handle<tags::Theorem>), ErrorCode>
+    where
+        T: AsRef<Handle<tags::Term>>,
+    {
         /* 1. Check the body of the definition exists, and it has a type. */
         let tau = self.term_type_infer(defn)?;
 
@@ -2094,7 +2408,7 @@ impl RuntimeState {
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         /* 5. Register the definitional theorem. */
-        let thm = self.admit_theorem(Theorem::new(Vec::new().iter().cloned(), stmt));
+        let thm = self.admit_theorem(Theorem::new(Vec::new(), stmt));
 
         /* 6. Return the handle to the new constant and definitional theorem. */
 

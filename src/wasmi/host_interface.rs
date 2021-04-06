@@ -26,6 +26,7 @@ use crate::kernel::{
     runtime_state::RuntimeState as KernelRuntimeState,
 };
 
+use crate::kernel::handle::tags;
 use crate::kernel::name::Name;
 use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
@@ -678,17 +679,23 @@ impl WasmiRuntimeState {
     ////////////////////////////////////////////////////////////////////////////
 
     #[inline]
-    pub fn type_former_resolve(&self, handle: &Handle) -> Option<&usize> {
+    pub fn type_former_resolve<T>(&self, handle: T) -> Option<&usize>
+    where
+        T: AsRef<Handle<tags::TypeFormer>>,
+    {
         self.kernel.type_former_resolve(handle)
     }
 
     #[inline]
-    pub fn type_former_is_registered(&self, handle: &Handle) -> bool {
+    pub fn type_former_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: AsRef<Handle<tags::TypeFormer>>,
+    {
         self.kernel.type_former_is_registered(handle)
     }
 
     #[inline]
-    pub fn type_former_register<T>(&mut self, arity: T) -> Handle
+    pub fn type_former_register<T>(&mut self, arity: T) -> Handle<tags::TypeFormer>
     where
         T: Into<usize>,
     {
@@ -696,7 +703,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_register_variable<T>(&mut self, name: T) -> Handle
+    pub fn type_register_variable<T>(&mut self, name: T) -> Handle<tags::Type>
     where
         T: Into<Name>,
     {
@@ -704,13 +711,14 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_register_combination<T>(
+    pub fn type_register_combination<T, U>(
         &mut self,
         type_former: T,
-        arguments: Vec<T>,
-    ) -> Result<Handle, KernelErrorCode>
+        arguments: Vec<U>,
+    ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: Into<Handle> + Clone,
+        T: Into<Handle<tags::TypeFormer>> + Clone,
+        U: Into<Handle<tags::Type>>,
     {
         self.kernel.type_register_combination(
             type_former.into(),
@@ -723,119 +731,123 @@ impl WasmiRuntimeState {
         &mut self,
         domain: T,
         range: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Type>>,
     {
         self.kernel
             .type_register_function(domain.into(), range.into())
     }
 
     #[inline]
-    pub fn type_is_registered<'a, T>(&'a self, handle: T) -> bool
+    pub fn type_is_registered<T>(&self, handle: T) -> bool
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_is_registered(handle.into())
+        self.kernel.type_is_registered(handle)
     }
 
     #[inline]
-    pub fn type_split_variable<'a, T>(&'a self, handle: T) -> Result<&Name, KernelErrorCode>
+    pub fn type_split_variable<T>(&self, handle: T) -> Result<&Name, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_split_variable(handle.into())
+        self.kernel.type_split_variable(handle)
     }
 
     #[inline]
-    pub fn type_split_combination<'a, T>(
-        &'a self,
+    pub fn type_split_combination<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Vec<Handle>), KernelErrorCode>
+    ) -> Result<(&Handle<tags::TypeFormer>, &Vec<Handle<tags::Type>>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_split_combination(handle.into())
+        self.kernel.type_split_combination(handle)
     }
 
     #[inline]
-    pub fn type_split_function<'a, T>(
-        &'a self,
+    pub fn type_split_function<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Type>, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_split_function(handle.into())
+        self.kernel.type_split_function(handle)
     }
 
     #[inline]
-    pub fn type_test_is_variable<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn type_test_is_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_test_is_variable(handle.into())
+        self.kernel.type_test_is_variable(handle)
     }
 
     #[inline]
-    pub fn type_test_is_combination<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn type_test_is_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_test_is_combination(handle.into())
+        self.kernel.type_test_is_combination(handle)
     }
 
     #[inline]
-    pub fn type_test_is_function<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn type_test_is_function<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_test_is_function(handle.into())
+        self.kernel.type_test_is_function(handle)
     }
 
     #[inline]
-    pub fn type_ftv<'a, T>(&'a mut self, handle: T) -> Result<Vec<&Name>, KernelErrorCode>
+    pub fn type_ftv<T>(&mut self, handle: T) -> Result<Vec<&Name>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Type>>,
     {
-        self.kernel.type_ftv(handle.into())
+        self.kernel.type_ftv(handle)
     }
 
     #[inline]
-    pub fn type_substitute<'a, T, U>(
-        &'a mut self,
+    pub fn type_substitute<T, U, V>(
+        &mut self,
         handle: T,
-        sigma: U,
-    ) -> Result<Handle, KernelErrorCode>
+        sigma: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: Into<&'a Handle> + Clone,
-        U: Iterator<Item = (Name, Handle)> + Clone,
+        T: AsRef<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
     {
-        self.kernel.type_substitute(handle.into(), sigma)
+        self.kernel.type_substitute(handle, sigma)
     }
 
     #[inline]
-    pub fn constant_register<T>(&mut self, handle: T) -> Result<Handle, KernelErrorCode>
+    pub fn constant_register<T>(
+        &mut self,
+        handle: T,
+    ) -> Result<Handle<tags::Constant>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Constant>>,
     {
-        self.kernel.constant_register(handle.into())
+        self.kernel.constant_register(handle)
     }
 
     #[inline]
-    pub fn constant_resolve<'a, T>(&'a self, handle: T) -> Result<&Handle, KernelErrorCode>
+    pub fn constant_resolve<T>(&self, handle: T) -> Result<&Handle<tags::Type>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Constant>>,
     {
-        self.kernel.constant_resolve(handle.into())
+        self.kernel.constant_resolve(handle)
     }
 
     #[inline]
-    pub fn constant_is_registered<'a, T>(&'a self, handle: T) -> bool
+    pub fn constant_is_registered<T>(&self, handle: T) -> bool
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Constant>>,
     {
-        self.kernel.constant_is_registered(handle.into())
+        self.kernel.constant_is_registered(handle)
     }
 
     #[inline]
@@ -843,26 +855,26 @@ impl WasmiRuntimeState {
         &mut self,
         name: T,
         tau: U,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<String>,
-        U: Into<Handle>,
+        T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
     {
-        self.kernel.term_register_variable(name, tau.into())
+        self.kernel.term_register_variable(name, tau)
     }
 
     #[inline]
-    pub fn term_register_constant<T, U>(
+    pub fn term_register_constant<T, U, V>(
         &mut self,
         constant: T,
-        substitution: U,
-    ) -> Result<Handle, KernelErrorCode>
+        substitution: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
-        U: Iterator<Item = (Name, Handle)> + Clone,
+        T: Into<Handle<tags::Constant>>,
+        U: Into<Name> + Clone,
+        U: Into<Handle<tags::Type>> + Clone,
     {
-        self.kernel
-            .term_register_constant(constant.into(), substitution)
+        self.kernel.term_register_constant(constant, substitution)
     }
 
     #[inline]
@@ -870,35 +882,37 @@ impl WasmiRuntimeState {
         &mut self,
         left: T,
         right: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_application(left.into(), right.into())
+        self.kernel.term_register_application(left, right)
     }
 
     #[inline]
-    pub fn term_register_lambda<T, U>(
+    pub fn term_register_lambda<T, U, V>(
         &mut self,
         name: T,
         tau: U,
-        body: U,
-    ) -> Result<Handle, KernelErrorCode>
+        body: V,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<String>,
-        U: Into<Handle>,
+        T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_lambda(name, tau.into(), body.into())
+        self.kernel.term_register_lambda(name, tau, body)
     }
 
     #[inline]
-    pub fn term_register_negation<T>(&mut self, body: T) -> Result<Handle, KernelErrorCode>
+    pub fn term_register_negation<T>(
+        &mut self,
+        body: T,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel.term_register_negation(body.into())
+        self.kernel.term_register_negation(body)
     }
 
     #[inline]
@@ -906,12 +920,11 @@ impl WasmiRuntimeState {
         &mut self,
         left: T,
         right: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_conjunction(left.into(), right.into())
+        self.kernel.term_register_conjunction(left, right)
     }
 
     #[inline]
@@ -919,12 +932,11 @@ impl WasmiRuntimeState {
         &mut self,
         left: T,
         right: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_disjunction(left.into(), right.into())
+        self.kernel.term_register_disjunction(left, right)
     }
 
     #[inline]
@@ -932,12 +944,11 @@ impl WasmiRuntimeState {
         &mut self,
         left: T,
         right: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_implication(left.into(), right.into())
+        self.kernel.term_register_implication(left, right)
     }
 
     #[inline]
@@ -945,313 +956,310 @@ impl WasmiRuntimeState {
         &mut self,
         left: T,
         right: T,
-    ) -> Result<Handle, KernelErrorCode>
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_equality(left.into(), right.into())
+        self.kernel.term_register_equality(left, right)
     }
 
     #[inline]
-    pub fn term_register_forall<T, U>(
+    pub fn term_register_forall<T, U, V>(
         &mut self,
         name: T,
         tau: U,
-        body: U,
-    ) -> Result<Handle, KernelErrorCode>
+        body: V,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<String>,
-        U: Into<Handle>,
+        T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        V: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_forall(name, tau.into(), body.into())
+        self.kernel.term_register_forall(name, tau, body)
     }
 
     #[inline]
-    pub fn term_register_exists<T, U>(
+    pub fn term_register_exists<T, U, V>(
         &mut self,
         name: T,
         tau: U,
-        body: U,
-    ) -> Result<Handle, KernelErrorCode>
+        body: V,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<String>,
-        U: Into<Handle>,
+        T: Into<Name>,
+        U: Into<Handle<tags::Type>>,
+        U: Into<Handle<tags::Term>>,
     {
-        self.kernel
-            .term_register_exists(name, tau.into(), body.into())
+        self.kernel.term_register_exists(name, tau, body)
     }
 
     #[inline]
-    pub fn term_split_variable<'a, T>(
-        &'a self,
+    pub fn term_split_variable<T>(
+        &self,
         handle: T,
-    ) -> Result<(&String, &Handle), KernelErrorCode>
+    ) -> Result<(&Name, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_variable(handle.into())
+        self.kernel.term_split_variable(handle)
     }
 
     #[inline]
-    pub fn term_split_constant<'a, T>(
-        &'a self,
+    pub fn term_split_constant<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Constant>, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_constant(handle.into())
+        self.kernel.term_split_constant(handle)
     }
 
     #[inline]
-    pub fn term_split_application<'a, T>(
-        &'a self,
+    pub fn term_split_application<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_application(handle.into())
+        self.kernel.term_split_application(handle)
     }
 
     #[inline]
-    pub fn term_split_lambda<'a, T>(
-        &'a self,
+    pub fn term_split_lambda<T>(
+        &self,
         handle: T,
-    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_lambda(handle.into())
+        self.kernel.term_split_lambda(handle)
     }
 
     #[inline]
-    pub fn term_split_negation<'a, T>(&'a self, handle: T) -> Result<&Handle, KernelErrorCode>
+    pub fn term_split_negation<T>(&self, handle: T) -> Result<&Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_negation(handle.into())
+        self.kernel.term_split_negation(handle)
     }
 
     #[inline]
-    pub fn term_split_conjunction<'a, T>(
-        &'a self,
+    pub fn term_split_conjunction<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_conjunction(handle.into())
+        self.kernel.term_split_conjunction(handle)
     }
 
     #[inline]
-    pub fn term_split_disjunction<'a, T>(
-        &'a self,
+    pub fn term_split_disjunction<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_disjunction(handle.into())
+        self.kernel.term_split_disjunction(handle)
     }
 
     #[inline]
-    pub fn term_split_implication<'a, T>(
-        &'a self,
+    pub fn term_split_implication<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_implication(handle.into())
+        self.kernel.term_split_implication(handle)
     }
 
     #[inline]
-    pub fn term_split_equality<'a, T>(
-        &'a self,
+    pub fn term_split_equality<T>(
+        &self,
         handle: T,
-    ) -> Result<(&Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_equality(handle.into())
+        self.kernel.term_split_equality(handle)
     }
 
     #[inline]
-    pub fn term_split_forall<'a, T>(
-        &'a self,
+    pub fn term_split_forall<T>(
+        &self,
         handle: T,
-    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_forall(handle.into())
+        self.kernel.term_split_forall(handle)
     }
 
     #[inline]
-    pub fn term_split_exists<'a, T>(
-        &'a self,
+    pub fn term_split_exists<T>(
+        &self,
         handle: T,
-    ) -> Result<(&String, &Handle, &Handle), KernelErrorCode>
+    ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_split_exists(handle.into())
+        self.kernel.term_split_exists(handle)
     }
 
     #[inline]
-    pub fn term_test_variable<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_variable(handle.into())
+        self.kernel.term_test_variable(handle)
     }
 
     #[inline]
-    pub fn term_test_constant<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_constant<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_constant(handle.into())
+        self.kernel.term_test_constant(handle)
     }
 
     #[inline]
-    pub fn term_test_application<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_application(handle.into())
+        self.kernel.term_test_application(handle)
     }
 
     #[inline]
-    pub fn term_test_lambda<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_lambda<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_lambda(handle.into())
+        self.kernel.term_test_lambda(handle)
     }
 
     #[inline]
-    pub fn term_test_negation<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_negation<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_negation(handle.into())
+        self.kernel.term_test_negation(handle)
     }
 
     #[inline]
-    pub fn term_test_conjunction<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_conjunction(handle.into())
+        self.kernel.term_test_conjunction(handle)
     }
 
     #[inline]
-    pub fn term_test_disjunction<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_disjunction(handle.into())
+        self.kernel.term_test_disjunction(handle)
     }
 
     #[inline]
-    pub fn term_test_implication<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_implication(handle.into())
+        self.kernel.term_test_implication(handle)
     }
 
     #[inline]
-    pub fn term_test_equality<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_equality<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_equality(handle.into())
+        self.kernel.term_test_equality(handle)
     }
 
     #[inline]
-    pub fn term_test_forall<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_forall<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_forall(handle.into())
+        self.kernel.term_test_forall(handle)
     }
 
     #[inline]
-    pub fn term_test_exists<'a, T>(&'a self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_test_exists<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_test_exists(handle.into())
+        self.kernel.term_test_exists(handle)
     }
 
     #[inline]
-    pub fn term_free_variables<'a, T>(
-        &'a self,
+    pub fn term_free_variables<T>(
+        &self,
         handle: T,
-    ) -> Result<Vec<(&String, &Handle)>, KernelErrorCode>
+    ) -> Result<Vec<(&Name, &Handle<tags::Type>)>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_free_variables(handle.into())
+        self.kernel.term_free_variables(handle)
     }
 
     #[inline]
-    pub fn term_type_variables<'a, T>(
-        &'a self,
-        handle: T,
-    ) -> Result<Vec<(&String)>, KernelErrorCode>
+    pub fn term_type_variables<T>(&self, handle: T) -> Result<Vec<&Name>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_type_variables(handle.into())
+        self.kernel.term_type_variables(handle)
     }
 
     #[inline]
-    pub fn term_substitution<T, U>(
+    pub fn term_substitution<T, U, V>(
         &mut self,
         handle: T,
-        substitution: U,
-    ) -> Result<Handle, KernelErrorCode>
+        substitution: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
-        U: Iterator<Item = (Name, Handle)>,
+        T: Into<Handle<tags::Term>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
-        self.kernel.substitution(handle.into(), substitution)
+        self.kernel.substitution(handle, substitution)
     }
 
     #[inline]
-    pub fn term_type_substitution<T, U>(
+    pub fn term_type_substitution<T, U, V>(
         &mut self,
         handle: T,
-        substitution: U,
-    ) -> Result<Handle, KernelErrorCode>
+        substitution: Vec<(U, V)>,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle>,
-        U: Iterator<Item = (Name, Handle)>,
+        T: Into<Handle<tags::Term>>,
+        U: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
     {
-        self.kernel
-            .term_type_substitution(handle.into(), substitution)
+        self.kernel.term_type_substitution(handle, substitution)
     }
 
     #[inline]
-    pub fn term_type_infer<'a, T>(&'a mut self, handle: T) -> Result<Handle, KernelErrorCode>
+    pub fn term_type_infer<T>(&mut self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_type_infer(handle.into())
+        self.kernel.term_type_infer(handle)
     }
 
     #[inline]
-    pub fn term_type_is_proposition<'a, T>(&'a mut self, handle: T) -> Result<bool, KernelErrorCode>
+    pub fn term_type_is_proposition<T>(&mut self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: Into<&'a Handle>,
+        T: AsRef<Handle<tags::Term>>,
     {
-        self.kernel.term_type_is_proposition(handle.into())
+        self.kernel.term_type_is_proposition(handle)
     }
 }
 

@@ -13,7 +13,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::handle::Handle;
+use crate::kernel::handle::{tags, Handle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Theorems, proper.
@@ -25,10 +25,10 @@ pub struct Theorem {
     /// hold for the conclusion to also hold.  All elements of this list should
     /// be handles pointing-to propositions in the runtime state's term-table.
     /// Handles should be stored in ascending sorted order.
-    hypotheses: Vec<Handle>,
+    hypotheses: Vec<Handle<tags::Term>>,
     /// The conclusion of the theorem, which must be a handle pointing-to a
     /// proposition in the runtime state's term-table.
-    conclusion: Handle,
+    conclusion: Handle<tags::Term>,
 }
 
 impl Theorem {
@@ -36,30 +36,30 @@ impl Theorem {
     /// conclusion.  Hypotheses are sorted before constructing the theorem
     /// object and are checked to make sure they all point-to propositions.
     /// Similarly, it is assumed that `conclusion` also points-to a proposition.
-    pub fn new<T>(hypotheses: T, conclusion: Handle) -> Self
+    pub fn new<T>(mut hypotheses: Vec<T>, conclusion: T) -> Self
     where
-        T: Iterator<Item = Handle>,
+        T: Into<Handle<tags::Term>>,
     {
-        let mut hypotheses: Vec<Handle> = hypotheses.collect();
+        let mut hypotheses = hypotheses.iter().map(|h| h.into()).collect();
 
         hypotheses.sort();
         hypotheses.dedup();
 
-        Theorem {
+        Self {
             hypotheses,
-            conclusion,
+            conclusion: conclusion.into(),
         }
     }
 
     /// Returns the handle to the theorem's conclusion.
     #[inline]
-    pub fn conclusion(&self) -> &Handle {
+    pub fn conclusion(&self) -> &Handle<tags::Term> {
         &self.conclusion
     }
 
     /// Returns the set of hypotheses of the theorem.
     #[inline]
-    pub fn hypotheses(&self) -> &Vec<Handle> {
+    pub fn hypotheses(&self) -> &Vec<Handle<tags::Term>> {
         &self.hypotheses
     }
 }
@@ -76,7 +76,7 @@ mod test {
     /// back to where you started.
     #[test]
     pub fn theorem_test0() {
-        let t = Theorem::new(vec![].iter().cloned(), PREALLOCATED_HANDLE_TERM_TRUE);
+        let t = Theorem::new(Vec::new(), PREALLOCATED_HANDLE_TERM_TRUE);
 
         assert_eq!(t.hypotheses(), &Vec::new());
         assert_eq!(t.conclusion(), &PREALLOCATED_HANDLE_TERM_TRUE);

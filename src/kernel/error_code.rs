@@ -18,8 +18,10 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::convert::TryFrom;
-use std::fmt::{Display, Error as DisplayError, Formatter};
+use std::{
+    convert::TryFrom,
+    fmt::{Display, Error as DisplayError, Formatter},
+};
 
 /// The upper limit (exclusive) on the encoding space of the `ErrorCode` type.
 pub const ERRORCODE_ENCODING_UPPER_BOUND: usize = 29;
