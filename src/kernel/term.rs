@@ -115,9 +115,10 @@ impl Term {
     }
 
     #[inline]
-    pub fn application<T>(left: T, right: T) -> Self
+    pub fn application<T, U>(left: T, right: U) -> Self
     where
         T: Into<Handle<tags::Term>>,
+        U: Into<Handle<tags::Term>>,
     {
         Term::Application {
             left: left.into(),

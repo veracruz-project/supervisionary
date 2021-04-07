@@ -17,6 +17,7 @@
 //! [Arm Research]: http://www.arm.com/research
 
 use std::{
+    borrow::Borrow,
     fmt::{Display, Error as DisplayError, Formatter},
     mem::size_of,
 };
@@ -681,7 +682,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_former_resolve<T>(&self, handle: T) -> Option<&usize>
     where
-        T: AsRef<Handle<tags::TypeFormer>>,
+        T: Borrow<Handle<tags::TypeFormer>>,
     {
         self.kernel.type_former_resolve(handle)
     }
@@ -689,7 +690,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_former_is_registered<T>(&self, handle: T) -> bool
     where
-        T: AsRef<Handle<tags::TypeFormer>>,
+        T: Borrow<Handle<tags::TypeFormer>>,
     {
         self.kernel.type_former_is_registered(handle)
     }
@@ -718,7 +719,7 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Into<Handle<tags::TypeFormer>> + Clone,
-        U: Into<Handle<tags::Type>>,
+        U: Into<Handle<tags::Type>> + Clone,
     {
         self.kernel.type_register_combination(
             type_former.into(),
@@ -742,7 +743,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_is_registered<T>(&self, handle: T) -> bool
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_is_registered(handle)
     }
@@ -750,7 +751,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_split_variable<T>(&self, handle: T) -> Result<&Name, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_split_variable(handle)
     }
@@ -761,7 +762,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::TypeFormer>, &Vec<Handle<tags::Type>>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_split_combination(handle)
     }
@@ -772,7 +773,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Type>, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_split_function(handle)
     }
@@ -780,7 +781,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_test_is_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_test_is_variable(handle)
     }
@@ -788,7 +789,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_test_is_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_test_is_combination(handle)
     }
@@ -796,7 +797,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_test_is_function<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_test_is_function(handle)
     }
@@ -804,7 +805,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_ftv<T>(&mut self, handle: T) -> Result<Vec<&Name>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>>,
+        T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.type_ftv(handle)
     }
@@ -816,7 +817,7 @@ impl WasmiRuntimeState {
         sigma: Vec<(U, V)>,
     ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Type>> + Clone,
+        T: Borrow<Handle<tags::Type>> + Clone,
         U: Into<Name> + Clone,
         V: Into<Handle<tags::Type>> + Clone,
     {
@@ -829,7 +830,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<Handle<tags::Constant>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Constant>>,
+        T: Into<Handle<tags::Type>> + Clone,
     {
         self.kernel.constant_register(handle)
     }
@@ -837,7 +838,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn constant_resolve<T>(&self, handle: T) -> Result<&Handle<tags::Type>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Constant>>,
+        T: Borrow<Handle<tags::Constant>>,
     {
         self.kernel.constant_resolve(handle)
     }
@@ -845,7 +846,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn constant_is_registered<T>(&self, handle: T) -> bool
     where
-        T: AsRef<Handle<tags::Constant>>,
+        T: Borrow<Handle<tags::Constant>>,
     {
         self.kernel.constant_is_registered(handle)
     }
@@ -858,7 +859,7 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Name>,
-        U: Into<Handle<tags::Type>>,
+        U: Into<Handle<tags::Type>> + Clone,
     {
         self.kernel.term_register_variable(name, tau)
     }
@@ -870,21 +871,22 @@ impl WasmiRuntimeState {
         substitution: Vec<(U, V)>,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Constant>>,
+        T: Into<Handle<tags::Constant>> + Clone,
         U: Into<Name> + Clone,
-        U: Into<Handle<tags::Type>> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
     {
         self.kernel.term_register_constant(constant, substitution)
     }
 
     #[inline]
-    pub fn term_register_application<T>(
+    pub fn term_register_application<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_application(left, right)
     }
@@ -898,8 +900,8 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Name>,
-        U: Into<Handle<tags::Type>>,
-        V: Into<Handle<tags::Term>>,
+        U: Into<Handle<tags::Type>> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_lambda(name, tau, body)
     }
@@ -910,55 +912,59 @@ impl WasmiRuntimeState {
         body: T,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_negation(body)
     }
 
     #[inline]
-    pub fn term_register_conjunction<T>(
+    pub fn term_register_conjunction<T, U>(
         &mut self,
         left: T,
         right: T,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_conjunction(left, right)
     }
 
     #[inline]
-    pub fn term_register_disjunction<T>(
+    pub fn term_register_disjunction<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_disjunction(left, right)
     }
 
     #[inline]
-    pub fn term_register_implication<T>(
+    pub fn term_register_implication<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_implication(left, right)
     }
 
     #[inline]
-    pub fn term_register_equality<T>(
+    pub fn term_register_equality<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_equality(left, right)
     }
@@ -972,8 +978,8 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Name>,
-        U: Into<Handle<tags::Type>>,
-        V: Into<Handle<tags::Term>>,
+        U: Into<Handle<tags::Type>> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_forall(name, tau, body)
     }
@@ -987,8 +993,8 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Name>,
-        U: Into<Handle<tags::Type>>,
-        U: Into<Handle<tags::Term>>,
+        U: Into<Handle<tags::Type>> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.term_register_exists(name, tau, body)
     }
@@ -999,7 +1005,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Name, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_variable(handle)
     }
@@ -1010,7 +1016,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Constant>, &Handle<tags::Type>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_constant(handle)
     }
@@ -1021,7 +1027,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_application(handle)
     }
@@ -1032,7 +1038,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_lambda(handle)
     }
@@ -1040,7 +1046,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_split_negation<T>(&self, handle: T) -> Result<&Handle<tags::Term>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_negation(handle)
     }
@@ -1051,7 +1057,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_conjunction(handle)
     }
@@ -1062,7 +1068,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_disjunction(handle)
     }
@@ -1073,7 +1079,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_implication(handle)
     }
@@ -1084,7 +1090,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Handle<tags::Term>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_equality(handle)
     }
@@ -1095,7 +1101,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_forall(handle)
     }
@@ -1106,7 +1112,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<(&Name, &Handle<tags::Type>, &Handle<tags::Term>), KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_split_exists(handle)
     }
@@ -1114,7 +1120,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_variable(handle)
     }
@@ -1122,7 +1128,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_constant<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_constant(handle)
     }
@@ -1130,7 +1136,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_application(handle)
     }
@@ -1138,7 +1144,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_lambda<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_lambda(handle)
     }
@@ -1146,7 +1152,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_negation<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_negation(handle)
     }
@@ -1154,7 +1160,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_conjunction(handle)
     }
@@ -1162,7 +1168,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_disjunction(handle)
     }
@@ -1170,7 +1176,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_implication(handle)
     }
@@ -1178,7 +1184,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_equality<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_equality(handle)
     }
@@ -1186,7 +1192,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_forall<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_forall(handle)
     }
@@ -1194,7 +1200,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_test_exists<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_test_exists(handle)
     }
@@ -1205,7 +1211,7 @@ impl WasmiRuntimeState {
         handle: T,
     ) -> Result<Vec<(&Name, &Handle<tags::Type>)>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_free_variables(handle)
     }
@@ -1213,7 +1219,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_type_variables<T>(&self, handle: T) -> Result<Vec<&Name>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_type_variables(handle)
     }
@@ -1249,7 +1255,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_type_infer<T>(&mut self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_type_infer(handle)
     }
@@ -1257,7 +1263,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn term_type_is_proposition<T>(&mut self, handle: T) -> Result<bool, KernelErrorCode>
     where
-        T: AsRef<Handle<tags::Term>>,
+        T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.term_type_is_proposition(handle)
     }
@@ -1394,7 +1400,7 @@ impl Externals for WasmiRuntimeState {
                 let handle = args.nth::<u64>(0) as usize;
                 let result_addr = args.nth::<u32>(1);
 
-                let arity = match self.type_former_resolve(&handle) {
+                let arity = match self.type_former_resolve(&Handle::from(handle)) {
                     None => {
                         return Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::NoSuchTypeFormerRegistered.into(),
@@ -1409,7 +1415,7 @@ impl Externals for WasmiRuntimeState {
             }
             ABI_TYPE_FORMER_IS_REGISTERED_INDEX => {
                 let handle = args.nth::<u64>(0) as usize;
-                let result = self.type_former_is_registered(&handle);
+                let result = self.type_former_is_registered(&Handle::from(handle));
 
                 Ok(Some(RuntimeValue::I32(result.into())))
             }
@@ -1417,7 +1423,7 @@ impl Externals for WasmiRuntimeState {
                 let arity = args.nth::<u64>(0) as usize;
                 let result = self.type_former_register(arity);
 
-                Ok(Some(RuntimeValue::I64(result as i64)))
+                Ok(Some(RuntimeValue::I64(*result as i64)))
             }
             ABI_TYPE_REGISTER_VARIABLE_INDEX => unimplemented!(),
             ABI_TYPE_REGISTER_COMBINATION_INDEX => unimplemented!(),

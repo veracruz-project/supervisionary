@@ -36,11 +36,13 @@ impl Theorem {
     /// conclusion.  Hypotheses are sorted before constructing the theorem
     /// object and are checked to make sure they all point-to propositions.
     /// Similarly, it is assumed that `conclusion` also points-to a proposition.
-    pub fn new<T>(mut hypotheses: Vec<T>, conclusion: T) -> Self
+    pub fn new<T, U>(mut hypotheses: Vec<T>, conclusion: U) -> Self
     where
-        T: Into<Handle<tags::Term>>,
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>>,
     {
-        let mut hypotheses = hypotheses.iter().map(|h| h.into()).collect();
+        let mut hypotheses: Vec<Handle<tags::Term>> =
+            hypotheses.iter().cloned().map(|h| h.into()).collect();
 
         hypotheses.sort();
         hypotheses.dedup();
@@ -70,13 +72,18 @@ impl Theorem {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::{handle::PREALLOCATED_HANDLE_TERM_TRUE, theorem::Theorem};
+    use crate::kernel::{
+        handle::{tags, Handle, PREALLOCATED_HANDLE_TERM_TRUE},
+        name::Name,
+        theorem::Theorem,
+    };
 
     /// Tests that constructing then deconstructing a theorem object gets you
     /// back to where you started.
     #[test]
     pub fn theorem_test0() {
-        let t = Theorem::new(Vec::new(), PREALLOCATED_HANDLE_TERM_TRUE);
+        let empty: Vec<Handle<tags::Term>> = Vec::new();
+        let t = Theorem::new(empty, PREALLOCATED_HANDLE_TERM_TRUE);
 
         assert_eq!(t.hypotheses(), &Vec::new());
         assert_eq!(t.conclusion(), &PREALLOCATED_HANDLE_TERM_TRUE);
