@@ -13,6 +13,41 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
+use log::{error, info};
+
+////////////////////////////////////////////////////////////////////////////////
+// Kernel logging.
+////////////////////////////////////////////////////////////////////////////////
+
+/// Kernel logging for information cases.
+#[inline]
+pub fn kernel_info<T>(message: T)
+where
+    T: AsRef<str>,
+{
+    info!("[KERNEL]: {}", message.as_ref())
+}
+
+/// Kernel logging for non-fatal error cases.
+#[inline]
+pub fn kernel_error<T>(message: T)
+where
+    T: AsRef<str>,
+{
+    error!("[KERNEL]: {}", message.as_ref())
+}
+
+/// Kernel logging for fatal cases: logs the provided error on the kernel's
+/// error log, then panics with the same error message.
+#[inline]
+pub fn kernel_panic<T>(message: T)
+where
+    T: AsRef<str>,
+{
+    error!("[KERNEL]: {}", message.as_ref());
+    panic!()
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Kernel panic messages.
 ////////////////////////////////////////////////////////////////////////////////

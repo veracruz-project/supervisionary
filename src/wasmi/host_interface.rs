@@ -16,20 +16,18 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
+use crate::kernel::{
+    error_code::ErrorCode as KernelErrorCode,
+    handle::{tags, Handle},
+    name::Name,
+    runtime_state::RuntimeState as KernelRuntimeState,
+};
+use byteorder::{ByteOrder, LittleEndian};
 use std::{
     borrow::Borrow,
     fmt::{Display, Error as DisplayError, Formatter},
     mem::size_of,
 };
-
-use crate::kernel::{
-    error_code::ErrorCode as KernelErrorCode, handle::Handle,
-    runtime_state::RuntimeState as KernelRuntimeState,
-};
-
-use crate::kernel::handle::tags;
-use crate::kernel::name::Name;
-use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
     Error as WasmiError, Externals, FuncInstance, FuncRef, HostError, MemoryInstance,
     ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap, TrapKind, ValueType,
@@ -698,7 +696,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_former_register<T>(&mut self, arity: T) -> Handle<tags::TypeFormer>
     where
-        T: Into<usize>,
+        T: Into<usize> + Clone,
     {
         self.kernel.type_former_register(arity)
     }
@@ -706,7 +704,7 @@ impl WasmiRuntimeState {
     #[inline]
     pub fn type_register_variable<T>(&mut self, name: T) -> Handle<tags::Type>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
     {
         self.kernel.type_register_variable(name)
     }
@@ -1296,13 +1294,13 @@ fn check_type_former_is_registered_signature(signature: &Signature) -> bool {
 /// Checks the signature of the `Type.Register.Variable` ABI function.
 #[inline]
 fn check_type_register_variable_signature(signature: &Signature) -> bool {
-    unimplemented!()
+    signature.params() == &[ValueType::I64] && signature.return_type() == Some(ValueType::I64)
 }
 
 /// Checks the signature of the `Type.Register.Combination` ABI function.
 #[inline]
 fn check_type_register_combination_signature(signature: &Signature) -> bool {
-    unimplemented!()
+    signature.params() == &[ValueType::I64] && signature.return_type() == Some(ValueType::I64)
 }
 
 /// Checks the signature of the `Type.Register.Function` ABI function.

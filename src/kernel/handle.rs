@@ -19,7 +19,12 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::{marker::PhantomData, ops::Deref};
+use std::{
+    fmt,
+    fmt::{Display, Formatter},
+    marker::PhantomData,
+    ops::Deref,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Handle tags.
@@ -81,18 +86,6 @@ where
     T: tags::IsTag,
 {
     *handle < PREALLOCATED_HANDLE_UPPER_BOUND
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// A capability for code that may issue handles.
-////////////////////////////////////////////////////////////////////////////////
-
-pub trait CanIssueHandle {
-    fn issue_type_former_handle(&mut self) -> Handle<tags::TypeFormer>;
-    fn issue_type_handle(&mut self) -> Handle<tags::Type>;
-    fn issue_constant_handle(&mut self) -> Handle<tags::Constant>;
-    fn issue_term_handle(&mut self) -> Handle<tags::Term>;
-    fn issue_thoerem_handle(&mut self) -> Handle<tags::Theorem>;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,5 +268,29 @@ where
             handle,
             marker: PhantomData,
         }
+    }
+}
+
+impl Display for Handle<tags::Term> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} (term handle)", self.handle)
+    }
+}
+
+impl Display for Handle<tags::Constant> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} (constant handle)", self.handle)
+    }
+}
+
+impl Display for Handle<tags::TypeFormer> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} (type-former handle)", self.handle)
+    }
+}
+
+impl Display for Handle<tags::Type> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} (type handle)", self.handle)
     }
 }

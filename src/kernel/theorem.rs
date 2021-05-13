@@ -36,7 +36,7 @@ impl Theorem {
     /// conclusion.  Hypotheses are sorted before constructing the theorem
     /// object and are checked to make sure they all point-to propositions.
     /// Similarly, it is assumed that `conclusion` also points-to a proposition.
-    pub fn new<T, U>(mut hypotheses: Vec<T>, conclusion: U) -> Self
+    pub fn new<T, U>(hypotheses: Vec<T>, conclusion: U) -> Self
     where
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>>,

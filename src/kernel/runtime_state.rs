@@ -15,8 +15,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::{borrow::Borrow, collections::HashMap, iter::FromIterator};
-
+use crate::kernel::kernel_panic::kernel_error;
 use crate::kernel::{
     _type::{
         Type, TYPE_ALPHA, TYPE_BETA, TYPE_BINARY_CONNECTIVE, TYPE_POLYMORPHIC_BINARY_PREDICATE,
@@ -41,7 +40,10 @@ use crate::kernel::{
         PREALLOCATED_HANDLE_TYPE_QUANTIFIER, PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
         PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE, PREALLOCATED_HANDLE_UPPER_BOUND,
     },
-    kernel_panic::{DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR, PRIMITIVE_CONSTRUCTION_ERROR},
+    kernel_panic::{
+        kernel_info, kernel_panic, DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR,
+        PRIMITIVE_CONSTRUCTION_ERROR,
+    },
     name::Name,
     term::{
         Term, TERM_CONJUNCTION_CONSTANT, TERM_DISJUNCTION_CONSTANT, TERM_EQUALITY_CONSTANT,
@@ -50,6 +52,8 @@ use crate::kernel::{
     },
     theorem::Theorem,
 };
+use std::fmt::Debug;
+use std::{borrow::Borrow, collections::HashMap, fmt::Display, iter::FromIterator};
 
 ////////////////////////////////////////////////////////////////////////////////
 // The runtime state.
@@ -102,9 +106,11 @@ impl RuntimeState {
         let next = self.next_handle;
 
         match self.next_handle.checked_add(1) {
-            None => panic!(HANDLE_EXHAUST_ERROR),
+            None => kernel_panic(HANDLE_EXHAUST_ERROR),
             Some(next) => self.next_handle = next,
         }
+
+        kernel_info(format!("Generating fresh handle: {}.", next));
 
         return Handle::from(next);
     }
@@ -117,8 +123,12 @@ impl RuntimeState {
     /// state.  Returns the handle to the newly-registered type-former.
     pub fn type_former_register<T>(&mut self, arity: T) -> Handle<tags::TypeFormer>
     where
-        T: Into<usize>,
+        T: Into<usize> + Clone,
     {
+        kernel_info(format!(
+            "Registering new type-former with arity: {}.",
+            arity.clone().into()
+        ));
         let handle = self.issue_handle();
         self.type_formers.insert(handle.clone(), arity.into());
         handle
@@ -131,6 +141,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
+        kernel_info(format!(
+            "Resolving type-former with handle: {}.",
+            handle.borrow()
+        ));
         self.type_formers.get(handle.borrow())
     }
 
@@ -141,6 +155,11 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
+        kernel_info(format!(
+            "Checking type-former {} is registered.",
+            handle.borrow()
+        ));
+
         self.type_former_resolve(handle).is_some()
     }
 
@@ -157,12 +176,16 @@ impl RuntimeState {
     fn admit_type(&mut self, tau: Type) -> Handle<tags::Type> {
         for (handle, registered) in self.types.iter() {
             if registered == &tau {
+                kernel_info(format!("Type already registered with handle: {}.", handle));
                 return handle.clone();
             }
         }
 
         let handle = self.issue_handle();
         self.types.insert(handle.clone(), tau);
+
+        kernel_info(format!("Type newly registered with handle: {}.", handle));
+
         handle
     }
 
@@ -173,6 +196,8 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!("Resolving type with handle: {}.", handle.borrow()));
+
         self.types.get(handle.borrow())
     }
 
@@ -183,6 +208,8 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!("Checking type {} is registered.", handle.borrow()));
+
         self.resolve_type_handle(handle).is_some()
     }
 
@@ -192,8 +219,13 @@ impl RuntimeState {
     #[inline]
     pub fn type_register_variable<T>(&mut self, name: T) -> Handle<tags::Type>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
     {
+        kernel_info(format!(
+            "Registering type-variable: {}.",
+            name.clone().into()
+        ));
+
         self.admit_type(Type::variable(name))
     }
 
@@ -220,23 +252,39 @@ impl RuntimeState {
         arguments: Vec<U>,
     ) -> Result<Handle<tags::Type>, ErrorCode>
     where
-        T: Into<Handle<tags::TypeFormer>> + Clone,
-        U: Into<Handle<tags::Type>> + Clone,
+        T: Into<Handle<tags::TypeFormer>> + Clone + Display,
+        U: Into<Handle<tags::Type>> + Clone + Debug,
     {
+        kernel_info(format!(
+            "Registering type-former {} applied to arguments {:?}.",
+            former.clone(),
+            arguments.clone()
+        ));
+
         let former = former.into();
 
         let arity = self
             .type_former_resolve(former.clone())
-            .ok_or(ErrorCode::NoSuchTypeFormerRegistered)?;
+            .ok_or({
+                kernel_error("Type-former handle is not registered.")
+                ErrorCode::NoSuchTypeFormerRegistered
+            })?;
 
         if !arguments
             .iter()
-            .all(|a| self.type_is_registered((*a).into()))
+            .all(|a| self.type_is_registered(a.clone().into()))
         {
+            kernel_error("Not all type argument handles are registered.");
+
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if arguments.len() != *arity {
+            kernel_error(format!(
+                "Number of arguments provided does not match registered arity: {}.",
+                arity,
+            ));
+
             return Err(ErrorCode::MismatchedArity);
         }
 
@@ -260,12 +308,22 @@ impl RuntimeState {
         range: T,
     ) -> Result<Handle<tags::Type>, ErrorCode>
     where
-        T: Into<Handle<tags::Type>>,
+        T: Into<Handle<tags::Type>> + Display,
     {
+        kernel_info(format!("Registering function type with domain {} and range {}.", domain, range));
+
         let domain = domain.into();
         let range = range.into();
 
-        if !self.type_is_registered(&domain) || !self.type_is_registered(&range) {
+        if !self.type_is_registered(&domain) {
+            kernel_error("Domain type handle is not registered.");
+
+            return Err(ErrorCode::NoSuchTypeRegistered);
+        }
+
+        if !self.type_is_registered(&range) {
+            kernel_error("Range type handle is not registered.");
+
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -289,9 +347,17 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!("Splitting handle {} into type variable.", handle.borrow()));
+
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_variable().ok_or(ErrorCode::NotATypeVariable)
+            tau.split_variable().ok_or({
+                kernel_error("Handle is not a type variable.");
+
+                ErrorCode::NotATypeVariable
+            })
         } else {
+            kernel_error("Unknown handle.");
+
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -315,6 +381,8 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!("Splitting handle {} into type combination.", handle));
+
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_combination()
                 .ok_or(ErrorCode::NotATypeCombination)
@@ -625,10 +693,9 @@ impl RuntimeState {
         U: Into<Name> + Clone,
         V: Into<Handle<tags::Type>> + Clone,
     {
-        let tau = self.type_substitute(
-            self.constant_resolve(handle.clone().into())?,
-            type_substitution,
-        )?;
+        let cnst = self.constant_resolve(handle.clone().into())?.clone();
+
+        let tau = self.type_substitute(cnst, type_substitution)?;
 
         Ok(self.admit_term(Term::constant(handle, tau)))
     }
@@ -664,8 +731,8 @@ impl RuntimeState {
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
-        let ltau = self.term_type_infer(left.into())?;
-        let rtau = self.term_type_infer(right.into())?;
+        let ltau = self.term_type_infer(left.clone().into())?;
+        let rtau = self.term_type_infer(right.clone().into())?;
 
         let (dom, _rng) = self.type_split_function(&ltau)?;
 
@@ -763,7 +830,9 @@ impl RuntimeState {
             vec![(String::from("A"), ltau)],
         )?;
 
-        self.term_register_application(self.term_register_application(spec, left)?, right)
+        let inner = self.term_register_application(spec, left)?;
+
+        self.term_register_application(inner, right)
     }
 
     /// Registers a new disjunction between the terms pointed-to by `left` and
@@ -794,10 +863,9 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        self.term_register_application(
-            self.term_register_application(PREALLOCATED_HANDLE_TERM_DISJUNCTION, left)?,
-            right,
-        )
+        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_DISJUNCTION, left)?;
+
+        self.term_register_application(inner, right)
     }
 
     /// Registers a new conjunction between the terms pointed-to by `left` and
@@ -828,10 +896,9 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        self.term_register_application(
-            self.term_register_application(PREALLOCATED_HANDLE_TERM_CONJUNCTION, left)?,
-            right,
-        )
+        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_CONJUNCTION, left)?;
+
+        self.term_register_application(inner, right)
     }
 
     /// Registers a new implication between the terms pointed-to by `left` and
@@ -862,10 +929,9 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        self.term_register_application(
-            self.term_register_application(PREALLOCATED_HANDLE_TERM_IMPLICATION, left)?,
-            right,
-        )
+        let inner = self.term_register_application(PREALLOCATED_HANDLE_TERM_IMPLICATION, left)?;
+
+        self.term_register_application(inner, right)
     }
 
     /// Registers a new universal quantifier from a type, pointed-to by `tau`,
@@ -901,13 +967,13 @@ impl RuntimeState {
         }
 
         let lambda = self
-            .term_register_lambda(name, tau, body)
+            .term_register_lambda(name, tau.clone(), body)
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
             .term_type_substitution(
                 PREALLOCATED_HANDLE_TERM_FORALL,
-                vec![(String::from("A"), tau.clone())],
+                vec![(String::from("A"), tau)],
             )
             .expect(DANGLING_HANDLE_ERROR);
 
@@ -947,13 +1013,13 @@ impl RuntimeState {
         }
 
         let lambda = self
-            .term_register_lambda(name, tau, body)
+            .term_register_lambda(name, tau.clone(), body)
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
             .term_type_substitution(
                 PREALLOCATED_HANDLE_TERM_EXISTS,
-                vec![(String::from("A"), tau.clone())],
+                vec![(String::from("A"), tau)],
             )
             .expect(DANGLING_HANDLE_ERROR);
 
@@ -1559,11 +1625,11 @@ impl RuntimeState {
         U: Into<Name> + Clone,
         V: Into<Name> + Clone,
     {
-        let trm = self.resolve_term_handle(handle)?.clone();
+        let trm = self.resolve_term_handle(handle.clone())?.clone();
 
         match trm {
             Term::Variable { name, tau: _type } => {
-                if name == a.into() {
+                if name == a.clone().into() {
                     Ok(self.admit_term(Term::variable(b, _type.clone())))
                 } else if name == b.into() {
                     Ok(self.admit_term(Term::variable(a, _type.clone())))
@@ -1571,7 +1637,7 @@ impl RuntimeState {
                     Ok(handle.borrow().clone())
                 }
             }
-            Term::Constant { .. } => Ok(handle.borrow().clone()),
+            Term::Constant { .. } => Ok(handle.clone().borrow().clone()),
             Term::Application { left, right } => {
                 let left = self
                     .swap(&left, a.clone(), b.clone())
@@ -1588,7 +1654,7 @@ impl RuntimeState {
                 let body = self
                     .swap(&body, a.clone(), b.clone())
                     .expect(DANGLING_HANDLE_ERROR);
-                if name == a.into() {
+                if name == a.clone().into() {
                     Ok(self.admit_term(Term::lambda(b, _type.clone(), body)))
                 } else if name == b.into() {
                     Ok(self.admit_term(Term::lambda(a, _type.clone(), body)))
@@ -1680,10 +1746,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        self.is_alpha_equivalent_inner(
-            self.resolve_term_handle(left)?,
-            self.resolve_term_handle(right)?,
-        )
+        let left = self.resolve_term_handle(left)?.clone();
+        let right = self.resolve_term_handle(right)?.clone();
+
+        self.is_alpha_equivalent_inner(&left, &right)
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1929,7 +1995,7 @@ impl RuntimeState {
             }
         }
 
-        let (name0, _type, body) = self.term_split_lambda(lambda.into())?;
+        let (name0, _type, body) = self.term_split_lambda(lambda.clone().into())?;
         let (func, var) = self.term_split_application(body)?;
 
         let (name1, _type) = self.term_split_variable(var)?;
@@ -2260,7 +2326,7 @@ impl RuntimeState {
             return Err(ErrorCode::NotAProposition);
         }
 
-        if !thm.hypotheses().contains(&intro.into()) {
+        if !thm.hypotheses().contains(&intro.clone().into()) {
             return Err(ErrorCode::ShapeMismatch);
         }
 
@@ -2268,7 +2334,7 @@ impl RuntimeState {
         let hypotheses = thm
             .hypotheses()
             .iter()
-            .filter(|h| **h != intro.into())
+            .filter(|h| **h != intro.clone().into())
             .cloned()
             .collect();
 
@@ -2421,7 +2487,7 @@ impl RuntimeState {
 
         /* 4. Construct the definitional theorem. */
         let stmt = self
-            .term_register_equality(cnst, defn.clone())
+            .term_register_equality(cnst.clone(), defn.clone())
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         /* 5. Register the definitional theorem. */
@@ -2878,8 +2944,6 @@ mod test {
     ////////////////////////////////////////////////////////////////////////////
     // Type-checking tests.
     ////////////////////////////////////////////////////////////////////////////
-
-    pub fn type_checking0() {}
 
     ////////////////////////////////////////////////////////////////////////////
     // Inference tests.

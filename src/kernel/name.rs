@@ -17,6 +17,8 @@
 // Miscellaneous material.
 ////////////////////////////////////////////////////////////////////////////////
 
+use crate::kernel::kernel_panic::kernel_info;
+
 /// The default stem for fresh name generation if not explicitly over-ridden by
 /// the caller.
 const FRESH_NAME_STEM: &str = "f";
@@ -49,6 +51,7 @@ where
         if avoid.any(|x| x == generated) {
             counter += 1;
         } else {
+            kernel_info(format!("Fresh name generated: {}.", generated));
             return generated;
         }
     }
