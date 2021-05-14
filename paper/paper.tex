@@ -1,0 +1,56 @@
+\documentclass[a4paper, 10pt]{article}
+
+\usepackage[colorlinks]{hyperref}
+\usepackage{microtype}
+
+\title{All watched over by machines of loving grace}
+\author{Dominic P. Mulligan}
+\date{Systems Research Group, Arm Research, Cambridge}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+To enforce system-wide security policies, operating systems implement a self-contained \emph{kernel} which serves as the root of all trust within the computer system.
+The kernel is the sole component able to directly interact with hardware, and provides services to executing user-space software, for example the abstraction of a hierarchical filesystem.
+User-space code resides outside of the kernel and interacts with it through a defined \emph{ABI}.
+
+To enforce logical soundness, many interactive theorem proving systems implement a self-contained \emph{kernel} which serves as the root of all trust within the system.
+The kernel is the sole system component able to authenticate a proof as legitimate.
+Untrusted code resides outside of the kernel and interacts with it through a defined \emph{API}.
+
+In this paper, we explore the consequences of structuring proof-checking software as \emph{supervisory software}.
+We develop a proof-checking kernel for Gordon's HOL---an expressive typed higher-order logic---that is exposed to untrusted code through a defined ABI.
+Kernel objects are protected---and important invariants are maintained---through machine-oriented notions of separation, akin to ``privilege rings'' or ``exception levels'' on typical commodity hardware, rather than programming language module boundaries.
+
+We find that this structuring has some interesting consequences.
+The typical proof-checker's \emph{meta-language}---usually some derivative of Milner's ML, privileged amongst all programming languages---is absent: any programming language able to produce code that can interact with the kernel's binary interface can be used to guide proof search, with no risk of logical unsoundness.
+Moreover, the proof-checking kernel may expose functionality to untrusted code that is typical of an operating system, for example the abstraction of a hierarchical filesystem.
+Filesystem access may then be conditioned on the ability to \emph{prove} some property of the dynamic system state at the point of access, allowing the kernel to enforce a range of expressive runtime security and correctness policies.
+In short, untrusted code executing under the supervision of our kernel becomes \emph{proof-generating code}, exhibiting aspects of both static and dynamic (run-time) verification.
+
+\end{abstract}
+
+\section{Introduction}
+\label{sect.introduction}
+
+This paper is concerned with the intersection of the foundations of mathematics and systems-software design.
+
+Modern interactive theorem proving software---such as the Isabelle, Coq, and HOL Light systems---implement a small proof-checking \emph{kernel}.
+This kernel is the sole system component that is able to authenticate a purported proof as legitimate, and is typically small and self-contained, making it suitable for manual auditing.
+By design, the kernel is the only component within the system that need be trusted by a skeptic, as ultimately all proofs constructed by the system, no matter how large or complex, are eventually passed through the kernel for authentication.
+This implementation strategy---commonly known as the LCF-style, after Milner's LCF system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
+That is, LCF is a design pattern that helps to write theorem proving software that remains \emph{sound}.
+
+Shifting focus, we see an interesting series of analogies.
+Typical commodity operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a small \emph{kernel}.
+This kernel is the sole component on the compute system that has unfettered access to hardware.
+
+\section{Kernel design}
+\label{sect.kernel.design}
+
+\section{Proof-space support libraries}
+\label{sect.proof-space.support.libraries}
+
+\end{document}
