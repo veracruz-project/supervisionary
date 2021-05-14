@@ -40,7 +40,7 @@ where
 /// Kernel logging for fatal cases: logs the provided error on the kernel's
 /// error log, then panics with the same error message.
 #[inline]
-pub fn kernel_panic<T>(message: T)
+pub fn kernel_panic<T>(message: T) -> !
 where
     T: AsRef<str>,
 {

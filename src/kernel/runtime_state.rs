@@ -15,7 +15,6 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::kernel_panic::kernel_error;
 use crate::kernel::{
     _type::{
         Type, TYPE_ALPHA, TYPE_BETA, TYPE_BINARY_CONNECTIVE, TYPE_POLYMORPHIC_BINARY_PREDICATE,
@@ -41,7 +40,7 @@ use crate::kernel::{
         PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE, PREALLOCATED_HANDLE_UPPER_BOUND,
     },
     kernel_panic::{
-        kernel_info, kernel_panic, DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR,
+        kernel_error, kernel_info, kernel_panic, DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR,
         PRIMITIVE_CONSTRUCTION_ERROR,
     },
     name::Name,
@@ -174,6 +173,8 @@ impl RuntimeState {
     /// Functions calling this should ensure that the type argument, `tau`, is
     /// well-formed before calling.
     fn admit_type(&mut self, tau: Type) -> Handle<tags::Type> {
+        kernel_info(format!("Admitting type: {:?}.", tau));
+
         for (handle, registered) in self.types.iter() {
             if registered == &tau {
                 kernel_info(format!("Type already registered with handle: {}.", handle));
@@ -263,12 +264,11 @@ impl RuntimeState {
 
         let former = former.into();
 
-        let arity = self
-            .type_former_resolve(former.clone())
-            .ok_or({
-                kernel_error("Type-former handle is not registered.")
-                ErrorCode::NoSuchTypeFormerRegistered
-            })?;
+        let arity = self.type_former_resolve(former.clone()).ok_or({
+            kernel_error("Type-former handle is not registered.");
+
+            ErrorCode::NoSuchTypeFormerRegistered
+        })?;
 
         if !arguments
             .iter()
@@ -310,7 +310,10 @@ impl RuntimeState {
     where
         T: Into<Handle<tags::Type>> + Display,
     {
-        kernel_info(format!("Registering function type with domain {} and range {}.", domain, range));
+        kernel_info(format!(
+            "Registering function type with domain {} and range {}.",
+            domain, range
+        ));
 
         let domain = domain.into();
         let range = range.into();
@@ -347,7 +350,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!("Splitting handle {} into type variable.", handle.borrow()));
+        kernel_info(format!(
+            "Splitting handle {} into type variable.",
+            handle.borrow()
+        ));
 
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_variable().ok_or({
@@ -381,12 +387,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!("Splitting handle {} into type combination.", handle));
+        kernel_info(format!(
+            "Splitting handle {} into type combination.",
+            handle.borrow()
+        ));
 
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_combination()
-                .ok_or(ErrorCode::NotATypeCombination)
+            tau.split_combination().ok_or({
+                kernel_error("Handle is not a type combination.");
+                ErrorCode::NotATypeCombination
+            })
         } else {
+            kernel_error("Unknown handle.");
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -408,9 +420,20 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!(
+            "Splitting handle {} into function type.",
+            handle.borrow()
+        ));
+
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_function().ok_or(ErrorCode::NotAFunctionType)
+            tau.split_function().ok_or({
+                kernel_error("Handle is not a function type.");
+
+                ErrorCode::NotAFunctionType
+            })
         } else {
+            kernel_error("Unknown handle.");
+
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -427,9 +450,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!(
+            "Testing handle {} as type-variable.",
+            handle.borrow()
+        ));
+
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or(ErrorCode::NoSuchTypeRegistered)?
+            .ok_or({
+                kernel_error("Unknown handle.");
+
+                ErrorCode::NoSuchTypeRegistered
+            })?
             .split_variable()
             .is_some())
     }
@@ -446,9 +478,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!(
+            "Testing handle {} as type combination.",
+            handle.borrow()
+        ));
+
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or(ErrorCode::NoSuchTypeRegistered)?
+            .ok_or({
+                kernel_error("Unknown handle.");
+
+                ErrorCode::NoSuchTypeRegistered
+            })?
             .split_combination()
             .is_some())
     }
@@ -465,9 +506,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
+        kernel_info(format!(
+            "Testing handle {} as function type.",
+            handle.borrow()
+        ));
+
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or(ErrorCode::NoSuchTypeRegistered)?
+            .ok_or({
+                kernel_error("Unknown handle.");
+
+                ErrorCode::NoSuchTypeRegistered
+            })?
             .split_function()
             .is_some())
     }
@@ -486,9 +536,13 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        let tau = self
-            .resolve_type_handle(handle)
-            .ok_or(ErrorCode::NoSuchTypeRegistered)?;
+        kernel_info(format!("Computing variables of term {}.", handle.borrow()));
+
+        let tau = self.resolve_type_handle(handle).ok_or({
+            kernel_error("Unknown handle.");
+
+            ErrorCode::NoSuchTypeRegistered
+        })?;
 
         let mut ftv = Vec::new();
         let mut work_list = vec![tau];
@@ -499,7 +553,10 @@ impl RuntimeState {
                 Type::Combination { arguments, .. } => {
                     let mut arguments = arguments
                         .iter()
-                        .map(|a| self.resolve_type_handle(a).expect(DANGLING_HANDLE_ERROR))
+                        .map(|a| {
+                            self.resolve_type_handle(a)
+                                .unwrap_or_else(|| kernel_panic(DANGLING_HANDLE_ERROR))
+                        })
                         .collect();
                     work_list.append(&mut arguments);
                 }
@@ -532,18 +589,30 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Type>, ErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
-        U: Into<Name> + Clone,
-        V: Into<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone + Debug,
+        V: Into<Handle<tags::Type>> + Clone + Debug,
     {
+        kernel_info(format!(
+            "Substituting {:?} in type {}.",
+            sigma,
+            tau.borrow()
+        ));
+
         let mut tau = self
             .resolve_type_handle(tau)
-            .ok_or(ErrorCode::NoSuchTypeRegistered)?
+            .ok_or({
+                kernel_error("Unknown handle.");
+
+                ErrorCode::NoSuchTypeRegistered
+            })?
             .clone();
 
         for (domain, range) in sigma.clone() {
-            let range = self
-                .resolve_type_handle(&range.into())
-                .ok_or(ErrorCode::NoSuchTypeRegistered)?;
+            let range = self.resolve_type_handle(&range.into()).ok_or({
+                kernel_error("Unknown handle.");
+
+                ErrorCode::NoSuchTypeRegistered
+            })?;
 
             match tau {
                 Type::Variable { ref name } => {
@@ -690,8 +759,8 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Constant>> + Clone,
-        U: Into<Name> + Clone,
-        V: Into<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone + Debug,
+        V: Into<Handle<tags::Type>> + Clone + Debug,
     {
         let cnst = self.constant_resolve(handle.clone().into())?.clone();
 

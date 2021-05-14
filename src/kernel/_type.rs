@@ -231,7 +231,6 @@ mod test {
             tags, Handle, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
             PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
         },
-        term::Term,
     };
 
     /// Tests the various type construction methods align with the

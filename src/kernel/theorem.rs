@@ -74,7 +74,6 @@ impl Theorem {
 mod test {
     use crate::kernel::{
         handle::{tags, Handle, PREALLOCATED_HANDLE_TERM_TRUE},
-        name::Name,
         theorem::Theorem,
     };
 

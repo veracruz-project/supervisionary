@@ -25,7 +25,7 @@ use crate::kernel::{
 use byteorder::{ByteOrder, LittleEndian};
 use std::{
     borrow::Borrow,
-    fmt::{Display, Error as DisplayError, Formatter},
+    fmt::{Debug, Display, Error as DisplayError, Formatter},
     mem::size_of,
 };
 use wasmi::{
@@ -816,8 +816,8 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>> + Clone,
-        U: Into<Name> + Clone,
-        V: Into<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone + Debug,
+        V: Into<Handle<tags::Type>> + Clone + Debug,
     {
         self.kernel.type_substitute(handle, sigma)
     }
@@ -870,8 +870,8 @@ impl WasmiRuntimeState {
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Handle<tags::Constant>> + Clone,
-        U: Into<Name> + Clone,
-        V: Into<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone + Debug,
+        V: Into<Handle<tags::Type>> + Clone + Debug,
     {
         self.kernel.term_register_constant(constant, substitution)
     }
