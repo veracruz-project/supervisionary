@@ -446,7 +446,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_variable<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    pub fn type_test_variable<T>(&self, handle: T) -> Result<bool, ErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -474,7 +474,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_combination<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    pub fn type_test_combination<T>(&self, handle: T) -> Result<bool, ErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -502,7 +502,7 @@ impl RuntimeState {
     /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
     /// point-to a type in the runtime state's type-table.
     #[inline]
-    pub fn type_test_is_function<T>(&self, handle: T) -> Result<bool, ErrorCode>
+    pub fn type_test_function<T>(&self, handle: T) -> Result<bool, ErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -532,7 +532,7 @@ impl RuntimeState {
     ///
     /// Will raise a kernel panic if the type pointed-to by `handle` is
     /// malformed.
-    pub fn type_ftv<T>(&self, handle: T) -> Result<Vec<&Name>, ErrorCode>
+    pub fn type_variables<T>(&self, handle: T) -> Result<Vec<&Name>, ErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -894,10 +894,8 @@ impl RuntimeState {
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
-        let spec = self.term_type_substitution(
-            PREALLOCATED_HANDLE_TERM_EQUALITY,
-            vec![(String::from("A"), ltau)],
-        )?;
+        let spec =
+            self.term_type_substitution(PREALLOCATED_HANDLE_TERM_EQUALITY, vec![(0u64, ltau)])?;
 
         let inner = self.term_register_application(spec, left)?;
 
@@ -1040,10 +1038,7 @@ impl RuntimeState {
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
-            .term_type_substitution(
-                PREALLOCATED_HANDLE_TERM_FORALL,
-                vec![(String::from("A"), tau)],
-            )
+            .term_type_substitution(PREALLOCATED_HANDLE_TERM_FORALL, vec![(0u64, tau)])
             .expect(DANGLING_HANDLE_ERROR);
 
         self.term_register_application(univ, lambda)
@@ -1086,10 +1081,7 @@ impl RuntimeState {
             .expect(DANGLING_HANDLE_ERROR);
 
         let univ = self
-            .term_type_substitution(
-                PREALLOCATED_HANDLE_TERM_EXISTS,
-                vec![(String::from("A"), tau)],
-            )
+            .term_type_substitution(PREALLOCATED_HANDLE_TERM_EXISTS, vec![(0u64, tau)])
             .expect(DANGLING_HANDLE_ERROR);
 
         self.term_register_application(univ, lambda)
@@ -1538,11 +1530,11 @@ impl RuntimeState {
         while let Some(next) = work_list.pop() {
             match next {
                 Term::Variable { tau: _type, .. } => {
-                    let mut fvs = self.type_ftv(_type).expect(DANGLING_HANDLE_ERROR);
+                    let mut fvs = self.type_variables(_type).expect(DANGLING_HANDLE_ERROR);
                     ftv.append(&mut fvs);
                 }
                 Term::Constant { tau: _type, .. } => {
-                    let mut fvs = self.type_ftv(_type).expect(DANGLING_HANDLE_ERROR);
+                    let mut fvs = self.type_variables(_type).expect(DANGLING_HANDLE_ERROR);
                     ftv.append(&mut fvs);
                 }
                 Term::Application { left, right } => {
@@ -1558,7 +1550,7 @@ impl RuntimeState {
                     tau: _type, body, ..
                 } => {
                     let body = self.resolve_term_handle(body).expect(DANGLING_HANDLE_ERROR);
-                    let mut fvs = self.type_ftv(_type)?;
+                    let mut fvs = self.type_variables(_type)?;
 
                     ftv.append(&mut fvs);
                     work_list.push(body);
@@ -2824,15 +2816,12 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         let fvs = state.term_free_variables(&v).unwrap();
 
-        assert_eq!(
-            fvs,
-            vec![(&String::from("a"), &PREALLOCATED_HANDLE_TYPE_PROP)]
-        );
+        assert_eq!(fvs, vec![(&0u64, &PREALLOCATED_HANDLE_TYPE_PROP)]);
     }
 
     #[test]
@@ -2851,10 +2840,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l = state
-            .term_register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
             .unwrap();
 
         let fvs = state.term_free_variables(&l).unwrap();
@@ -2867,20 +2856,17 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
             .unwrap();
         let l = state
-            .term_register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
             .unwrap();
 
         let fvs = state.term_free_variables(&l).unwrap();
 
         assert_eq!(
             fvs,
-            vec![(
-                &String::from("a"),
-                &PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE
-            )]
+            vec![(&0u64, &PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)]
         );
     }
 
@@ -2890,7 +2876,7 @@ mod test {
 
         let l = state
             .term_register_lambda(
-                "a",
+                0u64,
                 PREALLOCATED_HANDLE_TYPE_PROP,
                 PREALLOCATED_HANDLE_TERM_TRUE,
             )
@@ -2907,22 +2893,19 @@ mod test {
 
         let l = state
             .term_register_lambda(
-                "a",
+                0u64,
                 PREALLOCATED_HANDLE_TYPE_PROP,
                 PREALLOCATED_HANDLE_TERM_TRUE,
             )
             .unwrap();
         let v = state
-            .term_register_variable("v", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(5u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let t = state.term_register_application(l, v).unwrap();
 
         let fvs = state.term_free_variables(&t).unwrap();
 
-        assert_eq!(
-            fvs,
-            vec![(&String::from("v"), &PREALLOCATED_HANDLE_TYPE_PROP)]
-        )
+        assert_eq!(fvs, vec![(&5u64, &PREALLOCATED_HANDLE_TYPE_PROP)])
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -2934,7 +2917,7 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         assert!(state.is_alpha_equivalent(&v, &v).unwrap());
@@ -2945,10 +2928,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let q = state
-            .term_register_variable("b", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(1u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
@@ -2959,10 +2942,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let q = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
             .unwrap();
 
         assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
@@ -2973,10 +2956,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l = state
-            .term_register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v.clone())
+            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v.clone())
             .unwrap();
         let c = state.term_register_application(l, v).unwrap();
 
@@ -2988,18 +2971,18 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v0 = state
-            .term_register_variable("a", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l0 = state
-            .term_register_lambda("a", PREALLOCATED_HANDLE_TYPE_PROP, v0.clone())
+            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v0.clone())
             .unwrap();
         let c0 = state.term_register_application(l0, v0).unwrap();
 
         let v1 = state
-            .term_register_variable("b", PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(1u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l1 = state
-            .term_register_lambda("b", PREALLOCATED_HANDLE_TYPE_PROP, v1.clone())
+            .term_register_lambda(1u64, PREALLOCATED_HANDLE_TYPE_PROP, v1.clone())
             .unwrap();
         let c1 = state.term_register_application(l1, v1).unwrap();
 

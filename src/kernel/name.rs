@@ -19,40 +19,28 @@
 
 use crate::kernel::kernel_panic::kernel_info;
 
-/// The default stem for fresh name generation if not explicitly over-ridden by
-/// the caller.
-const FRESH_NAME_STEM: &str = "f";
-
 ////////////////////////////////////////////////////////////////////////////////
 // Names and related material.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// We use Strings to represent variable names.
-pub type Name = String;
+/// We use `u64` values to represent variable names.
+pub type Name = u64;
 
 /// Fresh name generation, for e.g. implementing the capture-avoiding
 /// substitution action.  Finds a name that is not contained in the `avoid` set
-/// of names. If `base` is `Some(b)` for a name `b` then `b` is used as the stem
-/// of the freshly-generated name, otherwise a default is used.
-fn fresh<T, U>(base: Option<U>, mut avoid: T) -> Name
+/// of names.
+fn fresh<T>(mut avoid: T) -> Name
 where
     T: Iterator<Item = Name>,
-    U: Into<Name>,
 {
-    let mut counter = 0_usize;
-
-    let base = base
-        .map(|b| b.into())
-        .unwrap_or(String::from(FRESH_NAME_STEM));
+    let mut counter = 0u64;
 
     loop {
-        let generated = format!("{}{}", base, counter);
-
-        if avoid.any(|x| x == generated) {
+        if avoid.any(|x| x == counter) {
             counter += 1;
         } else {
-            kernel_info(format!("Fresh name generated: {}.", generated));
-            return generated;
+            kernel_info(format!("Fresh name generated: {}.", counter));
+            return counter;
         }
     }
 }
@@ -63,16 +51,13 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::name::{fresh, FRESH_NAME_STEM};
+    use crate::kernel::name::fresh;
 
     /// Tests that fresh-name generation is indeed fresh.
     #[test]
     pub fn name_test0() {
-        let a = (0..100)
-            .map(|c| format!("{}{}", FRESH_NAME_STEM, c))
-            .collect::<Vec<_>>();
-        let n = fresh(Some(FRESH_NAME_STEM), a.iter().cloned());
+        let n = fresh(0u64..100u64);
 
-        assert!(!a.contains(&n));
+        assert!(!(0u64..100u64).contains(&n));
     }
 }

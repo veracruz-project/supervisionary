@@ -94,7 +94,7 @@ impl Type {
     }
 
     /// Returns `Some(name)` iff the type is a type-variable with name, `name`.
-    pub fn split_variable(&self) -> Option<&String> {
+    pub fn split_variable(&self) -> Option<&Name> {
         if let Type::Variable { name } = self {
             Some(name)
         } else {
@@ -162,12 +162,12 @@ impl Type {
 lazy_static! {
     /// The "alpha" type-variable, `A`.
     pub static ref TYPE_ALPHA: Type = Type::Variable {
-        name: String::from("A"),
+        name: 0u64,
     };
 
     /// The "beta" type-variable, `B`.
     pub static ref TYPE_BETA: Type = Type::Variable {
-        name: String::from("B"),
+        name: 1u64,
     };
 
     /// The type of propositions, `Prop`.
@@ -237,7 +237,7 @@ mod test {
     /// discriminators, both in positive and negative forms.
     #[test]
     pub fn type_test0() {
-        assert!(Type::variable("a").is_variable());
+        assert!(Type::variable(0u64).is_variable());
         assert!(
             Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
                 PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
@@ -254,8 +254,8 @@ mod test {
                 .is_combination()
         );
 
-        assert!(!Type::variable("a").is_combination());
-        assert!(!Type::variable("a").is_function());
+        assert!(!Type::variable(0u64).is_combination());
+        assert!(!Type::variable(0u64).is_function());
         assert!(
             !Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
                 PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
@@ -272,8 +272,8 @@ mod test {
     /// Tests that splitting a variable gets you back to where you started.
     #[test]
     pub fn type_test1() {
-        let v = Type::variable("a");
-        assert_eq!(v.split_variable(), Some(&String::from("a")));
+        let v = Type::variable(0u64);
+        assert_eq!(v.split_variable(), Some(&0u64));
     }
 
     /// Tests that splitting a combination gets you back to where you started.
