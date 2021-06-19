@@ -607,7 +607,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_i32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
+    fn write_i32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<i32>,
@@ -628,7 +628,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_i64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
+    fn write_i64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<i64>,
@@ -649,7 +649,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_u32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
+    fn write_u32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<u32>,
@@ -670,7 +670,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_u64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
+    fn write_u64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<u64>,
@@ -691,7 +691,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_u64s<T, U>(&self, address: T, values: Vec<U>) -> Result<(), RuntimeTrap>
+    fn write_u64s<T, U>(&self, address: T, values: Vec<U>) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<u64> + Clone,
@@ -717,7 +717,7 @@ impl WasmiRuntimeState {
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
     #[inline]
-    pub fn write_handle<T, U, V>(&self, address: T, handle: U) -> Result<(), RuntimeTrap>
+    fn write_handle<T, U, V>(&self, address: T, handle: U) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<Handle<V>>,
@@ -736,7 +736,7 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    pub fn write_handles<T, U, V>(&self, address: T, handles: Vec<U>) -> Result<(), RuntimeTrap>
+    fn write_handles<T, U, V>(&self, address: T, handles: Vec<U>) -> Result<(), RuntimeTrap>
     where
         T: Into<Address>,
         U: Into<Handle<V>>,
@@ -781,7 +781,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn read_u32<T>(&self, address: T) -> Result<u32, RuntimeTrap>
+    fn read_u32<T>(&self, address: T) -> Result<u32, RuntimeTrap>
     where
         T: Into<Address>,
     {
@@ -790,7 +790,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn read_u64<T>(&self, address: T) -> Result<u64, RuntimeTrap>
+    fn read_u64<T>(&self, address: T) -> Result<u64, RuntimeTrap>
     where
         T: Into<Address>,
     {
@@ -799,7 +799,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn read_i32<T>(&self, address: T) -> Result<i32, RuntimeTrap>
+    fn read_i32<T>(&self, address: T) -> Result<i32, RuntimeTrap>
     where
         T: Into<Address>,
     {
@@ -808,7 +808,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn read_i64<T>(&self, address: T) -> Result<i64, RuntimeTrap>
+    fn read_i64<T>(&self, address: T) -> Result<i64, RuntimeTrap>
     where
         T: Into<Address>,
     {
@@ -817,7 +817,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn read_handle<T, U>(&self, address: U) -> Result<Handle<T>, RuntimeTrap>
+    fn read_handle<T, U>(&self, address: U) -> Result<Handle<T>, RuntimeTrap>
     where
         T: tags::IsTag,
         U: Into<u32>,
@@ -825,7 +825,7 @@ impl WasmiRuntimeState {
         Ok(Handle::from(self.read_u64(address)? as usize))
     }
 
-    pub fn read_handles<T, U, V>(&self, address: U, count: V) -> Result<Vec<Handle<T>>, RuntimeTrap>
+    fn read_handles<T, U, V>(&self, address: U, count: V) -> Result<Vec<Handle<T>>, RuntimeTrap>
     where
         T: tags::IsTag,
         U: Into<u32>,
@@ -848,7 +848,7 @@ impl WasmiRuntimeState {
     ////////////////////////////////////////////////////////////////////////////
 
     #[inline]
-    pub fn type_former_resolve<T>(&self, handle: T) -> Option<usize>
+    fn type_former_resolve<T>(&self, handle: T) -> Option<usize>
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
@@ -856,7 +856,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_former_is_registered<T>(&self, handle: T) -> bool
+    fn type_former_is_registered<T>(&self, handle: T) -> bool
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
@@ -864,7 +864,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_former_register<T>(&self, arity: T) -> Handle<tags::TypeFormer>
+    fn type_former_register<T>(&self, arity: T) -> Handle<tags::TypeFormer>
     where
         T: Into<usize> + Clone,
     {
@@ -872,7 +872,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_register_variable<T>(&self, name: T) -> Handle<tags::Type>
+    fn type_register_variable<T>(&self, name: T) -> Handle<tags::Type>
     where
         T: Into<Name> + Clone,
     {
@@ -880,7 +880,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_register_combination<T, U>(
+    fn type_register_combination<T, U>(
         &self,
         type_former: T,
         arguments: Vec<U>,
@@ -896,7 +896,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_register_function<T>(
+    fn type_register_function<T>(
         &self,
         domain: T,
         range: T,
@@ -910,7 +910,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_is_registered<T>(&self, handle: T) -> bool
+    fn type_is_registered<T>(&self, handle: T) -> bool
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -918,7 +918,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_split_variable<T>(&self, handle: T) -> Result<Name, KernelErrorCode>
+    fn type_split_variable<T>(&self, handle: T) -> Result<Name, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -929,7 +929,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_split_combination<T>(
+    fn type_split_combination<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::TypeFormer>, Vec<Handle<tags::Type>>), KernelErrorCode>
@@ -943,7 +943,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_split_function<T>(
+    fn type_split_function<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Type>, Handle<tags::Type>), KernelErrorCode>
@@ -957,7 +957,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn type_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -965,7 +965,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_test_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn type_test_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -973,7 +973,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_test_function<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn type_test_function<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -981,7 +981,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
+    fn type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -992,7 +992,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn type_substitute<T, U, V>(
+    fn type_substitute<T, U, V>(
         &self,
         handle: T,
         sigma: Vec<(U, V)>,
@@ -1006,7 +1006,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn constant_register<T>(&self, handle: T) -> Result<Handle<tags::Constant>, KernelErrorCode>
+    fn constant_register<T>(&self, handle: T) -> Result<Handle<tags::Constant>, KernelErrorCode>
     where
         T: Into<Handle<tags::Type>> + Clone,
     {
@@ -1014,7 +1014,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn constant_resolve<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
+    fn constant_resolve<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Constant>>,
     {
@@ -1025,7 +1025,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn constant_is_registered<T>(&self, handle: T) -> bool
+    fn constant_is_registered<T>(&self, handle: T) -> bool
     where
         T: Borrow<Handle<tags::Constant>>,
     {
@@ -1033,7 +1033,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_variable<T, U>(
+    fn term_register_variable<T, U>(
         &self,
         name: T,
         tau: U,
@@ -1046,7 +1046,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_constant<T, U, V>(
+    fn term_register_constant<T, U, V>(
         &self,
         constant: T,
         substitution: Vec<(U, V)>,
@@ -1062,7 +1062,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_application<T, U>(
+    fn term_register_application<T, U>(
         &self,
         left: T,
         right: U,
@@ -1077,7 +1077,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_lambda<T, U, V>(
+    fn term_register_lambda<T, U, V>(
         &self,
         name: T,
         tau: U,
@@ -1094,7 +1094,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_negation<T>(&self, body: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    fn term_register_negation<T>(&self, body: T) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
     {
@@ -1102,7 +1102,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_conjunction<T, U>(
+    fn term_register_conjunction<T, U>(
         &self,
         left: T,
         right: T,
@@ -1117,7 +1117,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_disjunction<T, U>(
+    fn term_register_disjunction<T, U>(
         &self,
         left: T,
         right: U,
@@ -1132,7 +1132,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_implication<T, U>(
+    fn term_register_implication<T, U>(
         &self,
         left: T,
         right: U,
@@ -1147,7 +1147,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_equality<T, U>(
+    fn term_register_equality<T, U>(
         &self,
         left: T,
         right: U,
@@ -1160,7 +1160,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_forall<T, U, V>(
+    fn term_register_forall<T, U, V>(
         &self,
         name: T,
         tau: U,
@@ -1177,7 +1177,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_register_exists<T, U, V>(
+    fn term_register_exists<T, U, V>(
         &self,
         name: T,
         tau: U,
@@ -1194,7 +1194,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_variable<T>(
+    fn term_split_variable<T>(
         &self,
         handle: T,
     ) -> Result<(Name, Handle<tags::Type>), KernelErrorCode>
@@ -1208,7 +1208,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_constant<T>(
+    fn term_split_constant<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Constant>, Handle<tags::Type>), KernelErrorCode>
@@ -1222,7 +1222,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_application<T>(
+    fn term_split_application<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Term>, Handle<tags::Term>), KernelErrorCode>
@@ -1236,7 +1236,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_lambda<T>(
+    fn term_split_lambda<T>(
         &self,
         handle: T,
     ) -> Result<(Name, Handle<tags::Type>, Handle<tags::Term>), KernelErrorCode>
@@ -1250,7 +1250,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_negation<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    fn term_split_negation<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1261,7 +1261,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_conjunction<T>(
+    fn term_split_conjunction<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Term>, Handle<tags::Term>), KernelErrorCode>
@@ -1275,7 +1275,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_disjunction<T>(
+    fn term_split_disjunction<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Term>, Handle<tags::Term>), KernelErrorCode>
@@ -1289,7 +1289,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_implication<T>(
+    fn term_split_implication<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Term>, Handle<tags::Term>), KernelErrorCode>
@@ -1303,7 +1303,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_equality<T>(
+    fn term_split_equality<T>(
         &self,
         handle: T,
     ) -> Result<(Handle<tags::Term>, Handle<tags::Term>), KernelErrorCode>
@@ -1317,7 +1317,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_forall<T>(
+    fn term_split_forall<T>(
         &self,
         handle: T,
     ) -> Result<(Name, Handle<tags::Type>, Handle<tags::Term>), KernelErrorCode>
@@ -1331,7 +1331,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_split_exists<T>(
+    fn term_split_exists<T>(
         &self,
         handle: T,
     ) -> Result<(Name, Handle<tags::Type>, Handle<tags::Term>), KernelErrorCode>
@@ -1345,7 +1345,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1353,7 +1353,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_constant<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_constant<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1361,7 +1361,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1369,7 +1369,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_lambda<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_lambda<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1377,7 +1377,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_negation<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_negation<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1385,7 +1385,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1393,7 +1393,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1401,7 +1401,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1409,7 +1409,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_equality<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_equality<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1417,7 +1417,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_forall<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_forall<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1425,7 +1425,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_test_exists<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_exists<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1433,7 +1433,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_free_variables<T>(
+    fn term_free_variables<T>(
         &self,
         handle: T,
     ) -> Result<Vec<(Name, Handle<tags::Type>)>, KernelErrorCode>
@@ -1449,7 +1449,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
+    fn term_type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1460,7 +1460,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_substitution<T, U, V>(
+    fn term_substitution<T, U, V>(
         &self,
         handle: T,
         substitution: Vec<(U, V)>,
@@ -1474,7 +1474,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_type_substitution<T, U, V>(
+    fn term_type_substitution<T, U, V>(
         &self,
         handle: T,
         substitution: Vec<(U, V)>,
@@ -1490,7 +1490,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_type_infer<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
+    fn term_type_infer<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1498,7 +1498,7 @@ impl WasmiRuntimeState {
     }
 
     #[inline]
-    pub fn term_type_is_proposition<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_type_is_proposition<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1959,6 +1959,66 @@ fn check_theorem_register_implication_introduction_signature(signature: &Signatu
 /// Checks the signature of the `Theorem.Register.ImplicationElimination` ABI function.
 #[inline]
 fn check_theorem_register_implication_elimination_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.IffIntroduction` ABI function.
+#[inline]
+fn check_theorem_register_iff_introduction_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.IffLeftElimination` ABI function.
+#[inline]
+fn check_theorem_register_iff_left_elimination_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.NegationIntroduction` ABI function.
+#[inline]
+fn check_theorem_register_negation_introduction_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.NegationElimination` ABI function.
+#[inline]
+fn check_theorem_register_negation_elimination_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.ForallIntroduction` ABI function.
+#[inline]
+fn check_theorem_register_forall_introduction_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.ForallElimination` ABI function.
+#[inline]
+fn check_theorem_register_forall_elimination_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.ExistsIntroduction` ABI function.
+#[inline]
+fn check_theorem_register_exists_introduction_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.ExistsElimination` ABI function.
+#[inline]
+fn check_theorem_register_exists_elimination_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Split.Conclusion` ABI function.
+#[inline]
+fn check_theorem_split_conclusion_signature(signature: &Signature) -> bool {
+    unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Split.Hypotheses` ABI function.
+#[inline]
+fn check_theorem_split_hypotheses_signature(signature: &Signature) -> bool {
     unimplemented!()
 }
 
@@ -2947,16 +3007,106 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX,
                 ))
             }
-            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME => unimplemented!(),
-            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME => unimplemented!(),
-            ABI_THEOREM_SPLIT_CONCLUSION_NAME => unimplemented!(),
-            ABI_THEOREM_SPLIT_HYPOTHESES_NAME => unimplemented!(),
+            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME => {
+                if !check_theorem_register_iff_introduction_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME => {
+                if !check_theorem_register_iff_left_elimination_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME => {
+                if !check_theorem_register_negation_introduction_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME => {
+                if !check_theorem_register_negation_elimination_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME => {
+                if !check_theorem_register_forall_introduction_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME => {
+                if !check_theorem_register_forall_elimination_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME => {
+                if !check_theorem_register_exists_elimination_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME => {
+                if !check_theorem_register_exists_introduction_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX,
+                ))
+            }
+            ABI_THEOREM_SPLIT_CONCLUSION_NAME => {
+                if !check_theorem_split_conclusion_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_SPLIT_CONCLUSION_INDEX,
+                ))
+            }
+            ABI_THEOREM_SPLIT_HYPOTHESES_NAME => {
+                if !check_theorem_split_hypotheses_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_SPLIT_HYPOTHESES_INDEX,
+                ))
+            }
             _otherwise => Err(host_error(KernelErrorCode::NoSuchFunction)),
         }
     }
