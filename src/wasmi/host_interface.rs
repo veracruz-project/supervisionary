@@ -1039,7 +1039,7 @@ impl WasmiRuntimeState {
         tau: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
         U: Into<Handle<tags::Type>> + Clone,
     {
         self.kernel.borrow_mut().term_register_variable(name, tau)
@@ -1084,7 +1084,7 @@ impl WasmiRuntimeState {
         body: V,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
@@ -1167,7 +1167,7 @@ impl WasmiRuntimeState {
         body: V,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
@@ -1184,7 +1184,7 @@ impl WasmiRuntimeState {
         body: V,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Into<Name>,
+        T: Into<Name> + Clone,
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {

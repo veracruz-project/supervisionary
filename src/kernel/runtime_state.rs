@@ -1382,7 +1382,7 @@ impl RuntimeState {
                 ErrorCode::NotANegation
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not an application.");
 
             ErrorCode::NotANegation
@@ -1428,7 +1428,7 @@ impl RuntimeState {
                 ErrorCode::NotAnEquality
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotAnEquality
@@ -1466,7 +1466,7 @@ impl RuntimeState {
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
                 kernel_error("Term is not an application.");
@@ -1474,7 +1474,7 @@ impl RuntimeState {
                 ErrorCode::NotADisjunction
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).or_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotADisjunction
@@ -1512,7 +1512,7 @@ impl RuntimeState {
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
                 kernel_error("Term is not an application.");
@@ -1520,7 +1520,7 @@ impl RuntimeState {
                 ErrorCode::NotAConjunction
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotAConjunction
@@ -1558,7 +1558,7 @@ impl RuntimeState {
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
                 kernel_error("Term is not an application.");
@@ -1566,7 +1566,7 @@ impl RuntimeState {
                 ErrorCode::NotAnImplication
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotAnImplication
@@ -1602,13 +1602,13 @@ impl RuntimeState {
                 ErrorCode::NotAForall
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotAForall
         })?;
 
-        let (name, _type, body) = self.term_split_lambda(right).ok_or({
+        let (name, _type, body) = self.term_split_lambda(right).map_err(|_e| {
             kernel_error("Term is not a lambda-abstraction.");
 
             ErrorCode::NotAForall
@@ -1644,13 +1644,13 @@ impl RuntimeState {
                 ErrorCode::NotAnExists
             })?;
 
-        let (constant, _tau) = self.term_split_constant(left).ok_or({
+        let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
             kernel_error("Term is not a constant.");
 
             ErrorCode::NotAnExists
         })?;
 
-        let (name, _type, body) = self.term_split_lambda(right).ok_or({
+        let (name, _type, body) = self.term_split_lambda(right).map_err(|_e| {
             kernel_error("Term is not a lambda-abstraction.");
 
             ErrorCode::NotAnExists
@@ -1866,22 +1866,22 @@ impl RuntimeState {
                 Term::Variable { tau: _type, .. } => {
                     let mut fvs = self
                         .type_variables(_type)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                     ftv.append(&mut fvs);
                 }
                 Term::Constant { tau: _type, .. } => {
                     let mut fvs = self
                         .type_variables(_type)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                     ftv.append(&mut fvs);
                 }
                 Term::Application { left, right } => {
                     let left = self
                         .resolve_term_handle(left)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                     let right = self
                         .resolve_term_handle(right)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
 
                     work_list.push(left);
                     work_list.push(right);
@@ -1891,7 +1891,7 @@ impl RuntimeState {
                 } => {
                     let body = self
                         .resolve_term_handle(body)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                     let mut fvs = self.type_variables(_type)?;
 
                     ftv.append(&mut fvs);
@@ -1930,10 +1930,10 @@ impl RuntimeState {
             Term::Application { left, right } => {
                 let mut left = self
                     .term_free_variables(left)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                 let mut right = self
                     .term_free_variables(right)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
 
                 left.append(&mut right);
 
@@ -1946,7 +1946,7 @@ impl RuntimeState {
             } => {
                 let body = self
                     .term_free_variables(body)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
 
                 Ok(body
                     .iter()
@@ -2082,10 +2082,10 @@ impl RuntimeState {
             Term::Application { left, right } => {
                 let left = self
                     .swap(&left, a.clone(), b.clone())
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                 let right = self
                     .swap(&right, a, b)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
 
                 Ok(self.admit_term(Term::application(left, right)))
             }
@@ -2096,7 +2096,7 @@ impl RuntimeState {
             } => {
                 let body = self
                     .swap(&body, a.clone(), b.clone())
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                 if name == a.clone().into() {
                     Ok(self.admit_term(Term::lambda(b, _type.clone(), body)))
                 } else if name == b.into() {
@@ -2142,10 +2142,10 @@ impl RuntimeState {
             ) => {
                 let left = self
                     .is_alpha_equivalent(left0, left1)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                 let right = self
                     .is_alpha_equivalent(right0, right1)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                 Ok(left && right)
             }
             (
@@ -2165,15 +2165,15 @@ impl RuntimeState {
                     Ok(body && _type0 == _type1)
                 } else if !self
                     .term_free_variables(body1)
-                    .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR))
+                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
                     .contains(&(name0, _type0))
                 {
                     let body1 = self
                         .swap(body1, name0.clone(), name1.clone())
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
                     let body = self
                         .is_alpha_equivalent(body0, &body1)
-                        .unwrap_or_else(kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
 
                     Ok(body && _type0 == _type1)
                 } else {
