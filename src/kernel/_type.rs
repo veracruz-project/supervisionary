@@ -160,12 +160,12 @@ impl Type {
 ////////////////////////////////////////////////////////////////////////////////
 
 lazy_static! {
-    /// The "alpha" type-variable, `A`.
+    /// The "alpha" type-variable, `0`.
     pub static ref TYPE_ALPHA: Type = Type::Variable {
         name: 0u64,
     };
 
-    /// The "beta" type-variable, `B`.
+    /// The "beta" type-variable, `1`.
     pub static ref TYPE_BETA: Type = Type::Variable {
         name: 1u64,
     };
@@ -264,7 +264,7 @@ mod test {
             .is_variable()
         );
         assert!(
-            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
+            !Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
                 .is_variable()
         );
     }

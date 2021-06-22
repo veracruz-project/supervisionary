@@ -17,7 +17,7 @@
 // Miscellaneous material.
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::kernel::kernel_panic::kernel_info;
+use crate::kernel::kernel_panic::{kernel_info, kernel_panic};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Names and related material.
@@ -33,11 +33,15 @@ fn fresh<T>(mut avoid: T) -> Name
 where
     T: Iterator<Item = Name>,
 {
-    let mut counter = 0u64;
+    let mut counter = 0;
 
     loop {
         if avoid.any(|x| x == counter) {
-            counter += 1;
+            if let Some(next) = counter.checked_add(1) {
+                counter = next;
+            } else {
+                kernel_panic("Exhausted fresh name generation.");
+            }
         } else {
             kernel_info(format!("Fresh name generated: {}.", counter));
             return counter;
@@ -56,8 +60,8 @@ mod test {
     /// Tests that fresh-name generation is indeed fresh.
     #[test]
     pub fn name_test0() {
-        let n = fresh(0u64..100u64);
+        let n = fresh(0..100);
 
-        assert!(!(0u64..100u64).contains(&n));
+        assert!(!(0..100).contains(&n));
     }
 }
