@@ -53,15 +53,23 @@ We find that this novel structuring has some interesting consequences, which are
 \section{Introduction}
 \label{sect.introduction}
 
-Modern interactive theorem proving software---such as Isabelle, Coq, and HOL Light, amongst others---implement a small proof-checking \emph{kernel}.
-This kernel is the sole system component that is able to authenticate a purported proof as legitimate, and is typically small and self-contained, making it suitable for manual auditing.
-By design, the kernel is the only component within the system that need be trusted by a skeptic, as ultimately all proofs constructed by the system, no matter how large or complex, are eventually passed through the kernel for authentication.
-This implementation strategy---commonly known as the LCF-style, after Milner's LCF system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
-That is, LCF is a design pattern that helps to write theorem proving software that remains \emph{sound}.
+Interactive theorem proving software typically implements a proof-checking \emph{kernel}.
+This kernel is the sole system component that is able to authenticate a purported proof as legitimate, and is typically kept small and self-contained, making it suitable for manual auditing.
+By design, the kernel is the only component within the system that need be trusted by a skeptic, as all proofs constructed by the system, no matter how large or complex, are ultimately passed through the kernel for authentication.
+This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
+In short, the kernel acts as the \emph{root of all trust} within the system.
 
-Shifting focus, we see an interesting series of analogies.
-Typical commodity operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a small \emph{kernel}.
-This kernel is the sole component on the compute system that has unfettered access to hardware.
+Shifting focus, we see an interesting analogy.
+Typical commodity operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a \emph{kernel}.
+This kernel is also the sole system component that has unfettered access to the host machine's hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and will typically provide various abstractions, such as a hierarchically-structured filesystem, sockets, and so on, to untrusted, user-space code.
+System-wide security policies are enforced by the kernel using a variety of mechanisms, including password-protected user accounts, file and directory permissions, access control lists, firewalls, and runtime-monitoring facilities.
+From a security point-of-view, an operating system kernel again acts as the \emph{root of all trust} within the system.
+
+At heart---though both types of kernels are intended for very different use-cases---both types of kernel are intended to enforce a series of \emph{kernel invariants} even in the face of unbounded interaction with untrusted code.
+However, despite this common cause, the implementation techniques employed by authors of the two type of kernels tends to be very different.
+In particular, an LCF-style kernel is little other than a library implemented in a high-level programming language---typically some variant of ML, such as Standard ML or OCaml.
+Invariants are maintained by the kernel judiciously exposing functionality as an API that offers functions to manipulate elements of a collection of abstract types, thereby exploiting the soundness of the implementation language's type-system.
+Untrusted code then interacts with the kernel through this API.
 
 \section{Supervisionary}
 \label{sect.supervisionary}
