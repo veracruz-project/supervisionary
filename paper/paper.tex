@@ -59,17 +59,20 @@ By design, the kernel is the only component within the system that need be trust
 This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
 In short, the kernel acts as the \emph{root of all trust} within the system.
 
-Shifting focus, we see an interesting analogy.
-Typical commodity operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a \emph{kernel}.
-This kernel is also the sole system component that has unfettered access to the host machine's hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and will typically provide various abstractions, such as a hierarchically-structured filesystem, sockets, and so on, to untrusted, user-space code.
+Shifting focus, we see an interesting analogy: desktop operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a \emph{kernel}.
+This kernel is also the sole system component that has unfettered access to the host machine's hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and will typically provide various abstractions, such as a hierarchically-structured filesystem, sockets, and so on, to untrusted user-space code.
 System-wide security policies are enforced by the kernel using a variety of mechanisms, including password-protected user accounts, file and directory permissions, access control lists, firewalls, and runtime-monitoring facilities.
 From a security point-of-view, an operating system kernel again acts as the \emph{root of all trust} within the system.
 
-At heart---though both types of kernels are intended for very different use-cases---both types of kernel are intended to enforce a series of \emph{kernel invariants} even in the face of unbounded interaction with untrusted code.
-However, despite this common cause, the implementation techniques employed by authors of the two type of kernels tends to be very different.
+At heart---though intended for very different use-cases---both types of kernel are intended to enforce a series of \emph{kernel invariants} even in the face of unbounded interaction with untrusted code.
+However, despite this common cause between the two families of systems, the protection mechanisms used to enforce these invariants tend to be very different.
+
 In particular, an LCF-style kernel is little other than a library implemented in a high-level programming language---typically some variant of ML, such as Standard ML or OCaml.
-Invariants are maintained by the kernel judiciously exposing functionality as an API that offers functions to manipulate elements of a collection of abstract types, thereby exploiting the soundness of the implementation language's type-system.
-Untrusted code then interacts with the kernel through this API.
+Invariants are maintained by the kernel judiciously exposing functionality through an API---offering functions to manipulate elements of certain abstract types---and through which untrusted code interacts with the kernel.
+Logical soundness is therefore contingent on the type soundness of the implementation meta-language's type-system.
+
+In contrast, desktop operating systems use hardware separation mechanisms to protect various \emph{kernel objects}---that is, book-keeping structures used by the kernel---from unfettered access by untrusted code.
+These hardware separation mechanisms include elevated \emph{privilege rings} (or \emph{exception levels})---granting the kernel access to protected hardware resources, such as system registers---and memory protection mechanisms through which the kernel can ``carve out'' a private scratch space to safely stash kernel objects.
 
 \section{Supervisionary}
 \label{sect.supervisionary}
@@ -77,7 +80,7 @@ Untrusted code then interacts with the kernel through this API.
 \subsection{Logic}
 \label{subsect.logic}
 
-Supervisionary implements a version of Gordon's higher-order logic (or HOL, henceforth), a close relative of Church's Simple Theory of Types that extends Church's system with polymorphic types, albeit with no ML-style \texttt{let}-polymorphism.
+Supervisionary implements a version of Gordon's higher-order logic (or HOL, henceforth), a close relative of Church's Simple Theory of Types that extends Church's system with top-level polymorphism.
 We describe HOL here, introducing enough material for the reader to understand the remainder of the paper---motivating HOL or describing its expressiveness is outside of the scope of this paper.
 
 We fix a set of \deffont{type-formers}, and use $\mathtt{F}$, $\mathtt{G}$, $\mathtt{H}$, and so on, to range arbitrarily over type-formers.
