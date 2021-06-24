@@ -72,14 +72,22 @@ Invariants are maintained by the kernel judiciously exposing functionality throu
 Logical soundness is therefore contingent on the type soundness of the implementation meta-language's type-system.
 
 In contrast, desktop operating systems use hardware separation mechanisms to protect various \emph{kernel objects}---that is, book-keeping structures used by the kernel---from unfettered access by untrusted code.
-These hardware separation mechanisms include elevated \emph{privilege rings} (or \emph{exception levels})---granting the kernel access to protected hardware resources, such as system registers---and memory protection mechanisms through which the kernel can ``carve out'' a private scratch space to safely stash kernel objects.
+These hardware separation mechanisms include \emph{privilege rings} (or \emph{exception levels})---granting the kernel access to protected hardware resources, such as system registers---and memory protection mechanisms through which the kernel can ``carve out'' a private scratch space to safely stash kernel objects.
+The kernel offers services to untrusted user-space code via a binary interface, or an ABI, through the use of \emph{system calls}---made more usable to programmers by libraries such as the C standard library, \texttt{libc}---and which provoke a context switch into the kernel.
 
-\paragraph{Contributions}
+What are the consequences, therefore, of organising a proof-checking system along the lines of a typical operating system, exposing services to untrusted code through an ABI and using privilege, rather than module boundaries, to maintain kernel invariants?
+In this paper, we introduce a prototype system---called \emph{Supervisionary}---to explore the consequences of doing just that.
+
+Supervisionary is implemented as a runtime host for a WebAssembly (or Wasm, henceforth) virtual machine.
+Wasm is a synthetic instruction set and acts as a common target for a number of high-level programming languages, including Rust, C, and C++ at the time of writing.
+Though originally intended as a sandboxing mechanism for use within web browsers, Wasm is increasingly finding application outside of the browser.
+
+\noindent
 We make the following contributions in this paper:
 
 \begin{enumerate}
 \item
-We design a proof-checking kernel for Gordon's HOL structured around a series of tables of kernel objects indexed by handles.
+We design a novel proof-checking kernel for Gordon's HOL structured around a series of tables of kernel objects indexed by handles.
 With this, we introduce \emph{Supervisionary}, a prototype interactive theorem proving system which exposes its kernel as an ABI to WebAssembly programs.
 \item
 Noting that Supervisionary is little other than an exercise in pointer manipulation, we briefly explore how our ABI can be formally specified, using a variant of Separation Logic.
