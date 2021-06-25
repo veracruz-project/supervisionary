@@ -55,10 +55,10 @@ We find that this novel structuring has some interesting consequences, which are
 
 Interactive theorem proving software typically implements a proof-checking \emph{kernel} which is the sole system component able to authenticate a purported proof as genuine.
 The kernel is the only component within the system that need be trusted by a skeptic, as all proofs constructed by the system, no matter how large or complex, are ultimately passed through the kernel for authentication.
-This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
-In short, the kernel acts as the \emph{root of all trust} within the system.
+This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any purported theorem produced by the system is indeed a theorem.
+In short, the kernel acts as the \emph{root of all trust} within the wide theorem proving system.
 
-Shifting focus, we see an interesting analogy: desktop operating systems also implement a \emph{kernel}, which is the sole system component with unfettered access to hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and provides useful abstractions, such as a filesystem, sockets, and so on, to untrusted user-space code.
+Shifting focus, we see an interesting similarity: desktop operating systems also implement a \emph{kernel}, which is the sole system component with unfettered access to hardware\footnote{Barring other privileged systems software---such as the hypervisor, separation kernels, security monitors, and so on ---which we consider just another form of operating system}, and provides useful abstractions, such as a filesystem, sockets, and so on, to untrusted user-space code.
 Security policies are enforced by the kernel using a variety of mechanisms, file and directory permissions, access control lists, and runtime-monitoring.
 From a security point-of-view, an operating system kernel again acts as the \emph{root of all trust} within the system.
 
@@ -78,7 +78,7 @@ This system call ABI needs to be carefully designed, in order to avoid inadverte
 
 In this paper, we introduce a prototype system---called \emph{Supervisionary}---to explore the consequences of this novel design.
 Supervisionary is implemented as a \emph{runtime} for a WebAssembly (or Wasm, henceforth) virtual machine.
-A runtime looks and acts like a kernel from the point-of-view of executing Wasm code: it possesses a monopoly on all system resources, and is manipulated and queried through an ABI that causes execution to synchronously switch into the runtime whenever invoked.
+A runtime looks and acts like a kernel from the point-of-view of executing Wasm code, in particular it is manipulated and queried through an ABI that causes execution to synchronously switch into the runtime whenever invoked.
 Moreover, the runtime is separated from Wasm code via the use of distinct address spaces, with the runtime able to query and manipulate the Wasm heap directly but the runtime heap being kept inaccessible to Wasm.
 Immediately, there are two interesting consequences:
 
@@ -89,30 +89,36 @@ Rather, the Supervisionary kernel has an implementation language---Rust, in our 
 \item
 The kernel and untrusted code are now decoupled.
 Untrusted code that directs proof search now need not be written in the same programming language as the kernel (or, interact with the kernel via shims written in that language).
-Rather, any programming language targeting the Wasm instruction set can be used, even a mix of them.
+Rather, any programming language targeting the Wasm instruction set can be used, or even a mixture of them.
+In this sense, Supervisionary again behaves like a real operating system kernel, where code written in any programming language is able to interact directly with the kernel, as long as it abides by its binary interface.
 \end{enumerate}
 
+The Supervisionary ABI is also interesting in its own right as it differs markedly from the kernel API of a typical LCF system.
+Whilst all of the familiar objects of an implementation of Gordon's HOL---type-formers, types, terms, and theorems---are still present in Supervisionary, these are never \emph{directly} exposed to untrusted code for manipulation.
+Rather, the Supervisionary kernel maintains internal heaps of \emph{kernel objects}, indexed by \emph{handles}, which are akin to pointers.
+These handles are allocated and issued to untrusted code by the kernel upon creation of a new object.
+To manipulate or query an existing object, a handle is passed back to the kernel, which uses it to select an object to act on, on behalf of untrusted code.
+Interestingly, this allows us to provide an elegant formal specification of the Supervisionary ABI using Separation Logic, a modal logic used to reason about pointer-manipulation programs.
 
+Here, we take an interlude and return to the subject of operating system design.
+Note that, for an operating system kernel to effectively act as the root of all trust within a system it must monopolise a system's resources.
+In particular, a program executing under the supervision of an operating system is unable to exhibit any side-effect\footnote{Other than non-termination, or generating heat by burning CPU cycles, naturally...} without the co-operation of the operating system kernel---all access to file-systems for reading and writing files, access to the network, and so on and so forth, must pass through the kernel, which permits or denies them depending on the prevailing security policy in force.
+A Wasm runtime like Supervisionary also has a monopoly on the system's resources from the point-of-view of executing Wasm code.
+However---as of the description above---the only resources it can access, create, or otherwise manipulate are kernel objects specific to the task of theorem proving in HOL.
 
-\paragraph{Contributions}
-We make the following contributions in this paper:
+\emph{What if we grant Supervisionary a monopoly not just on authenticating theorems within HOL, but also on system resources such as the filesystem?}
 
-\begin{enumerate}
-\item
-We design a novel proof-checking kernel for Gordon's HOL structured around a series of tables of kernel objects indexed by handles.
-With this, we introduce \emph{Supervisionary}, a prototype interactive theorem proving system which exposes its kernel as an ABI to WebAssembly programs.
-\item
-Noting that Supervisionary is little other than an exercise in pointer manipulation, we briefly explore how our ABI can be formally specified, using a variant of Separation Logic.
-\item
-We exploit Supervisionary's proof checking capabilities to define expressive dynamic security policies for WebAssembly programs.
-\end{enumerate}
+Now, Supervisionary starts to look \emph{very} different from a typical LCF system, as, whilst the latter has a monopoly on authenticating theorems, it cannot stand in the way of untrusted code within the system accessing the filesystem, network, or other resource, which is the role of the underlying operating system.
+On the other hand, Supervisionary can make access to wider system resources such as the filesystem contingent on untrusted code \emph{proving} a property at the point of access.
+Moreover, by varying the property to prove, Supervisionary can capture a wide range of expressive security and correctness policies.
+Interestingly, Supervisionary then straddles both static and dynamic verification techniques, with the system acting as both a proof assistant for HOL and a runtime verification mechanism for Wasm code.
 
 The remainder of the paper is structured as follows.
 In Section~\ref{sect.gordons.hol} we briefly introduce Gordon's HOL.
 In Section~\ref{sect.design.supervisionary.kernel} we describe the design of the Supervisionary kernel.
-In Section~\ref{sect.supervisionary.system} we describe the Supervisionary system proper, including untrusted support code---the analogue of Unix's \texttt{libc}---that allows WebAssembly programs to interact with the kernel.
+In Section~\ref{sect.supervisionary.system} we describe the Supervisionary system proper, including untrusted support code---the analogue of Unix's \texttt{libc}---that allows Wasm programs to interact with the kernel.
 In Section~\ref{sect.separation.logic.an.interlude} we briefly explore how Separation Logic can be used to provide a formal description of the action of the Supervisionary ABI.
-In Section~\ref{sect.security.policies.for.webassembly} we show how expressive security policies can be captured, and enforced, for arbitrary WebAssembly programs using Supervisionary.
+In Section~\ref{sect.security.policies.for.webassembly} we show how expressive security and correctness policies can be captured, and enforced, for arbitrary Wasm programs using Supervisionary.
 Finally, in Section~\ref{sect.conclusions} we conclude.
 
 \section{Gordon's HOL}
