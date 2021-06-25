@@ -124,8 +124,9 @@ Finally, in Section~\ref{sect.conclusions} we conclude.
 \section{Gordon's HOL}
 \label{sect.gordons.hol}
 
-Supervisionary implements a version of Gordon's higher-order logic (or HOL, henceforth), a close relative of Church's Simple Theory of Types that extends Church's system with top-level polymorphism.
-We describe HOL here, introducing enough material for the reader to understand the remainder of the paper---motivating HOL or describing its expressiveness is outside of the scope of this paper.
+Supervisionary implements a version of Gordon's higher-order logic (or HOL, henceforth), a close relative of Church's Simple Theory of Types.
+We briefly describe HOL here.
+Motivating HOL or describing its expressiveness is beyond the scope of this paper.
 
 We fix a set of \deffont{type-formers}, and use $\mathtt{F}$, $\mathtt{G}$, $\mathtt{H}$, and so on, to range arbitrarily over type-formers.
 To each type-former, we associate an \deffont{arity}, and write $arity(\mathtt{F}) = m$ to assert that the arity of type-former $\mathsf{F}$ is $m$.
@@ -464,8 +465,13 @@ We write $\Gamma \vdash r$ to assert that a derivation tree, rooted at $\Gamma \
 
 The set of primitive type-formers and constants defines an implicit \deffont{theory}.
 Our version of HOL also includes two \emph{primitive definitional} principles for extending this theory with new defined constants and types, respectively.
-Specifically, for a previously-undefined constant $\mathtt{C}$ and a term $r : \tau$ where $fv(r) = \{\}$ the constant $\mathtt{C}$ with declared type $\tau$ is added to the theory, as is an additional axiom $\{\} \vdash \mathtt{C} = r$.
-TODO: type-definition
+
+For a previously-undefined constant $\mathtt{C}$ and a term $r : \tau$ where $fv(r) = \{\}$ the constant $\mathtt{C}$ with declared type $\tau$ is added to the theory, as is an additional axiom $\{\} \vdash \mathtt{C} = r$.
+
+New types are ``carved out'' of non-empty subsets of existing types.
+Given an existing type $\tau$ and a predicate $p : \tau \Rightarrow \mathtt{bool}$ we introduce a new type $\tau'$ whenever $\{\} \vdash \xsts{x_\tau}p(x_\tau)$ holds.
+In addition, two new constants are entered into the global theory---$\mathtt{in}_{\tau'}$ with type $\tau \Rightarrow \tau'$ and $\mathtt{out}_{\tau'}$ with type $\tau' \Rightarrow \tau$, respectively---representing \deffont{injection} and \deffont{projection} functions for the new type.
+These two functions are related by also entering $\{\} \vdash \fall{x_\tau}p(x_\tau) \longrightarrow out_{\tau'}(in_{\tau'}(x_\tau)) = x_\tau$ and $\{\} \vdash \fall{x_{\tau'}}in_{\tau'}(out_{\tau'}(x_{\tau'})) = x_{\tau'}$ as additional axioms.
 
 \section{The design of the Supervisionary kernel}
 \label{sect.design.supervisionary.kernel}
