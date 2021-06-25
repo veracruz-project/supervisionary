@@ -53,36 +53,48 @@ We find that this novel structuring has some interesting consequences, which are
 \section{Introduction}
 \label{sect.introduction}
 
-Interactive theorem proving software typically implements a proof-checking \emph{kernel}.
-This kernel is the sole system component that is able to authenticate a purported proof as legitimate, and is typically kept small and self-contained, making it suitable for manual auditing.
-By design, the kernel is the only component within the system that need be trusted by a skeptic, as all proofs constructed by the system, no matter how large or complex, are ultimately passed through the kernel for authentication.
+Interactive theorem proving software typically implements a proof-checking \emph{kernel} which is the sole system component able to authenticate a purported proof as genuine.
+The kernel is the only component within the system that need be trusted by a skeptic, as all proofs constructed by the system, no matter how large or complex, are ultimately passed through the kernel for authentication.
 This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any theorem produced by the system is indeed a theorem.
 In short, the kernel acts as the \emph{root of all trust} within the system.
 
-Shifting focus, we see an interesting analogy: desktop operating systems---such as Microsoft Windows and desktop Linux distributions---also implement a \emph{kernel}.
-This kernel is also the sole system component that has unfettered access to the host machine's hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and will typically provide various abstractions, such as a hierarchically-structured filesystem, sockets, and so on, to untrusted user-space code.
-System-wide security policies are enforced by the kernel using a variety of mechanisms, including password-protected user accounts, file and directory permissions, access control lists, firewalls, and runtime-monitoring facilities.
+Shifting focus, we see an interesting analogy: desktop operating systems also implement a \emph{kernel}, which is the sole system component with unfettered access to hardware\footnote{Barring other privileged systems software, such as the hypervisor, which we consider as another form of operating system}, and provides useful abstractions, such as a filesystem, sockets, and so on, to untrusted user-space code.
+Security policies are enforced by the kernel using a variety of mechanisms, file and directory permissions, access control lists, and runtime-monitoring.
 From a security point-of-view, an operating system kernel again acts as the \emph{root of all trust} within the system.
 
-At heart---though intended for very different use-cases---both types of kernel are intended to enforce a series of \emph{kernel invariants} even in the face of unbounded interaction with untrusted code.
-However, despite this common cause between the two families of systems, the protection mechanisms used to enforce these invariants tend to be very different.
+Note that, though intended for very different use-cases, at heart both types of kernel are intended to enforce a series of \emph{kernel invariants} even in the face of unbounded interaction with untrusted code.
+Yet, despite this common cause, the mechanisms used to maintain invariants is very different.
 
-In particular, an LCF-style kernel is little other than a library implemented in a high-level programming language---typically some variant of ML, such as Standard ML or OCaml.
+An LCF-style kernel is little other than a library implemented in a high-level programming language---typically some dialect of ML, such as Standard ML or OCaml.
 Invariants are maintained by the kernel judiciously exposing functionality through an API---offering functions to manipulate elements of certain abstract types---and through which untrusted code interacts with the kernel.
-Logical soundness is therefore contingent on the type soundness of the implementation meta-language's type-system.
+Logical soundness follows from the type soundness of the metalanguage.
 
 In contrast, desktop operating systems use hardware separation mechanisms to protect various \emph{kernel objects}---that is, book-keeping structures used by the kernel---from unfettered access by untrusted code.
 These hardware separation mechanisms include \emph{privilege rings} (or \emph{exception levels})---granting the kernel access to protected hardware resources, such as system registers---and memory protection mechanisms through which the kernel can ``carve out'' a private scratch space to safely stash kernel objects.
-The kernel offers services to untrusted user-space code via a binary interface, or an ABI, through the use of \emph{system calls}---made more usable to programmers by libraries such as the C standard library, \texttt{libc}---and which provoke a context switch into the kernel.
+The kernel offers services to untrusted user-space code via a binary interface, or an ABI, through the use of \emph{system calls} which invoke a context switch into the kernel.
+This system call ABI needs to be carefully designed, in order to avoid inadvertent security weaknesses.
 
-What are the consequences, therefore, of organising a proof-checking system along the lines of a typical operating system, exposing services to untrusted code through an ABI and using privilege, rather than module boundaries, to maintain kernel invariants?
-In this paper, we introduce a prototype system---called \emph{Supervisionary}---to explore the consequences of doing just that.
+\emph{What, then, if we design theorem proving software to look less like typical theorem proving software, and more like a typical operating system?}
 
-Supervisionary is implemented as a runtime host for a WebAssembly (or Wasm, henceforth) virtual machine.
-Wasm is a synthetic instruction set and acts as a common target for a number of high-level programming languages, including Rust, C, and C++ at the time of writing.
-Though originally intended as a sandboxing mechanism for use within web browsers, Wasm is increasingly finding application outside of the browser.
+In this paper, we introduce a prototype system---called \emph{Supervisionary}---to explore the consequences of this novel design.
+Supervisionary is implemented as a \emph{runtime} for a WebAssembly (or Wasm, henceforth) virtual machine.
+A runtime looks and acts like a kernel from the point-of-view of executing Wasm code: it possesses a monopoly on all system resources, and is manipulated and queried through an ABI that causes execution to synchronously switch into the runtime whenever invoked.
+Moreover, the runtime is separated from Wasm code via the use of distinct address spaces, with the runtime able to query and manipulate the Wasm heap directly but the runtime heap being kept inaccessible to Wasm.
+Immediately, there are two interesting consequences:
 
-\noindent
+\begin{enumerate}
+\item
+Supervisionary no longer has a \emph{metalanguage} in the typical understanding of that phrase.
+Rather, the Supervisionary kernel has an implementation language---Rust, in our case---that need not be a programming language with strong type-soundness guarantees. Logical soundness no longer follows from the type soundness of our implementation language, but rather follows from the separation of the kernel's address space from untrusted code, and our ABI design, which we will discuss further, below.
+\item
+The kernel and untrusted code are now decoupled.
+Untrusted code that directs proof search now need not be written in the same programming language as the kernel (or, interact with the kernel via shims written in that language).
+Rather, any programming language targeting the Wasm instruction set can be used, even a mix of them.
+\end{enumerate}
+
+
+
+\paragraph{Contributions}
 We make the following contributions in this paper:
 
 \begin{enumerate}
