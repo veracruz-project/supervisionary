@@ -37,12 +37,67 @@ use crate::kernel::{
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Miscellaneous material.
+// Semantic types for the WASM ABI.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// A WASM address, used for reading-from and writing-to the guest WASM program
-/// heap, assuming the `wasm32-abi`.
-pub type Address = u32;
+/// Type-synonyms for declaratively describing the intended purpose of WASM
+/// types passed across the ABI boundary.
+mod semantic_types {
+    /// A WASM address, used for reading-from and writing-to the guest WASM
+    /// program heap, assuming the `wasm32-abi`.
+    pub type Pointer = u32;
+    /// An arity of a type-former.
+    pub type Arity = u64;
+    /// A Boolean value.
+    pub type Boolean = u32;
+    /// A kernel error code.
+    pub type ErrorCode = u32;
+    /// A handle to a kernel object.
+    pub type Handle = u64;
+    /// A name of a variable (e.g. a lambda-abstracted variable, or
+    /// type-variable).
+    pub type Name = u64;
+    /// A size of a buffer, or other heap-allocated structure, used for
+    /// reading-from and writing-to the guest WASM program heap, assuming the
+    /// `wasm32-abi`.
+    pub type Size = u64;
+}
+
+/// A type capturing semantic types of the ABI, more descriptive than the base
+/// types of WASM.  Note that the constructors of this type are intended to shadow
+/// the type-synyonyms defined in the `semantic_types` module.
+enum AbiType {
+    /// A handle pointing-to a kernel object.
+    Handle,
+    /// A name (e.g. of a lambda-abstracted variable, or similar).
+    Name,
+    /// An arity for a type-former.
+    Arity,
+    /// A pointer into the host WASM program's heap.
+    Pointer,
+    /// A size (or length) of an object appearing in the WASM program's heap.
+    Size,
+    /// A Boolean value.
+    Boolean,
+    /// An error code returned from an ABI function.
+    ErrorCode,
+}
+
+impl AbiType {
+    /// Returns `true` iff the current `AbiType` is implemented by the WASM
+    /// value type, `tau`.
+    fn implemented_by(&self, tau: &ValueType) -> bool {
+        match self {
+            AbiType::Boolean => tau == &ValueType::I32,
+            AbiType::Handle => tau == &ValueType::I64,
+            AbiType::Arity => tau == &ValueType::I64,
+            AbiType::Name => tau == &ValueType::I64,
+            AbiType::Pointer => tau == &ValueType::I32,
+            AbiType::Size => tau == &ValueType::I64,
+            AbiType::ErrorCode => tau == &ValueType::I32,
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ABI: host-call names and numbers.
@@ -490,6 +545,7 @@ pub enum RuntimeTrap {
     SignatureFailure,
 }
 
+/// Pretty-printing for `RuntimeTrap` values.
 impl Display for RuntimeTrap {
     fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
         match self {
@@ -582,7 +638,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_bytes<T>(&self, address: T, bytes: &[u8]) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
     {
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
@@ -609,7 +665,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_i32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<i32>,
     {
         let mut buffer = Vec::new();
@@ -630,7 +686,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_i64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<i64>,
     {
         let mut buffer = Vec::new();
@@ -651,7 +707,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_u32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<u32>,
     {
         let mut buffer = Vec::new();
@@ -672,7 +728,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_u64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<u64>,
     {
         let mut buffer = Vec::new();
@@ -693,7 +749,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_u64s<T, U>(&self, address: T, values: Vec<U>) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<u64> + Clone,
     {
         let mut address = address.into();
@@ -719,7 +775,7 @@ impl WasmiRuntimeState {
     #[inline]
     fn write_handle<T, U, V>(&self, address: T, handle: U) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
         V: tags::IsTag,
     {
@@ -738,7 +794,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn write_handles<T, U, V>(&self, address: T, handles: Vec<U>) -> Result<(), RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
         V: tags::IsTag,
     {
@@ -764,7 +820,7 @@ impl WasmiRuntimeState {
     /// address, `address`, failed.
     fn read_bytes<T, U>(&self, address: T, byte_count: U) -> Result<Vec<u8>, RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
         U: Into<usize>,
     {
         let memory = match &self.memory {
@@ -780,42 +836,119 @@ impl WasmiRuntimeState {
         Ok(bytes)
     }
 
+    /// Reads a `u32` value from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     #[inline]
     fn read_u32<T>(&self, address: T) -> Result<u32, RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
     {
         let buffer = self.read_bytes(address, size_of::<u32>())?;
         Ok(LittleEndian::read_u32(&buffer))
     }
 
+    /// Reads a `u64` value from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     #[inline]
     fn read_u64<T>(&self, address: T) -> Result<u64, RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
     {
         let buffer = self.read_bytes(address, size_of::<u64>())?;
         Ok(LittleEndian::read_u64(&buffer))
     }
 
+    /// Reads multiple `u64` values, as described by `count`, from the WASM
+    /// guest's memory module at a specified `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
+    fn read_u64s<T, U>(&self, address: T, count: U) -> Result<Vec<u64>, RuntimeTrap>
+    where
+        T: Into<u32>,
+        U: Into<usize>,
+    {
+        let mut accum = Vec::new();
+        let mut address = address.into();
+
+        for _c in 0..count.into() {
+            let handle = self.read_u64(address)?;
+            accum.push(handle);
+            address += 8;
+        }
+
+        Ok(accum)
+    }
+
+    /// Reads an `i32` value from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     #[inline]
     fn read_i32<T>(&self, address: T) -> Result<i32, RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
     {
         let buffer = self.read_bytes(address, size_of::<i32>())?;
         Ok(LittleEndian::read_i32(&buffer))
     }
 
+    /// Reads an `i64` value from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     #[inline]
     fn read_i64<T>(&self, address: T) -> Result<i64, RuntimeTrap>
     where
-        T: Into<Address>,
+        T: Into<semantic_types::Pointer>,
     {
         let buffer = self.read_bytes(address, size_of::<i32>())?;
         Ok(LittleEndian::read_i64(&buffer))
     }
 
+    /// Reads a `Handle` from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     #[inline]
     fn read_handle<T, U>(&self, address: U) -> Result<Handle<T>, RuntimeTrap>
     where
@@ -825,6 +958,16 @@ impl WasmiRuntimeState {
         Ok(Handle::from(self.read_u64(address)? as usize))
     }
 
+    /// Reads multiple `Handle` values, as described by `count`, from the WASM
+    /// guest's memory module at a specified `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
     fn read_handles<T, U, V>(&self, address: U, count: V) -> Result<Vec<Handle<T>>, RuntimeTrap>
     where
         T: tags::IsTag,
@@ -847,6 +990,7 @@ impl WasmiRuntimeState {
     // Kernel-related functionality.
     ////////////////////////////////////////////////////////////////////////////
 
+    /// Lifting of the `type_former_resolve` function.
     #[inline]
     fn type_former_resolve<T>(&self, handle: T) -> Option<usize>
     where
@@ -855,6 +999,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_former_resolve(handle).cloned()
     }
 
+    /// Lifting of the `type_former_is_registered` function.
     #[inline]
     fn type_former_is_registered<T>(&self, handle: T) -> bool
     where
@@ -863,6 +1008,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_former_is_registered(handle)
     }
 
+    /// Lifting of the `type_former_register` function.
     #[inline]
     fn type_former_register<T>(&self, arity: T) -> Handle<tags::TypeFormer>
     where
@@ -871,6 +1017,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().type_former_register(arity)
     }
 
+    /// Lifting of the `type_register_variable` function.
     #[inline]
     fn type_register_variable<T>(&self, name: T) -> Handle<tags::Type>
     where
@@ -879,6 +1026,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().type_register_variable(name)
     }
 
+    /// Lifting of the `type_register_combination` function.
     #[inline]
     fn type_register_combination<T, U>(
         &self,
@@ -895,6 +1043,7 @@ impl WasmiRuntimeState {
         )
     }
 
+    /// Lifting of the `type_register_function` function.
     #[inline]
     fn type_register_function<T>(
         &self,
@@ -909,6 +1058,7 @@ impl WasmiRuntimeState {
             .type_register_function(domain.into(), range.into())
     }
 
+    /// Lifting of the `type_is_registered` function.
     #[inline]
     fn type_is_registered<T>(&self, handle: T) -> bool
     where
@@ -917,6 +1067,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_is_registered(handle)
     }
 
+    /// Lifting of the `type_split_variable` function.
     #[inline]
     fn type_split_variable<T>(&self, handle: T) -> Result<Name, KernelErrorCode>
     where
@@ -928,6 +1079,7 @@ impl WasmiRuntimeState {
             .map(|n| n.clone())
     }
 
+    /// Lifting of the `type_split_combination` function.
     #[inline]
     fn type_split_combination<T>(
         &self,
@@ -942,6 +1094,7 @@ impl WasmiRuntimeState {
             .map(|(f, a)| (f.clone(), a.clone()))
     }
 
+    /// Lifting of the `type_split_function` function.
     #[inline]
     fn type_split_function<T>(
         &self,
@@ -956,6 +1109,7 @@ impl WasmiRuntimeState {
             .map(|(d, r)| (d.clone(), r.clone()))
     }
 
+    /// Lifting of the `type_test_variable` function.
     #[inline]
     fn type_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -964,6 +1118,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_test_variable(handle)
     }
 
+    /// Lifting of the `type_test_combination` function.
     #[inline]
     fn type_test_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -972,6 +1127,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_test_combination(handle)
     }
 
+    /// Lifting of the `type_test_function` function.
     #[inline]
     fn type_test_function<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -980,6 +1136,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().type_test_function(handle)
     }
 
+    /// Lifting of the `type_variables` function.
     #[inline]
     fn type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
     where
@@ -991,6 +1148,7 @@ impl WasmiRuntimeState {
             .map(|v| v.iter().map(|e| *e.clone()).collect())
     }
 
+    /// Lifting of the `type_substitute` function.
     #[inline]
     fn type_substitute<T, U, V>(
         &self,
@@ -1005,6 +1163,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().type_substitute(handle, sigma)
     }
 
+    /// Lifting of the `constant_register` function.
     #[inline]
     fn constant_register<T>(&self, handle: T) -> Result<Handle<tags::Constant>, KernelErrorCode>
     where
@@ -1013,6 +1172,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().constant_register(handle)
     }
 
+    /// Lifting of the `constant_resolve` function.
     #[inline]
     fn constant_resolve<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
@@ -1024,6 +1184,7 @@ impl WasmiRuntimeState {
             .map(|e| e.clone())
     }
 
+    /// Lifting of the `constant_is_registered` function.
     #[inline]
     fn constant_is_registered<T>(&self, handle: T) -> bool
     where
@@ -1032,6 +1193,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().constant_is_registered(handle)
     }
 
+    /// Lifting of the `term_register_variable` function.
     #[inline]
     fn term_register_variable<T, U>(
         &self,
@@ -1045,6 +1207,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().term_register_variable(name, tau)
     }
 
+    /// Lifting of the `term_register_constant` function.
     #[inline]
     fn term_register_constant<T, U, V>(
         &self,
@@ -1061,6 +1224,7 @@ impl WasmiRuntimeState {
             .term_register_constant(constant, substitution)
     }
 
+    /// Lifting of the `term_register_application` function.
     #[inline]
     fn term_register_application<T, U>(
         &self,
@@ -1076,6 +1240,7 @@ impl WasmiRuntimeState {
             .term_register_application(left, right)
     }
 
+    /// Lifting of the `term_register_lambda` function.
     #[inline]
     fn term_register_lambda<T, U, V>(
         &self,
@@ -1093,6 +1258,7 @@ impl WasmiRuntimeState {
             .term_register_lambda(name, tau, body)
     }
 
+    /// Lifting of the `term_register_negation` function.
     #[inline]
     fn term_register_negation<T>(&self, body: T) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
@@ -1101,11 +1267,12 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().term_register_negation(body)
     }
 
+    /// Lifting of the `term_register_conjunction` function.
     #[inline]
     fn term_register_conjunction<T, U>(
         &self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
@@ -1116,6 +1283,7 @@ impl WasmiRuntimeState {
             .term_register_conjunction(left, right)
     }
 
+    /// Lifting of the `term_register_disjunction` function.
     #[inline]
     fn term_register_disjunction<T, U>(
         &self,
@@ -1131,6 +1299,7 @@ impl WasmiRuntimeState {
             .term_register_disjunction(left, right)
     }
 
+    /// Lifting of the `term_register_implication` function.
     #[inline]
     fn term_register_implication<T, U>(
         &self,
@@ -1146,6 +1315,7 @@ impl WasmiRuntimeState {
             .term_register_implication(left, right)
     }
 
+    /// Lifting of the `term_register_equality` function.
     #[inline]
     fn term_register_equality<T, U>(
         &self,
@@ -1159,6 +1329,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().term_register_equality(left, right)
     }
 
+    /// Lifting of the `term_register_forall` function.
     #[inline]
     fn term_register_forall<T, U, V>(
         &self,
@@ -1176,6 +1347,7 @@ impl WasmiRuntimeState {
             .term_register_forall(name, tau, body)
     }
 
+    /// Lifting of the `term_register_exists` function.
     #[inline]
     fn term_register_exists<T, U, V>(
         &self,
@@ -1193,6 +1365,7 @@ impl WasmiRuntimeState {
             .term_register_exists(name, tau, body)
     }
 
+    /// Lifting of the `term_split_variable` function.
     #[inline]
     fn term_split_variable<T>(
         &self,
@@ -1207,6 +1380,7 @@ impl WasmiRuntimeState {
             .map(|(n, t)| (n.clone(), t.clone()))
     }
 
+    /// Lifting of the `term_split_constant` function.
     #[inline]
     fn term_split_constant<T>(
         &self,
@@ -1221,6 +1395,7 @@ impl WasmiRuntimeState {
             .map(|(c, t)| (c.clone(), t.clone()))
     }
 
+    /// Lifting of the `term_split_application` function.
     #[inline]
     fn term_split_application<T>(
         &self,
@@ -1235,6 +1410,7 @@ impl WasmiRuntimeState {
             .map(|(l, r)| (l.clone(), r.clone()))
     }
 
+    /// Lifting of the `term_split_lambda` function.
     #[inline]
     fn term_split_lambda<T>(
         &self,
@@ -1249,6 +1425,7 @@ impl WasmiRuntimeState {
             .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
     }
 
+    /// Lifting of the `term_split_negation` function.
     #[inline]
     fn term_split_negation<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
@@ -1260,6 +1437,7 @@ impl WasmiRuntimeState {
             .map(|n| n.clone())
     }
 
+    /// Lifting of the `term_split_conjunction` function.
     #[inline]
     fn term_split_conjunction<T>(
         &self,
@@ -1274,6 +1452,7 @@ impl WasmiRuntimeState {
             .map(|(l, r)| (l.clone(), r.clone()))
     }
 
+    /// Lifting of the `term_split_disjunction` function.
     #[inline]
     fn term_split_disjunction<T>(
         &self,
@@ -1288,6 +1467,7 @@ impl WasmiRuntimeState {
             .map(|(l, r)| (l.clone(), r.clone()))
     }
 
+    /// Lifting of the `term_split_implication` function.
     #[inline]
     fn term_split_implication<T>(
         &self,
@@ -1302,6 +1482,7 @@ impl WasmiRuntimeState {
             .map(|(l, r)| (l.clone(), r.clone()))
     }
 
+    /// Lifting of the `term_split_equality` function.
     #[inline]
     fn term_split_equality<T>(
         &self,
@@ -1316,6 +1497,7 @@ impl WasmiRuntimeState {
             .map(|(l, r)| (l.clone(), r.clone()))
     }
 
+    /// Lifting of the `term_split_forall` function.
     #[inline]
     fn term_split_forall<T>(
         &self,
@@ -1330,6 +1512,7 @@ impl WasmiRuntimeState {
             .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
     }
 
+    /// Lifting of the `term_split_exists` function.
     #[inline]
     fn term_split_exists<T>(
         &self,
@@ -1344,6 +1527,7 @@ impl WasmiRuntimeState {
             .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
     }
 
+    /// Lifting of the `term_test_variable` function.
     #[inline]
     fn term_test_variable<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1352,6 +1536,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_variable(handle)
     }
 
+    /// Lifting of the `term_test_constant` function.
     #[inline]
     fn term_test_constant<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1360,6 +1545,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_constant(handle)
     }
 
+    /// Lifting of the `term_test_application` function.
     #[inline]
     fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1368,6 +1554,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_application(handle)
     }
 
+    /// Lifting of the `term_test_lambda` function.
     #[inline]
     fn term_test_lambda<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1376,6 +1563,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_lambda(handle)
     }
 
+    /// Lifting of the `term_test_negation` function.
     #[inline]
     fn term_test_negation<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1384,6 +1572,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_negation(handle)
     }
 
+    /// Lifting of the `term_test_conjunction` function.
     #[inline]
     fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1392,6 +1581,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_conjunction(handle)
     }
 
+    /// Lifting of the `term_test_disjunction` function.
     #[inline]
     fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1400,6 +1590,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_disjunction(handle)
     }
 
+    /// Lifting of the `term_test_implication` function.
     #[inline]
     fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1408,6 +1599,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_implication(handle)
     }
 
+    /// Lifting of the `term_test_equality` function.
     #[inline]
     fn term_test_equality<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1416,6 +1608,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_equality(handle)
     }
 
+    /// Lifting of the `term_test_forall` function.
     #[inline]
     fn term_test_forall<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1424,6 +1617,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_forall(handle)
     }
 
+    /// Lifting of the `term_test_exists` function.
     #[inline]
     fn term_test_exists<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1432,6 +1626,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow().term_test_exists(handle)
     }
 
+    /// Lifting of the `term_free_variables` function.
     #[inline]
     fn term_free_variables<T>(
         &self,
@@ -1448,6 +1643,7 @@ impl WasmiRuntimeState {
         })
     }
 
+    /// Lifting of the `term_type_variables` function.
     #[inline]
     fn term_type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
     where
@@ -1459,6 +1655,7 @@ impl WasmiRuntimeState {
             .map(|v| v.iter().cloned().cloned().collect())
     }
 
+    /// Lifting of the `term_substitution` function.
     #[inline]
     fn term_substitution<T, U, V>(
         &self,
@@ -1473,6 +1670,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().substitution(handle, substitution)
     }
 
+    /// Lifting of the `term_type_substitution` function.
     #[inline]
     fn term_type_substitution<T, U, V>(
         &self,
@@ -1489,6 +1687,7 @@ impl WasmiRuntimeState {
             .term_type_substitution(handle, substitution)
     }
 
+    /// Lifting of the `term_type_infer` function.
     #[inline]
     fn term_type_infer<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
@@ -1497,6 +1696,7 @@ impl WasmiRuntimeState {
         self.kernel.borrow_mut().term_type_infer(handle)
     }
 
+    /// Lifting of the `term_type_is_proposition` function.
     #[inline]
     fn term_type_is_proposition<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
     where
@@ -1509,41 +1709,6 @@ impl WasmiRuntimeState {
 ////////////////////////////////////////////////////////////////////////////////
 // Signature checking.
 ////////////////////////////////////////////////////////////////////////////////
-
-/// A type capturing semantic types of the ABI, more descriptive than the base
-/// types of WASM.
-enum AbiType {
-    /// A handle pointing-to a kernel object.
-    Handle,
-    /// A name (e.g. of a lambda-abstracted variable, or similar).
-    Name,
-    /// An arity for a type-former.
-    Arity,
-    /// A pointer into the host WASM program's heap.
-    Pointer,
-    /// A size (or length) of an object appearing in the WASM program's heap.
-    Size,
-    /// A Boolean value.
-    Boolean,
-    /// An error code returned from an ABI function.
-    ErrorCode,
-}
-
-impl AbiType {
-    /// Returns `true` iff the current `AbiType` is implemented by the WASM
-    /// value type, `tau`.
-    fn implemented_by(&self, tau: &ValueType) -> bool {
-        match self {
-            AbiType::Boolean => tau == &ValueType::I32,
-            AbiType::Handle => tau == &ValueType::I64,
-            AbiType::Arity => tau == &ValueType::I64,
-            AbiType::Name => tau == &ValueType::I64,
-            AbiType::Pointer => tau == &ValueType::I32,
-            AbiType::Size => tau == &ValueType::I64,
-            AbiType::ErrorCode => tau == &ValueType::I32,
-        }
-    }
-}
 
 /// Returns `true` iff the semantic function signature type described by
 /// `params` and `ret` is implemented by the WASM type described by
@@ -2466,13 +2631,21 @@ fn check_theorem_register_exists_elimination_signature(signature: &Signature) ->
 /// Checks the signature of the `Theorem.Split.Conclusion` ABI function.
 #[inline]
 fn check_theorem_split_conclusion_signature(signature: &Signature) -> bool {
-    unimplemented!()
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Pointer],
+        &Some(AbiType::ErrorCode),
+    )
 }
 
 /// Checks the signature of the `Theorem.Split.Hypotheses` ABI function.
 #[inline]
 fn check_theorem_split_hypotheses_signature(signature: &Signature) -> bool {
-    unimplemented!()
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Pointer, AbiType::Size],
+        &Some(AbiType::ErrorCode),
+    )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2489,10 +2662,10 @@ impl Externals for WasmiRuntimeState {
     ) -> Result<Option<RuntimeValue>, Trap> {
         match index {
             ABI_TYPE_FORMER_RESOLVE_INDEX => {
-                let handle = args.nth::<u64>(0) as usize;
-                let result_addr = args.nth::<u32>(1);
+                let handle = args.nth::<semantic_types::Handle>(0);
+                let result_addr = args.nth::<semantic_types::Pointer>(1);
 
-                let arity = match self.type_former_resolve(&Handle::from(handle)) {
+                let arity = match self.type_former_resolve(&Handle::from(handle as usize)) {
                     None => {
                         return Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::NoSuchTypeFormerRegistered.into(),
@@ -2506,95 +2679,104 @@ impl Externals for WasmiRuntimeState {
                 Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
             }
             ABI_TYPE_FORMER_IS_REGISTERED_INDEX => {
-                let handle = args.nth::<u64>(0) as usize;
-                let result = self.type_former_is_registered(&Handle::from(handle));
+                let handle = args.nth::<semantic_types::Handle>(0);
+                let result = self.type_former_is_registered(&Handle::from(handle as usize));
 
                 Ok(Some(RuntimeValue::I32(result.into())))
             }
             ABI_TYPE_FORMER_REGISTER_INDEX => {
-                let arity = args.nth::<u64>(0) as usize;
-                let result = self.type_former_register(arity);
+                let arity = args.nth::<semantic_types::Arity>(0);
+                let result = self.type_former_register(arity as usize);
 
-                Ok(Some(RuntimeValue::I64(*result as i64)))
+                Ok(Some(RuntimeValue::I32(*result as i32)))
             }
             ABI_TYPE_REGISTER_VARIABLE_INDEX => {
-                let name = args.nth::<u64>(0);
+                let name = args.nth::<semantic_types::Name>(0);
                 let result = self.type_register_variable(name);
 
-                Ok(Some(RuntimeValue::I64(*result as i64)))
+                Ok(Some(RuntimeValue::I32(*result as i32)))
             }
             ABI_TYPE_REGISTER_COMBINATION_INDEX => {
                 let former_handle: Handle<tags::TypeFormer> =
-                    Handle::from(args.nth::<u64>(0) as usize);
-                let argument_base = args.nth::<u32>(1);
-                let argument_length = args.nth::<u32>(2);
-                let result_ptr = args.nth::<u32>(3);
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let argument_base = args.nth::<semantic_types::Pointer>(1);
+                let argument_length = args.nth::<semantic_types::Size>(2);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
                 let arguments = self.read_handles(argument_base, argument_length as usize)?;
 
                 match self.type_register_combination(former_handle, arguments) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_REGISTER_FUNCTION_INDEX => {
-                let domain_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let range_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(1) as usize);
-                let result_ptr = args.nth::<u32>(2);
+                let domain_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let range_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.type_register_function(domain_handle, range_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_IS_REGISTERED_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
                 Ok(Some(RuntimeValue::I32(
                     self.type_is_registered(type_handle).into(),
                 )))
             }
             ABI_TYPE_SPLIT_VARIABLE_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let result_ptr = args.nth::<u32>(1);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_split_variable(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_u64(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_SPLIT_COMBINATION_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let former_result_ptr = args.nth::<u32>(1);
-                let arguments_result_ptr = args.nth::<u32>(2);
-                let arguments_length_result_ptr = args.nth::<u32>(3);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let former_result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let arguments_result_ptr = args.nth::<semantic_types::Pointer>(2);
+                let arguments_length_result_ptr = args.nth::<semantic_types::Pointer>(3);
 
                 match self.type_split_combination(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((former_handle, arguments)) => {
                         self.write_handle(former_result_ptr, former_handle.clone())?;
                         self.write_handles(arguments_result_ptr, arguments.clone())?;
-                        self.write_u32(arguments_length_result_ptr, arguments.len() as u32)?;
+                        self.write_u64(arguments_length_result_ptr, arguments.len() as u64)?;
 
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_SPLIT_FUNCTION_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let domain_result_ptr = args.nth::<u32>(1);
-                let range_result_ptr = args.nth::<u32>(2);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Pointer>(0) as usize);
+                let domain_result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let range_result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.type_split_function(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((domain_handle, range_handle)) => {
                         self.write_handle(domain_result_ptr, domain_handle.clone())?;
                         self.write_handle(range_result_ptr, range_handle.clone())?;
@@ -2604,73 +2786,313 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_TYPE_TEST_VARIABLE_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let result_ptr = args.nth::<u32>(1);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_variable(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_i32(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_TEST_COMBINATION_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let result_ptr = args.nth::<u32>(1);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_combination(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_i32(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_TEST_FUNCTION_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let result_ptr = args.nth::<u32>(1);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_function(type_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_i32(result_ptr, result)?;
+
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
             ABI_TYPE_VARIABLES_INDEX => {
-                let type_handle: Handle<tags::Type> = Handle::from(args.nth::<u64>(0) as usize);
-                let variable_result_ptr = args.nth::<u32>(1);
-                let variable_len_ptr = args.nth::<u32>(2);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let variable_result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let variable_len_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                let result = self.type_variables(type_handle);
-
-                match result {
-                    Err(e) => Ok(Some(RuntimeValue::I64(e as i64))),
+                match self.type_variables(type_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_u64s(variable_result_ptr, result.clone())?;
-                        self.write_u32(variable_len_ptr, result.len() as u32)?;
+                        self.write_u64(variable_len_ptr, result.len() as u64)?;
 
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
                 }
             }
-            ABI_TYPE_SUBSTITUTE_INDEX => unimplemented!(),
-            ABI_CONSTANT_REGISTER_INDEX => unimplemented!(),
-            ABI_CONSTANT_IS_REGISTERED_INDEX => unimplemented!(),
-            ABI_CONSTANT_RESOLVE_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_VARIABLE_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_CONSTANT_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_APPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_LAMBDA_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_NEGATION_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_CONJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_DISJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_IMPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_EQUALITY_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_FORALL_INDEX => unimplemented!(),
-            ABI_TERM_REGISTER_EXISTS_INDEX => unimplemented!(),
+            ABI_TYPE_SUBSTITUTE_INDEX => {
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self.type_substitute(type_handle, subst) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_CONSTANT_REGISTER_INDEX => {
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.constant_register(type_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_CONSTANT_IS_REGISTERED_INDEX => {
+                let constant_handle: Handle<tags::Constant> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+
+                Ok(Some(RuntimeValue::I32(
+                    self.constant_is_registered(constant_handle).into(),
+                )))
+            }
+            ABI_CONSTANT_RESOLVE_INDEX => {
+                let constant_handle: Handle<tags::Constant> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.constant_resolve(constant_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_VARIABLE_INDEX => {
+                let name = args.nth::<semantic_types::Name>(0);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_variable(name, type_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_CONSTANT_INDEX => {
+                let constant_handle: Handle<tags::Constant> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self.term_register_constant(constant_handle, subst) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_APPLICATION_INDEX => {
+                let left_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let right_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_application(left_handle, right_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_LAMBDA_INDEX => {
+                let name = args.nth::<semantic_types::Name>(0);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let body_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_register_lambda(name, type_handle, body_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_NEGATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_register_negation(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_CONJUNCTION_INDEX => {
+                let left_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let right_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_conjunction(left_handle, right_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_DISJUNCTION_INDEX => {
+                let left_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let right_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_disjunction(left_handle, right_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_IMPLICATION_INDEX => {
+                let left_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let right_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_implication(left_handle, right_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_EQUALITY_INDEX => {
+                let left_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let right_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_register_equality(left_handle, right_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_FORALL_INDEX => {
+                let name = args.nth::<semantic_types::Name>(0);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let body_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_register_forall(name, type_handle, body_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_REGISTER_EXISTS_INDEX => {
+                let name = args.nth::<semantic_types::Name>(0);
+                let type_handle: Handle<tags::Type> =
+                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let body_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_register_exists(name, type_handle, body_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
             ABI_TERM_SPLIT_VARIABLE_INDEX => unimplemented!(),
             ABI_TERM_SPLIT_CONSTANT_INDEX => unimplemented!(),
             ABI_TERM_SPLIT_APPLICATION_INDEX => unimplemented!(),
