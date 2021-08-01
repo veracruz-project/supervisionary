@@ -111,13 +111,23 @@ impl Display for ErrorCode {
             ErrorCode::Success => write!(f, "Success"),
             ErrorCode::SignatureFailure => write!(f, "SignatureFailure"),
             ErrorCode::NoSuchFunction => write!(f, "NoSuchFunction"),
-            ErrorCode::NoSuchConstantRegistered => write!(f, "NoSuchConstantRegistered"),
-            ErrorCode::NoSuchTermRegistered => write!(f, "NoSuchTermRegistered"),
-            ErrorCode::NoSuchTheoremRegistered => write!(f, "NoSuchTheoremRegistered"),
-            ErrorCode::NoSuchTypeFormerRegistered => write!(f, "NoSuchTypeFormerRegistered"),
+            ErrorCode::NoSuchConstantRegistered => {
+                write!(f, "NoSuchConstantRegistered")
+            }
+            ErrorCode::NoSuchTermRegistered => {
+                write!(f, "NoSuchTermRegistered")
+            }
+            ErrorCode::NoSuchTheoremRegistered => {
+                write!(f, "NoSuchTheoremRegistered")
+            }
+            ErrorCode::NoSuchTypeFormerRegistered => {
+                write!(f, "NoSuchTypeFormerRegistered")
+            }
             ErrorCode::MismatchedArity => write!(f, "MismatchedArity"),
             ErrorCode::DomainTypeMismatch => write!(f, "DomainTypeMismatch"),
-            ErrorCode::NoSuchTypeRegistered => write!(f, "NoSuchTypeRegistered"),
+            ErrorCode::NoSuchTypeRegistered => {
+                write!(f, "NoSuchTypeRegistered")
+            }
             ErrorCode::NotAFunctionType => write!(f, "NotAFunctionType"),
             ErrorCode::NotATypeCombination => write!(f, "NotATypeCombination"),
             ErrorCode::NotATypeVariable => write!(f, "NotATypeVariable"),
@@ -136,7 +146,9 @@ impl Display for ErrorCode {
             ErrorCode::NotAVariable => write!(f, "NotAVariable"),
             ErrorCode::TermNotWellformed => write!(f, "TermNotWellformed"),
             ErrorCode::ShapeMismatch => write!(f, "ShapeMismatch"),
-            ErrorCode::TheoremNotWellformed => write!(f, "TheoremNotWellformed"),
+            ErrorCode::TheoremNotWellformed => {
+                write!(f, "TheoremNotWellformed")
+            }
         }
     }
 }
@@ -223,7 +235,9 @@ impl TryFrom<i32> for ErrorCode {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::error_code::{ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND};
+    use crate::kernel::error_code::{
+        ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND,
+    };
     use std::convert::{TryFrom, TryInto};
 
     /// Tests conversion from an `i32` and back again gets you back to where you
@@ -239,7 +253,9 @@ mod test {
     /// bound.
     #[test]
     pub fn errorcode_test1() {
-        assert!(ErrorCode::try_from(ERRORCODE_ENCODING_UPPER_BOUND as i32).is_err());
+        assert!(
+            ErrorCode::try_from(ERRORCODE_ENCODING_UPPER_BOUND as i32).is_err()
+        );
     }
 
     /// Pointwise test that conversion to an `i32` and back again gets you back

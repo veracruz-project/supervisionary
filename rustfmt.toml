@@ -30,7 +30,7 @@ max_width = 80
 
 # Ideal width of each line.
 # Default: 80
-max_width = 80
+#   max_width =
 
 # Number of spaces per tab.
 # Default: 4

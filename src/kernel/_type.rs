@@ -15,9 +15,11 @@
 
 use crate::kernel::{
     handle::{
-        tags, Handle, PREALLOCATED_HANDLE_TYPE_ALPHA, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+        tags, Handle, PREALLOCATED_HANDLE_TYPE_ALPHA,
+        PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
         PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
-        PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE,
+        PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
+        PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE,
     },
     name::Name,
 };
@@ -90,7 +92,10 @@ impl Type {
     where
         T: Into<Handle<tags::Type>> + Clone,
     {
-        Type::combination(PREALLOCATED_HANDLE_TYPE_FORMER_ARROW, vec![domain, range])
+        Type::combination(
+            PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
+            vec![domain, range],
+        )
     }
 
     /// Returns `Some(name)` iff the type is a type-variable with name, `name`.
@@ -117,7 +122,9 @@ impl Type {
 
     /// Returns `Some((dom, rng))` iff the type is a function type between
     /// domain type `dom` and range type `rng`.
-    pub fn split_function(&self) -> Option<(&Handle<tags::Type>, &Handle<tags::Type>)> {
+    pub fn split_function(
+        &self,
+    ) -> Option<(&Handle<tags::Type>, &Handle<tags::Type>)> {
         let (handle, args) = self.split_combination()?;
 
         if handle == &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW && args.len() == 2 {
@@ -229,7 +236,8 @@ mod test {
         _type::Type,
         handle::{
             tags, Handle, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
-            PREALLOCATED_HANDLE_TYPE_FORMER_PROP, PREALLOCATED_HANDLE_TYPE_PROP,
+            PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP,
         },
     };
 
@@ -238,35 +246,34 @@ mod test {
     #[test]
     pub fn type_test0() {
         assert!(Type::variable(0_u64).is_variable());
-        assert!(
-            Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
-                PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
-                Vec::new()
-            )
-            .is_combination()
-        );
-        assert!(
-            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
-                .is_function()
-        );
-        assert!(
-            Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
-                .is_combination()
-        );
+        assert!(Type::combination::<
+            Handle<tags::TypeFormer>,
+            Handle<tags::Type>,
+        >(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, Vec::new())
+        .is_combination());
+        assert!(Type::function(
+            PREALLOCATED_HANDLE_TYPE_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP
+        )
+        .is_function());
+        assert!(Type::function(
+            PREALLOCATED_HANDLE_TYPE_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP
+        )
+        .is_combination());
 
         assert!(!Type::variable(0_u64).is_combination());
         assert!(!Type::variable(0_u64).is_function());
-        assert!(
-            !Type::combination::<Handle<tags::TypeFormer>, Handle<tags::Type>>(
-                PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
-                Vec::new()
-            )
-            .is_variable()
-        );
-        assert!(
-            !Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP)
-                .is_variable()
-        );
+        assert!(!Type::combination::<
+            Handle<tags::TypeFormer>,
+            Handle<tags::Type>,
+        >(PREALLOCATED_HANDLE_TYPE_FORMER_PROP, Vec::new())
+        .is_variable());
+        assert!(!Type::function(
+            PREALLOCATED_HANDLE_TYPE_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP
+        )
+        .is_variable());
     }
 
     /// Tests that splitting a variable gets you back to where you started.
@@ -287,7 +294,10 @@ mod test {
             v.split_combination(),
             Some((
                 &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
-                &vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
+                &vec![
+                    PREALLOCATED_HANDLE_TYPE_PROP,
+                    PREALLOCATED_HANDLE_TYPE_PROP
+                ]
             ))
         );
     }
@@ -296,13 +306,19 @@ mod test {
     /// you back to where you started.
     #[test]
     pub fn type_test3() {
-        let v = Type::function(PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP);
+        let v = Type::function(
+            PREALLOCATED_HANDLE_TYPE_PROP,
+            PREALLOCATED_HANDLE_TYPE_PROP,
+        );
 
         assert_eq!(
             v.split_combination(),
             Some((
                 &PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
-                &vec![PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_PROP]
+                &vec![
+                    PREALLOCATED_HANDLE_TYPE_PROP,
+                    PREALLOCATED_HANDLE_TYPE_PROP
+                ]
             ))
         );
 

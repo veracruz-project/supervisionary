@@ -16,11 +16,16 @@
 use crate::kernel::{
     handle::{
         tags, Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
-        PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION, PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
-        PREALLOCATED_HANDLE_CONSTANT_EXISTS, PREALLOCATED_HANDLE_CONSTANT_FALSE,
-        PREALLOCATED_HANDLE_CONSTANT_FORALL, PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
-        PREALLOCATED_HANDLE_CONSTANT_NEGATION, PREALLOCATED_HANDLE_CONSTANT_TRUE,
-        PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
+        PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
+        PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
+        PREALLOCATED_HANDLE_CONSTANT_EXISTS,
+        PREALLOCATED_HANDLE_CONSTANT_FALSE,
+        PREALLOCATED_HANDLE_CONSTANT_FORALL,
+        PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
+        PREALLOCATED_HANDLE_CONSTANT_NEGATION,
+        PREALLOCATED_HANDLE_CONSTANT_TRUE,
+        PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
+        PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,
         PREALLOCATED_HANDLE_TYPE_PROP, PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
         PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
     },
@@ -155,7 +160,9 @@ impl Term {
     /// handle pointing to a type, `opt`.  If `opt` is `None` then the constant
     /// has the type registered in the constant-table under the handle,
     /// `handle`.
-    pub fn split_constant(&self) -> Option<(&Handle<tags::Constant>, &Handle<tags::Type>)> {
+    pub fn split_constant(
+        &self,
+    ) -> Option<(&Handle<tags::Constant>, &Handle<tags::Type>)> {
         if let Term::Constant { constant, tau } = self {
             Some((constant, tau))
         } else {
@@ -165,7 +172,9 @@ impl Term {
 
     /// Returns `Some((left, right))` iff the term is an application of one term
     /// to another.
-    pub fn split_application(&self) -> Option<(&Handle<tags::Term>, &Handle<tags::Term>)> {
+    pub fn split_application(
+        &self,
+    ) -> Option<(&Handle<tags::Term>, &Handle<tags::Term>)> {
         if let Term::Application { left, right } = self {
             Some((left, right))
         } else {
@@ -176,7 +185,9 @@ impl Term {
     /// Returns `Some((name, type, body))` iff the term is a lambda-abstraction
     /// with bound name, `name`, handle to a type, `type`, and handle to a body
     /// expression, `body`.
-    pub fn split_lambda(&self) -> Option<(&Name, &Handle<tags::Type>, &Handle<tags::Term>)> {
+    pub fn split_lambda(
+        &self,
+    ) -> Option<(&Name, &Handle<tags::Type>, &Handle<tags::Term>)> {
         if let Term::Lambda { name, tau, body } = self {
             Some((name, tau, body))
         } else {

@@ -93,15 +93,17 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 
 /// A pre-allocated handle used to refer to the `Prop` type-former.
-pub const PREALLOCATED_HANDLE_TYPE_FORMER_PROP: Handle<tags::TypeFormer> = Handle {
-    handle: 0,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_FORMER_PROP: Handle<tags::TypeFormer> =
+    Handle {
+        handle: 0,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the function-space type-former.
-pub const PREALLOCATED_HANDLE_TYPE_FORMER_ARROW: Handle<tags::TypeFormer> = Handle {
-    handle: 1,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_FORMER_ARROW: Handle<tags::TypeFormer> =
+    Handle {
+        handle: 1,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the type-variable `A`.
 pub const PREALLOCATED_HANDLE_TYPE_ALPHA: Handle<tags::Type> = Handle {
     handle: 2,
@@ -118,25 +120,29 @@ pub const PREALLOCATED_HANDLE_TYPE_PROP: Handle<tags::Type> = Handle {
     marker: PhantomData,
 };
 /// A pre-allocated handle used to refer to the type of unary predicates.
-pub const PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE: Handle<tags::Type> = Handle {
-    handle: 5,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE: Handle<tags::Type> =
+    Handle {
+        handle: 5,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the type of binary predicates.
-pub const PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE: Handle<tags::Type> = Handle {
-    handle: 6,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE: Handle<tags::Type> =
+    Handle {
+        handle: 6,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the type of unary connectives.
-pub const PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE: Handle<tags::Type> = Handle {
-    handle: 7,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE: Handle<tags::Type> =
+    Handle {
+        handle: 7,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the type of binary connectives.
-pub const PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE: Handle<tags::Type> = Handle {
-    handle: 8,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE: Handle<tags::Type> =
+    Handle {
+        handle: 8,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the type of polymorphic quantifiers.
 pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle<tags::Type> = Handle {
     handle: 9,
@@ -153,40 +159,47 @@ pub const PREALLOCATED_HANDLE_CONSTANT_FALSE: Handle<tags::Constant> = Handle {
     marker: PhantomData,
 };
 /// A pre-allocated handle used to refer to the negation constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_NEGATION: Handle<tags::Constant> = Handle {
-    handle: 12,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_NEGATION: Handle<tags::Constant> =
+    Handle {
+        handle: 12,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the binary conjunction connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION: Handle<tags::Constant> = Handle {
-    handle: 13,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION: Handle<tags::Constant> =
+    Handle {
+        handle: 13,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the binary disjunction connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION: Handle<tags::Constant> = Handle {
-    handle: 14,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION: Handle<tags::Constant> =
+    Handle {
+        handle: 14,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the binary implication connective.
-pub const PREALLOCATED_HANDLE_CONSTANT_IMPLICATION: Handle<tags::Constant> = Handle {
-    handle: 15,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_IMPLICATION: Handle<tags::Constant> =
+    Handle {
+        handle: 15,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the universal quantifier constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_FORALL: Handle<tags::Constant> = Handle {
-    handle: 16,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_FORALL: Handle<tags::Constant> =
+    Handle {
+        handle: 16,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the existential quantifier constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle<tags::Constant> = Handle {
-    handle: 17,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle<tags::Constant> =
+    Handle {
+        handle: 17,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the equality constant.
-pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle<tags::Constant> = Handle {
-    handle: 18,
-    marker: PhantomData,
-};
+pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle<tags::Constant> =
+    Handle {
+        handle: 18,
+        marker: PhantomData,
+    };
 /// A pre-allocated handle used to refer to the truth term, the truth constant
 /// lifted into a term.
 pub const PREALLOCATED_HANDLE_TERM_TRUE: Handle<tags::Term> = Handle {

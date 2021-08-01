@@ -25,8 +25,9 @@ use std::{
 
 use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
-    Error as WasmiError, Externals, FuncInstance, FuncRef, HostError, MemoryInstance,
-    ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap, TrapKind, ValueType,
+    Error as WasmiError, Externals, FuncInstance, FuncRef, HostError,
+    MemoryInstance, ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature,
+    Trap, TrapKind, ValueType,
 };
 
 use crate::kernel::{
@@ -48,10 +49,6 @@ mod semantic_types {
     pub type Pointer = u32;
     /// An arity of a type-former.
     pub type Arity = u64;
-    /// A Boolean value.
-    pub type Boolean = u32;
-    /// A kernel error code.
-    pub type ErrorCode = u32;
     /// A handle to a kernel object.
     pub type Handle = u64;
     /// A name of a variable (e.g. a lambda-abstracted variable, or
@@ -108,7 +105,8 @@ impl AbiType {
 /// The name of the `TypeFormer.Resolve` ABI call.
 pub const ABI_TYPE_FORMER_RESOLVE_NAME: &str = "__type_former_resolve";
 /// The name of the `TypeFormer.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &str = "__type_former_is_registered";
+pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &str =
+    "__type_former_is_registered";
 /// The name of the `TypeFormer.Register` ABI call.
 pub const ABI_TYPE_FORMER_REGISTER_NAME: &str = "__type_former_register";
 
@@ -126,14 +124,17 @@ pub const ABI_TYPE_IS_REGISTERED_NAME: &str = "__type_is_registered";
 /// The name of the `Type.Register.Variable` ABI call.
 pub const ABI_TYPE_REGISTER_VARIABLE_NAME: &str = "__type_register_variable";
 /// The name of the `Type.Register.Combination` ABI call.
-pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &str = "__type_register_combination_name";
+pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &str =
+    "__type_register_combination_name";
 /// The name of the `Type.Register.Function` ABI call.
-pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &str = "__type_register_function_name";
+pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &str =
+    "__type_register_function_name";
 
 /// The name of the `Type.Split.Variable` ABI call.
 pub const ABI_TYPE_SPLIT_VARIABLE_NAME: &str = "__type_split_variable_name";
 /// The name of the `Type.Split.Combination` ABI call.
-pub const ABI_TYPE_SPLIT_COMBINATION_NAME: &str = "__type_split_combination_name";
+pub const ABI_TYPE_SPLIT_COMBINATION_NAME: &str =
+    "__type_split_combination_name";
 /// The name of the `Type.Split.Function` ABI call.
 pub const ABI_TYPE_SPLIT_FUNCTION_NAME: &str = "__type_split_function_name";
 
@@ -200,17 +201,21 @@ pub const ABI_TERM_REGISTER_VARIABLE_NAME: &str = "__term_register_variable";
 /// The name of the `Term.Register.Constant` ABI call.
 pub const ABI_TERM_REGISTER_CONSTANT_NAME: &str = "__term_register_constant";
 /// The name of the `Term.Register.Application` ABI call.
-pub const ABI_TERM_REGISTER_APPLICATION_NAME: &str = "__term_register_application";
+pub const ABI_TERM_REGISTER_APPLICATION_NAME: &str =
+    "__term_register_application";
 /// The name of the `Term.Register.Lambda` ABI call.
 pub const ABI_TERM_REGISTER_LAMBDA_NAME: &str = "__term_register_lambda";
 /// The name of the `Term.Register.Negation` ABI call.
 pub const ABI_TERM_REGISTER_NEGATION_NAME: &str = "__term_register_negation";
 /// The name of the `Term.Register.Conjunction` ABI call.
-pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &str = "__term_register_conjunction";
+pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &str =
+    "__term_register_conjunction";
 /// The name of the `Term.Register.Disjunction` ABI call.
-pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &str = "__term_register_disjunction";
+pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &str =
+    "__term_register_disjunction";
 /// The name of the `Term.Register.Implication` ABI call.
-pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &str = "__term_register_implication";
+pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &str =
+    "__term_register_implication";
 /// The name of the `Term.Register.Equality` ABI call.
 pub const ABI_TERM_REGISTER_EQUALITY_NAME: &str = "__term_register_equality";
 /// The name of the `Term.Register.Forall` ABI call.
@@ -276,7 +281,8 @@ pub const ABI_TERM_TYPE_SUBSTITUTION_NAME: &str = "__term_type_substitution";
 /// The name of the `Term.Type.Infer` ABI call.
 pub const ABI_TERM_TYPE_INFER_NAME: &str = "__term_type_infer";
 /// The name of the `Term.Type.IsProposition` ABI call.
-pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &str = "__term_type_is_proposition";
+pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &str =
+    "__term_type_is_proposition";
 
 /// The host-call number of the `Term.Register.Variable` ABI call.
 pub const ABI_TERM_REGISTER_VARIABLE_INDEX: usize = 18;
@@ -366,23 +372,32 @@ pub const ABI_TERM_TYPE_IS_PROPOSITION_INDEX: usize = 56;
 /// The name of the `Theorem.IsRegistered` ABI call.
 pub const ABI_THEOREM_IS_REGISTERED_NAME: &str = "__theorem_is_registered";
 
+/// The name of the `Theorem.Register.Assumption` ABI call.
+pub const ABI_THEOREM_REGISTER_ASSUMPTION_NAME: &str =
+    "__theorem_register_assumption";
+
 /// The name of the `Theorem.Register.Reflexivity` ABI call.
-pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &str = "__theorem_register_reflexivity";
+pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &str =
+    "__theorem_register_reflexivity";
 /// The name of the `Theorem.Register.Symmetry` ABI call.
-pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &str = "__theorem_register_symmetry";
+pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &str =
+    "__theorem_register_symmetry";
 /// The name of the `Theorem.Register.Transitivity` ABI call.
-pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &str = "__theorem_register_transitivity";
+pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &str =
+    "__theorem_register_transitivity";
 /// The name of the `Theorem.Register.Beta` ABI call.
 pub const ABI_THEOREM_REGISTER_BETA_NAME: &str = "__theorem_register_beta";
 /// The name of the `Theorem.Register.Eta` ABI call.
 pub const ABI_THEOREM_REGISTER_ETA_NAME: &str = "__theorem_register_eta";
 /// The name of the `Theorem.Register.Application` ABI call.
-pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &str = "__theorem_register_application";
+pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &str =
+    "__theorem_register_application";
 /// The name of the `Theorem.Register.Lambda` ABI call.
 pub const ABI_THEOREM_REGISTER_LAMBDA_NAME: &str = "__theorem_register_lambda";
 
 /// The name of the `Theorem.Register.Substitution` ABI call.
-pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &str = "__theorem_register_substitution";
+pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &str =
+    "__theorem_register_substitution";
 /// The name of the `Theorem.Register.TypeSubstitution` ABI call.
 pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &str =
     "__theorem_register_type_substitution";
@@ -422,7 +437,8 @@ pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME: &str =
     "__theorem_register_implication_elimination";
 
 /// The name of the `Theorem.Register.IffIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &str = "__theorem_register_iff_elimination";
+pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &str =
+    "__theorem_register_iff_elimination";
 /// The name of the `Theorem.Register.IffLeftElimination` ABI call.
 pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME: &str =
     "__theorem_register_iff_left_elimination";
@@ -446,82 +462,91 @@ pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &str =
 /// The name of the `Theorem.Register.ExistsElimination` ABI call.
 pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &str =
     "__theorem_register_exists_elimination";
+/// The name of the `Theorem.Register.Weaken` ABI call.
+pub const ABI_THEOREM_REGISTER_WEAKEN_NAME: &str = "__theorem_register_weaken";
 
 /// The name of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &str = "__theorem_split_hypotheses";
+pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &str =
+    "__theorem_split_hypotheses";
 /// The name of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &str = "__theorem_split_conclusion";
+pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &str =
+    "__theorem_split_conclusion";
 
 /// The index of the `Theorem.IsRegistered` ABI call.
 pub const ABI_THEOREM_IS_REGISTERED_INDEX: usize = 57;
 
+/// The index of the `Theorem.Register.Assumption` ABI call.
+pub const ABI_THEOREM_REGISTER_ASSUMPTION_INDEX: usize = 58;
+
 /// The index of the `Theorem.Register.Reflexivity` ABI call.
-pub const ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX: usize = 58;
+pub const ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX: usize = 59;
 /// The index of the `Theorem.Register.Symmetry` ABI call.
-pub const ABI_THEOREM_REGISTER_SYMMETRY_INDEX: usize = 59;
+pub const ABI_THEOREM_REGISTER_SYMMETRY_INDEX: usize = 60;
 /// The index of the `Theorem.Register.Transitivity` ABI call.
-pub const ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX: usize = 60;
+pub const ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX: usize = 61;
 /// The index of the `Theorem.Register.Beta` ABI call.
-pub const ABI_THEOREM_REGISTER_BETA_INDEX: usize = 61;
+pub const ABI_THEOREM_REGISTER_BETA_INDEX: usize = 62;
 /// The index of the `Theorem.Register.Eta` ABI call.
-pub const ABI_THEOREM_REGISTER_ETA_INDEX: usize = 62;
+pub const ABI_THEOREM_REGISTER_ETA_INDEX: usize = 63;
 /// The index of the `Theorem.Register.Application` ABI call.
-pub const ABI_THEOREM_REGISTER_APPLICATION_INDEX: usize = 63;
+pub const ABI_THEOREM_REGISTER_APPLICATION_INDEX: usize = 64;
 /// The index of the `Theorem.Register.Lambda` ABI call.
-pub const ABI_THEOREM_REGISTER_LAMBDA_INDEX: usize = 64;
+pub const ABI_THEOREM_REGISTER_LAMBDA_INDEX: usize = 65;
 
 /// The index of the `Theorem.Register.Substitution` ABI call.
-pub const ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX: usize = 65;
+pub const ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX: usize = 66;
 /// The index of the `Theorem.Register.TypeSubstitution` ABI call.
-pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX: usize = 66;
+pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX: usize = 67;
 
 /// The index of the `Theorem.Register.TruthIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX: usize = 67;
+pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX: usize = 68;
 /// The index of the `Theorem.Register.FalsityElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX: usize = 68;
+pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX: usize = 69;
 
 /// The index of the `Theorem.Register.ConjunctionIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX: usize = 69;
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX: usize = 70;
 /// The index of the `Theorem.Register.ConjunctionLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX: usize = 70;
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX: usize = 71;
 /// The index of the `Theorem.Register.ConjunctionRightElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX: usize = 71;
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX: usize = 72;
 
 /// The index of the `Theorem.Register.DisjunctionElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX: usize = 72;
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX: usize = 73;
 /// The index of the `Theorem.Register.DisjunctionLeftIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX: usize = 73;
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX: usize = 74;
 /// The index of the `Theorem.Register.DisjunctionRightIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX: usize = 74;
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX: usize = 75;
 
 /// The index of the `Theorem.Register.ImplicationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX: usize = 75;
+pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX: usize = 76;
 /// The index of the `Theorem.Register.ImplicationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX: usize = 76;
+pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX: usize = 77;
 
 /// The index of the `Theorem.Register.IffIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX: usize = 77;
+pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX: usize = 78;
 /// The index of the `Theorem.Register.IffLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX: usize = 78;
+pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX: usize = 79;
 
 /// The index of the `Theorem.Register.NegationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX: usize = 79;
+pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX: usize = 80;
 /// The index of the `Theorem.Register.NegationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX: usize = 80;
+pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX: usize = 81;
 
 /// The index of the `Theorem.Register.ForallIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX: usize = 81;
+pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX: usize = 82;
 /// The index of the `Theorem.Register.ForallElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX: usize = 82;
+pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX: usize = 83;
 /// The index of the `Theorem.Register.ExistsIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX: usize = 83;
+pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX: usize = 84;
 /// The index of the `Theorem.Register.ExistsElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX: usize = 84;
+pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX: usize = 85;
+/// The index of the `Theorem.Register.Weaken` ABI call.
+pub const ABI_THEOREM_REGISTER_WEAKEN_INDEX: usize = 86;
 
 /// The index of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_INDEX: usize = 85;
+pub const ABI_THEOREM_SPLIT_HYPOTHESES_INDEX: usize = 87;
 /// The index of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_INDEX: usize = 86;
+pub const ABI_THEOREM_SPLIT_CONCLUSION_INDEX: usize = 88;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Errors and traps.
@@ -550,7 +575,9 @@ impl Display for RuntimeTrap {
         match self {
             RuntimeTrap::NoSuchFunction => write!(f, "NoSuchFunction"),
             RuntimeTrap::SignatureFailure => write!(f, "SignatureFailure"),
-            RuntimeTrap::MemoryNotRegistered => write!(f, "MemoryNotRegistered"),
+            RuntimeTrap::MemoryNotRegistered => {
+                write!(f, "MemoryNotRegistered")
+            }
             RuntimeTrap::MemoryReadFailed => write!(f, "MemoryReadFailed"),
             RuntimeTrap::MemoryWriteFailed => write!(f, "MemoryWriteFailed"),
         }
@@ -635,7 +662,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    fn write_bytes<T>(&self, address: T, bytes: &[u8]) -> Result<(), RuntimeTrap>
+    fn write_bytes<T>(
+        &self,
+        address: T,
+        bytes: &[u8],
+    ) -> Result<(), RuntimeTrap>
     where
         T: Into<semantic_types::Pointer>,
     {
@@ -650,69 +681,6 @@ impl WasmiRuntimeState {
             .map_err(|_e| RuntimeTrap::MemoryWriteFailed)?;
 
         Ok(())
-    }
-
-    /// Writes an `i32` value to the WASM guest's memory module at a specified
-    /// address.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
-    /// address, `address`, failed.
-    fn write_i32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-        U: Into<i32>,
-    {
-        let mut buffer = Vec::new();
-        LittleEndian::write_i32(&mut buffer, value.into());
-
-        self.write_bytes(address, &buffer)
-    }
-
-    /// Writes a `i64` value to the WASM guest's memory module at a specified
-    /// address.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
-    /// address, `address`, failed.
-    fn write_i64<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-        U: Into<i64>,
-    {
-        let mut buffer = Vec::new();
-        LittleEndian::write_i64(&mut buffer, value.into());
-
-        self.write_bytes(address, &buffer)
-    }
-
-    /// Writes a `u32` value to the WASM guest's memory module at a specified
-    /// address.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
-    /// address, `address`, failed.
-    fn write_u32<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-        U: Into<u32>,
-    {
-        let mut buffer = Vec::new();
-        LittleEndian::write_u32(&mut buffer, value.into());
-
-        self.write_bytes(address, &buffer)
     }
 
     /// Writes a `u64` value to the WASM guest's memory module at a specified
@@ -746,7 +714,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    fn write_u64s<T, U>(&self, address: T, values: Vec<U>) -> Result<(), RuntimeTrap>
+    fn write_u64s<T, U>(
+        &self,
+        address: T,
+        values: Vec<U>,
+    ) -> Result<(), RuntimeTrap>
     where
         T: Into<semantic_types::Pointer>,
         U: Into<u64> + Clone,
@@ -772,9 +744,9 @@ impl WasmiRuntimeState {
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
     fn write_bool<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
-        where
-            T: Into<semantic_types::Pointer>,
-            U: Into<bool>,
+    where
+        T: Into<semantic_types::Pointer>,
+        U: Into<bool>,
     {
         let mut buffer = Vec::new();
         LittleEndian::write_u32(&mut buffer, value.into() as u32);
@@ -793,7 +765,11 @@ impl WasmiRuntimeState {
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
     #[inline]
-    fn write_handle<T, U, V>(&self, address: T, handle: U) -> Result<(), RuntimeTrap>
+    fn write_handle<T, U, V>(
+        &self,
+        address: T,
+        handle: U,
+    ) -> Result<(), RuntimeTrap>
     where
         T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
@@ -812,7 +788,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
     /// address, `address`, failed.
-    fn write_handles<T, U, V>(&self, address: T, handles: Vec<U>) -> Result<(), RuntimeTrap>
+    fn write_handles<T, U, V>(
+        &self,
+        address: T,
+        handles: Vec<U>,
+    ) -> Result<(), RuntimeTrap>
     where
         T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
@@ -838,7 +818,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
     /// address, `address`, failed.
-    fn read_bytes<T, U>(&self, address: T, byte_count: U) -> Result<Vec<u8>, RuntimeTrap>
+    fn read_bytes<T, U>(
+        &self,
+        address: T,
+        byte_count: U,
+    ) -> Result<Vec<u8>, RuntimeTrap>
     where
         T: Into<semantic_types::Pointer>,
         U: Into<usize>,
@@ -854,25 +838,6 @@ impl WasmiRuntimeState {
             .map_err(|_e| RuntimeTrap::MemoryReadFailed)?;
 
         Ok(bytes)
-    }
-
-    /// Reads a `u32` value from the WASM guest's memory module at a specified
-    /// `address`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
-    /// address, `address`, failed.
-    #[inline]
-    fn read_u32<T>(&self, address: T) -> Result<u32, RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-    {
-        let buffer = self.read_bytes(address, size_of::<u32>())?;
-        Ok(LittleEndian::read_u32(&buffer))
     }
 
     /// Reads a `u64` value from the WASM guest's memory module at a specified
@@ -894,25 +859,6 @@ impl WasmiRuntimeState {
         Ok(LittleEndian::read_u64(&buffer))
     }
 
-    /// Reads a `bool` value from the WASM guest's memory module at a specified
-    /// `address`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
-    /// address, `address`, failed.
-    #[inline]
-    fn read_bool<T>(&self, address: T) -> Result<bool, RuntimeTrap>
-        where
-            T: Into<semantic_types::Pointer>,
-    {
-        let u = self.read_u32(address)?;
-        Ok(u == 0_u32)
-    }
-
     /// Reads multiple `u64` values, as described by `count`, from the WASM
     /// guest's memory module at a specified `address`.
     ///
@@ -923,7 +869,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
     /// address, `address`, failed.
-    fn read_u64s<T, U>(&self, address: T, count: U) -> Result<Vec<u64>, RuntimeTrap>
+    fn read_u64s<T, U>(
+        &self,
+        address: T,
+        count: U,
+    ) -> Result<Vec<u64>, RuntimeTrap>
     where
         T: Into<u32>,
         U: Into<usize>,
@@ -938,44 +888,6 @@ impl WasmiRuntimeState {
         }
 
         Ok(accum)
-    }
-
-    /// Reads an `i32` value from the WASM guest's memory module at a specified
-    /// `address`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
-    /// address, `address`, failed.
-    #[inline]
-    fn read_i32<T>(&self, address: T) -> Result<i32, RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-    {
-        let buffer = self.read_bytes(address, size_of::<i32>())?;
-        Ok(LittleEndian::read_i32(&buffer))
-    }
-
-    /// Reads an `i64` value from the WASM guest's memory module at a specified
-    /// `address`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
-    /// memory module has not been registered with the runtime state.
-    ///
-    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
-    /// address, `address`, failed.
-    #[inline]
-    fn read_i64<T>(&self, address: T) -> Result<i64, RuntimeTrap>
-    where
-        T: Into<semantic_types::Pointer>,
-    {
-        let buffer = self.read_bytes(address, size_of::<i32>())?;
-        Ok(LittleEndian::read_i64(&buffer))
     }
 
     /// Reads a `Handle` from the WASM guest's memory module at a specified
@@ -1007,7 +919,11 @@ impl WasmiRuntimeState {
     ///
     /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
     /// address, `address`, failed.
-    fn read_handles<T, U, V>(&self, address: U, count: V) -> Result<Vec<Handle<T>>, RuntimeTrap>
+    fn read_handles<T, U, V>(
+        &self,
+        address: U,
+        count: V,
+    ) -> Result<Vec<Handle<T>>, RuntimeTrap>
     where
         T: tags::IsTag,
         U: Into<u32>,
@@ -1123,7 +1039,10 @@ impl WasmiRuntimeState {
     fn type_split_combination<T>(
         &self,
         handle: T,
-    ) -> Result<(Handle<tags::TypeFormer>, Vec<Handle<tags::Type>>), KernelErrorCode>
+    ) -> Result<
+        (Handle<tags::TypeFormer>, Vec<Handle<tags::Type>>),
+        KernelErrorCode,
+    >
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -1159,7 +1078,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `type_test_combination` function.
     #[inline]
-    fn type_test_combination<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn type_test_combination<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Type>>,
     {
@@ -1204,7 +1126,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `constant_register` function.
     #[inline]
-    fn constant_register<T>(&self, handle: T) -> Result<Handle<tags::Constant>, KernelErrorCode>
+    fn constant_register<T>(
+        &self,
+        handle: T,
+    ) -> Result<Handle<tags::Constant>, KernelErrorCode>
     where
         T: Into<Handle<tags::Type>> + Clone,
     {
@@ -1213,7 +1138,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `constant_resolve` function.
     #[inline]
-    fn constant_resolve<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
+    fn constant_resolve<T>(
+        &self,
+        handle: T,
+    ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Constant>>,
     {
@@ -1299,7 +1227,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_register_negation` function.
     #[inline]
-    fn term_register_negation<T>(&self, body: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    fn term_register_negation<T>(
+        &self,
+        body: T,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
     {
@@ -1466,7 +1397,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_split_negation` function.
     #[inline]
-    fn term_split_negation<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    fn term_split_negation<T>(
+        &self,
+        handle: T,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1586,7 +1520,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_test_application` function.
     #[inline]
-    fn term_test_application<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_application<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1613,7 +1550,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_test_conjunction` function.
     #[inline]
-    fn term_test_conjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_conjunction<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1622,7 +1562,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_test_disjunction` function.
     #[inline]
-    fn term_test_disjunction<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_disjunction<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1631,7 +1574,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_test_implication` function.
     #[inline]
-    fn term_test_implication<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_test_implication<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1684,7 +1630,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_type_variables` function.
     #[inline]
-    fn term_type_variables<T>(&self, handle: T) -> Result<Vec<Name>, KernelErrorCode>
+    fn term_type_variables<T>(
+        &self,
+        handle: T,
+    ) -> Result<Vec<Name>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1728,7 +1677,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_type_infer` function.
     #[inline]
-    fn term_type_infer<T>(&self, handle: T) -> Result<Handle<tags::Type>, KernelErrorCode>
+    fn term_type_infer<T>(
+        &self,
+        handle: T,
+    ) -> Result<Handle<tags::Type>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1737,7 +1689,10 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_type_is_proposition` function.
     #[inline]
-    fn term_type_is_proposition<T>(&self, handle: T) -> Result<bool, KernelErrorCode>
+    fn term_type_is_proposition<T>(
+        &self,
+        handle: T,
+    ) -> Result<bool, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Term>>,
     {
@@ -1748,25 +1703,313 @@ impl WasmiRuntimeState {
     #[inline]
     fn theorem_is_registered<T>(&self, handle: T) -> bool
     where
-        T: Borrow<Handle<tags::Theorem>>
+        T: Borrow<Handle<tags::Theorem>>,
     {
         self.kernel.borrow().theorem_is_registered(handle)
     }
 
+    /// Lifting of the `theorem_register_assumption` function.
+    #[inline]
+    fn theorem_register_assumption<T, U>(
+        &self,
+        hyps_handles: Vec<T>,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_assumption(hyps_handles, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_reflexivity` function.
+    #[inline]
+    fn theorem_register_reflexivity<T, U>(
+        &self,
+        hyps_handles: Vec<T>,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_reflexivity(hyps_handles, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_symmetry` function.
+    #[inline]
+    fn theorem_register_symmetry<T>(
+        &self,
+        theorem_handle: T,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_symmetry(theorem_handle)
+    }
+
+    /// Lifting of the `theorem_register_transitivity` function.
+    #[inline]
+    fn theorem_register_transitivity<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_transitivity(left_handle, right_handle)
+    }
+
+    /// Lifting of the `theorem_register_beta` function.
+    #[inline]
+    fn theorem_register_beta<T, U>(
+        &self,
+        hyps_handles: Vec<T>,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_beta(hyps_handles, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_eta` function.
+    #[inline]
+    fn theorem_register_eta<T, U>(
+        &self,
+        hyps_handles: Vec<T>,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_eta(hyps_handles, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_substitution` function.
+    #[inline]
+    fn theorem_register_substitution<T, U>(
+        &self,
+        theorem_handle: T,
+        subst: Vec<(Name, U)>,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_substitution(theorem_handle, subst)
+    }
+
+    /// Lifting of the `theorem_register_type_substitution` function.
+    #[inline]
+    fn theorem_register_type_substitution<T, U>(
+        &self,
+        theorem_handle: T,
+        subst: Vec<(Name, U)>,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Type>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_type_substitution(theorem_handle, subst)
+    }
+
+    /// Lifting of the `theorem_register_application` function.
+    #[inline]
+    fn theorem_register_application<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_application(left_handle, right_handle)
+    }
+
+    /// Lifting of the `theorem_register_lambda` function.
+    #[inline]
+    fn theorem_register_lambda<T, U, V>(
+        &self,
+        name: T,
+        type_handle: U,
+        body_handle: V,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Name> + Clone,
+        U: Into<Handle<tags::Type>> + Clone,
+        V: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel.borrow_mut().theorem_register_lambda(
+            name,
+            type_handle,
+            body_handle,
+        )
+    }
+
+    /// Lifting of the `theorem_register_truth_introduction` function.
+    #[inline]
+    fn theorem_register_truth_introduction<T>(
+        &self,
+        hyps_handles: Vec<T>,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_truth_introduction(hyps_handles)
+    }
+
+    /// Lifting of the `theorem_register_falsity_elimination` function.
+    #[inline]
+    fn theorem_register_falsity_elimination<T, U>(
+        &self,
+        theorem_handle: T,
+        conclusion_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_falsity_elimination(
+                theorem_handle,
+                conclusion_handle,
+            )
+    }
+
+    /// Lifting of the `theorem_register_conjunction_introduction` function.
+    #[inline]
+    fn theorem_register_conjunction_introduction<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_conjunction_introduction(
+                left_handle,
+                right_handle,
+            )
+    }
+
+    /// Lifting of the `theorem_register_conjunction_left_elimination` function.
+    #[inline]
+    fn theorem_register_conjunction_left_elimination<T>(
+        &self,
+        theorem_handle: T,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_conjunction_left_elimination(theorem_handle)
+    }
+
+    /// Lifting of the `theorem_register_conjunction_right_elimination` function.
+    #[inline]
+    fn theorem_register_conjunction_right_elimination<T>(
+        &self,
+        theorem_handle: T,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_conjunction_right_elimination(theorem_handle)
+    }
+
+    /// Lifting of the `theorem_register_disjunction_left_introduction`
+    /// function.
+    #[inline]
+    fn theorem_register_disjunction_left_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_disjunction_left_introduction(
+                theorem_handle,
+                term_handle,
+            )
+    }
+
+    /// Lifting of the `theorem_register_disjunction_right_introduction`
+    /// function.
+    #[inline]
+    fn theorem_register_disjunction_right_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_disjunction_right_introduction(
+                theorem_handle,
+                term_handle,
+            )
+    }
+
     /// Lifting of the `theorem_split_conclusion` function.
     #[inline]
-    fn theorem_split_conclusion<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    fn theorem_split_conclusion<T>(
+        &self,
+        handle: T,
+    ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
-        T: Borrow<Handle<tags::Theorem>>
+        T: Borrow<Handle<tags::Theorem>>,
     {
         self.kernel.borrow().theorem_split_conclusion(handle)
     }
 
     /// Lifting of the `theorem_split_hypotheses` function.
     #[inline]
-    fn theorem_split_hypotheses<T>(&self, handle: T) -> Result<Vec<Handle<tags::Term>>, KernelErrorCode>
-        where
-            T: Borrow<Handle<tags::Theorem>>
+    fn theorem_split_hypotheses<T>(
+        &self,
+        handle: T,
+    ) -> Result<Vec<Handle<tags::Term>>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
     {
         self.kernel.borrow().theorem_split_hypotheses(handle)
     }
@@ -1779,7 +2022,11 @@ impl WasmiRuntimeState {
 /// Returns `true` iff the semantic function signature type described by
 /// `params` and `ret` is implemented by the WASM type described by
 /// `signature`.
-fn check_signature(signature: &Signature, params: &[AbiType], ret: &Option<AbiType>) -> bool {
+fn check_signature(
+    signature: &Signature,
+    params: &[AbiType],
+    ret: &Option<AbiType>,
+) -> bool {
     let params = signature
         .params()
         .iter()
@@ -2421,6 +2668,16 @@ fn check_theorem_is_registered_signature(signature: &Signature) -> bool {
     check_signature(signature, &[AbiType::Handle], &Some(AbiType::ErrorCode))
 }
 
+/// Checks the signature of the `Theorem.Register.Assumption` ABI function.
+#[inline]
+fn check_theorem_register_assumption_signature(signature: &Signature) -> bool {
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Pointer],
+        &Some(AbiType::ErrorCode),
+    )
+}
+
 /// Checks the signature of the `Theorem.Register.Reflexivity` ABI function.
 #[inline]
 fn check_theorem_register_reflexivity_signature(signature: &Signature) -> bool {
@@ -2448,7 +2705,9 @@ fn check_theorem_register_symmetry_signature(signature: &Signature) -> bool {
 
 /// Checks the signature of the `Theorem.Register.Transitivity` ABI function.
 #[inline]
-fn check_theorem_register_transitivity_signature(signature: &Signature) -> bool {
+fn check_theorem_register_transitivity_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2513,7 +2772,9 @@ fn check_theorem_register_eta_signature(signature: &Signature) -> bool {
 
 /// Checks the signature of the `Theorem.Register.TruthIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_truth_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_truth_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Pointer, AbiType::Size, AbiType::Pointer],
@@ -2523,7 +2784,9 @@ fn check_theorem_register_truth_introduction_signature(signature: &Signature) ->
 
 /// Checks the signature of the `Theorem.Register.FalsityElimination` ABI function.
 #[inline]
-fn check_theorem_register_falsity_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_falsity_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Pointer],
@@ -2533,7 +2796,9 @@ fn check_theorem_register_falsity_elimination_signature(signature: &Signature) -
 
 /// Checks the signature of the `Theorem.Register.ConjunctionIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_conjunction_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_conjunction_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2543,7 +2808,9 @@ fn check_theorem_register_conjunction_introduction_signature(signature: &Signatu
 
 /// Checks the signature of the `Theorem.Register.ConjunctionLeftElimination` ABI function.
 #[inline]
-fn check_theorem_register_conjunction_left_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_conjunction_left_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Pointer],
@@ -2553,7 +2820,9 @@ fn check_theorem_register_conjunction_left_elimination_signature(signature: &Sig
 
 /// Checks the signature of the `Theorem.Register.ConjunctionRightElimination` ABI function.
 #[inline]
-fn check_theorem_register_conjunction_right_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_conjunction_right_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Pointer],
@@ -2563,7 +2832,9 @@ fn check_theorem_register_conjunction_right_elimination_signature(signature: &Si
 
 /// Checks the signature of the `Theorem.Register.DisjunctionElimination` ABI function.
 #[inline]
-fn check_theorem_register_disjunction_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_disjunction_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[
@@ -2579,7 +2850,9 @@ fn check_theorem_register_disjunction_elimination_signature(signature: &Signatur
 
 /// Checks the signature of the `Theorem.Register.DisjunctionLeftIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_disjunction_left_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_disjunction_left_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2589,7 +2862,9 @@ fn check_theorem_register_disjunction_left_introduction_signature(signature: &Si
 
 /// Checks the signature of the `Theorem.Register.DisjunctionRightIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_disjunction_right_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_disjunction_right_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2599,7 +2874,9 @@ fn check_theorem_register_disjunction_right_introduction_signature(signature: &S
 
 /// Checks the signature of the `Theorem.Register.ImplicationIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_implication_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_implication_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2609,7 +2886,9 @@ fn check_theorem_register_implication_introduction_signature(signature: &Signatu
 
 /// Checks the signature of the `Theorem.Register.ImplicationElimination` ABI function.
 #[inline]
-fn check_theorem_register_implication_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_implication_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2619,7 +2898,9 @@ fn check_theorem_register_implication_elimination_signature(signature: &Signatur
 
 /// Checks the signature of the `Theorem.Register.IffIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_iff_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_iff_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2629,7 +2910,9 @@ fn check_theorem_register_iff_introduction_signature(signature: &Signature) -> b
 
 /// Checks the signature of the `Theorem.Register.IffLeftElimination` ABI function.
 #[inline]
-fn check_theorem_register_iff_left_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_iff_left_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2639,7 +2922,9 @@ fn check_theorem_register_iff_left_elimination_signature(signature: &Signature) 
 
 /// Checks the signature of the `Theorem.Register.NegationIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_negation_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_negation_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2649,7 +2934,9 @@ fn check_theorem_register_negation_introduction_signature(signature: &Signature)
 
 /// Checks the signature of the `Theorem.Register.NegationElimination` ABI function.
 #[inline]
-fn check_theorem_register_negation_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_negation_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2659,7 +2946,9 @@ fn check_theorem_register_negation_elimination_signature(signature: &Signature) 
 
 /// Checks the signature of the `Theorem.Register.ForallIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_forall_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_forall_introduction_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[
@@ -2674,7 +2963,9 @@ fn check_theorem_register_forall_introduction_signature(signature: &Signature) -
 
 /// Checks the signature of the `Theorem.Register.ForallElimination` ABI function.
 #[inline]
-fn check_theorem_register_forall_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_forall_elimination_signature(
+    signature: &Signature,
+) -> bool {
     check_signature(
         signature,
         &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
@@ -2684,14 +2975,28 @@ fn check_theorem_register_forall_elimination_signature(signature: &Signature) ->
 
 /// Checks the signature of the `Theorem.Register.ExistsIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_exists_introduction_signature(_signature: &Signature) -> bool {
+fn check_theorem_register_exists_introduction_signature(
+    _signature: &Signature,
+) -> bool {
     unimplemented!()
 }
 
 /// Checks the signature of the `Theorem.Register.ExistsElimination` ABI function.
 #[inline]
-fn check_theorem_register_exists_elimination_signature(_signature: &Signature) -> bool {
+fn check_theorem_register_exists_elimination_signature(
+    _signature: &Signature,
+) -> bool {
     unimplemented!()
+}
+
+/// Checks the signature of the `Theorem.Register.Weaken` ABI function.
+#[inline]
+fn check_theorem_register_weaken_signature(signature: &Signature) -> bool {
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Pointer],
+        &Some(AbiType::ErrorCode),
+    )
 }
 
 /// Checks the signature of the `Theorem.Split.Conclusion` ABI function.
@@ -2731,7 +3036,9 @@ impl Externals for WasmiRuntimeState {
                 let handle = args.nth::<semantic_types::Handle>(0);
                 let result_addr = args.nth::<semantic_types::Pointer>(1);
 
-                let arity = match self.type_former_resolve(&Handle::from(handle as usize)) {
+                let arity = match self
+                    .type_former_resolve(&Handle::from(handle as usize))
+                {
                     None => {
                         return Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::NoSuchTypeFormerRegistered.into(),
@@ -2746,7 +3053,8 @@ impl Externals for WasmiRuntimeState {
             }
             ABI_TYPE_FORMER_IS_REGISTERED_INDEX => {
                 let handle = args.nth::<semantic_types::Handle>(0);
-                let result = self.type_former_is_registered(&Handle::from(handle as usize));
+                let result = self
+                    .type_former_is_registered(&Handle::from(handle as usize));
 
                 Ok(Some(RuntimeValue::I32(result.into())))
             }
@@ -2763,28 +3071,34 @@ impl Externals for WasmiRuntimeState {
                 Ok(Some(RuntimeValue::I32(*result as i32)))
             }
             ABI_TYPE_REGISTER_COMBINATION_INDEX => {
-                let former_handle: Handle<tags::TypeFormer> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let former_handle: Handle<tags::TypeFormer> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let argument_base = args.nth::<semantic_types::Pointer>(1);
                 let argument_length = args.nth::<semantic_types::Size>(2);
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                let arguments = self.read_handles(argument_base, argument_length as usize)?;
+                let arguments =
+                    self.read_handles(argument_base, argument_length as usize)?;
 
                 match self.type_register_combination(former_handle, arguments) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_REGISTER_FUNCTION_INDEX => {
-                let domain_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let range_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let domain_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let range_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.type_register_function(domain_handle, range_handle) {
@@ -2792,20 +3106,24 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_IS_REGISTERED_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 Ok(Some(RuntimeValue::I32(
                     self.type_is_registered(type_handle).into(),
                 )))
             }
             ABI_TYPE_SPLIT_VARIABLE_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_split_variable(type_handle) {
@@ -2813,47 +3131,73 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_u64(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_SPLIT_COMBINATION_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let former_result_ptr = args.nth::<semantic_types::Pointer>(1);
-                let arguments_result_ptr = args.nth::<semantic_types::Pointer>(2);
-                let arguments_length_result_ptr = args.nth::<semantic_types::Pointer>(3);
+                let arguments_result_ptr =
+                    args.nth::<semantic_types::Pointer>(2);
+                let arguments_length_result_ptr =
+                    args.nth::<semantic_types::Pointer>(3);
 
                 match self.type_split_combination(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((former_handle, arguments)) => {
-                        self.write_handle(former_result_ptr, former_handle.clone())?;
-                        self.write_handles(arguments_result_ptr, arguments.clone())?;
-                        self.write_u64(arguments_length_result_ptr, arguments.len() as u64)?;
+                        self.write_handle(
+                            former_result_ptr,
+                            former_handle.clone(),
+                        )?;
+                        self.write_handles(
+                            arguments_result_ptr,
+                            arguments.clone(),
+                        )?;
+                        self.write_u64(
+                            arguments_length_result_ptr,
+                            arguments.len() as u64,
+                        )?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_SPLIT_FUNCTION_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Pointer>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Pointer>(0) as usize,
+                );
                 let domain_result_ptr = args.nth::<semantic_types::Pointer>(1);
                 let range_result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.type_split_function(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((domain_handle, range_handle)) => {
-                        self.write_handle(domain_result_ptr, domain_handle.clone())?;
-                        self.write_handle(range_result_ptr, range_handle.clone())?;
+                        self.write_handle(
+                            domain_result_ptr,
+                            domain_handle.clone(),
+                        )?;
+                        self.write_handle(
+                            range_result_ptr,
+                            range_handle.clone(),
+                        )?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_TEST_VARIABLE_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_variable(type_handle) {
@@ -2861,13 +3205,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_TEST_COMBINATION_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_combination(type_handle) {
@@ -2875,13 +3222,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_TEST_FUNCTION_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.type_test_function(type_handle) {
@@ -2889,14 +3239,18 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_VARIABLES_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let variable_result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let variable_result_ptr =
+                    args.nth::<semantic_types::Pointer>(1);
                 let variable_len_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.type_variables(type_handle) {
@@ -2905,13 +3259,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_u64s(variable_result_ptr, result.clone())?;
                         self.write_u64(variable_len_ptr, result.len() as u64)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TYPE_SUBSTITUTE_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let dom_ptr = args.nth::<semantic_types::Pointer>(1);
                 let dom_len = args.nth::<semantic_types::Size>(2);
                 let rng_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -2932,13 +3289,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_CONSTANT_REGISTER_INDEX => {
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.constant_register(type_handle) {
@@ -2946,21 +3306,25 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_CONSTANT_IS_REGISTERED_INDEX => {
-                let constant_handle: Handle<tags::Constant> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let constant_handle: Handle<tags::Constant> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
 
                 Ok(Some(RuntimeValue::I32(
                     self.constant_is_registered(constant_handle).into(),
                 )))
             }
             ABI_CONSTANT_RESOLVE_INDEX => {
-                let constant_handle: Handle<tags::Constant> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let constant_handle: Handle<tags::Constant> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.constant_resolve(constant_handle) {
@@ -2968,14 +3332,17 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_VARIABLE_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.term_register_variable(name, type_handle) {
@@ -2983,13 +3350,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_CONSTANT_INDEX => {
-                let constant_handle: Handle<tags::Constant> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let constant_handle: Handle<tags::Constant> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let dom_ptr = args.nth::<semantic_types::Pointer>(1);
                 let dom_len = args.nth::<semantic_types::Size>(2);
                 let rng_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -3010,46 +3380,59 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_APPLICATION_INDEX => {
-                let left_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let right_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let left_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                match self.term_register_application(left_handle, right_handle) {
+                match self.term_register_application(left_handle, right_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_LAMBDA_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
-                let body_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let body_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.term_register_lambda(name, type_handle, body_handle) {
+                match self.term_register_lambda(name, type_handle, body_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_NEGATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_register_negation(term_handle) {
@@ -3057,63 +3440,82 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_CONJUNCTION_INDEX => {
-                let left_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let right_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let left_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                match self.term_register_conjunction(left_handle, right_handle) {
+                match self.term_register_conjunction(left_handle, right_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_DISJUNCTION_INDEX => {
-                let left_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let right_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let left_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                match self.term_register_disjunction(left_handle, right_handle) {
+                match self.term_register_disjunction(left_handle, right_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_IMPLICATION_INDEX => {
-                let left_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let right_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let left_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                match self.term_register_implication(left_handle, right_handle) {
+                match self.term_register_implication(left_handle, right_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_EQUALITY_INDEX => {
-                let left_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let right_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
+                let left_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
                 match self.term_register_equality(left_handle, right_handle) {
@@ -3121,47 +3523,60 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_FORALL_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
-                let body_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let body_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.term_register_forall(name, type_handle, body_handle) {
+                match self.term_register_forall(name, type_handle, body_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_REGISTER_EXISTS_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
-                let type_handle: Handle<tags::Type> =
-                    Handle::from(args.nth::<semantic_types::Handle>(1) as usize);
-                let body_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(2) as usize);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let body_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.term_register_exists(name, type_handle, body_handle) {
+                match self.term_register_exists(name, type_handle, body_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_SPLIT_VARIABLE_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3171,13 +3586,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_u64(result_name_ptr, name)?;
                         self.write_handle(result_type_ptr, tau)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_CONSTANT_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_const_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3187,13 +3605,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_const_ptr, constant)?;
                         self.write_handle(result_type_ptr, tau)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_APPLICATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3203,13 +3624,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_left_ptr, left)?;
                         self.write_handle(result_right_ptr, right)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_LAMBDA_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
                 let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -3221,13 +3645,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_type_ptr, tau)?;
                         self.write_handle(result_body_ptr, body)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_NEGATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_body_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_split_negation(term_handle) {
@@ -3235,13 +3662,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(body) => {
                         self.write_handle(result_body_ptr, body)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
             }
             ABI_TERM_SPLIT_CONJUNCTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3251,13 +3681,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_left_ptr, left)?;
                         self.write_handle(result_right_ptr, right)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_DISJUNCTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3267,13 +3700,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_left_ptr, left)?;
                         self.write_handle(result_right_ptr, right)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_IMPLICATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3283,13 +3719,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_left_ptr, left)?;
                         self.write_handle(result_right_ptr, right)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_EQUALITY_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3299,13 +3738,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_left_ptr, left)?;
                         self.write_handle(result_right_ptr, right)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_FORALL_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
                 let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -3317,13 +3759,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_type_ptr, tau)?;
                         self.write_handle(result_body_ptr, body)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SPLIT_EXISTS_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
                 let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -3335,13 +3780,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_handle(result_type_ptr, tau)?;
                         self.write_handle(result_body_ptr, body)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_VARIABLE_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_variable(term_handle) {
@@ -3349,13 +3797,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_CONSTANT_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_constant(term_handle) {
@@ -3363,13 +3814,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_APPLICATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_application(term_handle) {
@@ -3377,13 +3831,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_LAMBDA_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_lambda(term_handle) {
@@ -3391,13 +3848,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_NEGATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_negation(term_handle) {
@@ -3405,13 +3865,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_CONJUNCTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_conjunction(term_handle) {
@@ -3419,13 +3882,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_DISJUNCTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_disjunction(term_handle) {
@@ -3433,13 +3899,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_IMPLICATION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_implication(term_handle) {
@@ -3447,13 +3916,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_EQUALITY_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_equality(term_handle) {
@@ -3461,13 +3933,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_FORALL_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_forall(term_handle) {
@@ -3475,13 +3950,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TEST_EXISTS_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_test_exists(term_handle) {
@@ -3489,35 +3967,54 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_FREE_VARIABLES_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
-                let result_name_base_ptr = args.nth::<semantic_types::Pointer>(1);
-                let result_name_len_ptr = args.nth::<semantic_types::Pointer>(2);
-                let result_type_base_ptr = args.nth::<semantic_types::Pointer>(1);
-                let result_type_len_ptr = args.nth::<semantic_types::Pointer>(2);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_name_base_ptr =
+                    args.nth::<semantic_types::Pointer>(1);
+                let result_name_len_ptr =
+                    args.nth::<semantic_types::Pointer>(2);
+                let result_type_base_ptr =
+                    args.nth::<semantic_types::Pointer>(1);
+                let result_type_len_ptr =
+                    args.nth::<semantic_types::Pointer>(2);
 
                 match self.term_free_variables(term_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
-                        let (names, types): (Vec<Name>, Vec<Handle<tags::Type>>) = result.iter().cloned().unzip();
+                        let (names, types): (
+                            Vec<Name>,
+                            Vec<Handle<tags::Type>>,
+                        ) = result.iter().cloned().unzip();
 
-                        self.write_u64(result_name_len_ptr, names.len() as u64)?;
+                        self.write_u64(
+                            result_name_len_ptr,
+                            names.len() as u64,
+                        )?;
                         self.write_u64s(result_name_base_ptr, names)?;
-                        self.write_u64(result_type_len_ptr, types.len() as u64)?;
+                        self.write_u64(
+                            result_type_len_ptr,
+                            types.len() as u64,
+                        )?;
                         self.write_handles(result_type_base_ptr, types)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_SUBSTITUTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let dom_ptr = args.nth::<semantic_types::Pointer>(1);
                 let dom_len = args.nth::<semantic_types::Size>(2);
                 let rng_ptr = args.nth::<semantic_types::Pointer>(3);
@@ -3538,13 +4035,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TYPE_VARIABLES_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_base_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_len_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3554,13 +4054,16 @@ impl Externals for WasmiRuntimeState {
                         self.write_u64(result_len_ptr, result.len() as u64)?;
                         self.write_u64s(result_base_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TYPE_SUBSTITUTION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
 
                 let dom_ptr = args.nth::<semantic_types::Pointer>(1);
                 let dom_len = args.nth::<semantic_types::Size>(2);
@@ -3582,13 +4085,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TYPE_INFER_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_type_infer(term_handle) {
@@ -3596,13 +4102,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_TERM_TYPE_IS_PROPOSITION_INDEX => {
-                let term_handle: Handle<tags::Term> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.term_type_is_proposition(term_handle) {
@@ -3610,20 +4119,24 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_THEOREM_IS_REGISTERED_INDEX => {
-                let theorem_handle: Handle<tags::Theorem> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result = self.theorem_is_registered(theorem_handle);
 
                 Ok(Some(RuntimeValue::I32(result.into())))
-            },
+            }
             ABI_THEOREM_SPLIT_CONCLUSION_INDEX => {
-                let theorem_handle: Handle<tags::Theorem> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_ptr = args.nth::<semantic_types::Pointer>(1);
 
                 match self.theorem_split_conclusion(theorem_handle) {
@@ -3631,13 +4144,16 @@ impl Externals for WasmiRuntimeState {
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
             ABI_THEOREM_SPLIT_HYPOTHESES_INDEX => {
-                let theorem_handle: Handle<tags::Theorem> =
-                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
                 let result_base_ptr = args.nth::<semantic_types::Pointer>(1);
                 let result_len_ptr = args.nth::<semantic_types::Pointer>(2);
 
@@ -3647,10 +4163,59 @@ impl Externals for WasmiRuntimeState {
                         self.write_u64(result_len_ptr, result.len() as u64)?;
                         self.write_handles(result_base_ptr, result)?;
 
-                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
                     }
                 }
-            },
+            }
+            ABI_THEOREM_REGISTER_ASSUMPTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_SYMMETRY_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_BETA_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_ETA_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_APPLICATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_LAMBDA_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_WEAKEN_INDEX => unimplemented!(),
             _otherwise => Err(host_trap(RuntimeTrap::NoSuchFunction)),
         }
     }
@@ -3660,7 +4225,11 @@ impl Externals for WasmiRuntimeState {
 /// the function's signature is as expected, otherwise produces a runtime error
 /// that is reported back to the WASM program.
 impl ModuleImportResolver for WasmiRuntimeState {
-    fn resolve_func(&self, field_name: &str, signature: &Signature) -> Result<FuncRef, WasmiError> {
+    fn resolve_func(
+        &self,
+        field_name: &str,
+        signature: &Signature,
+    ) -> Result<FuncRef, WasmiError> {
         match field_name {
             ABI_TYPE_FORMER_RESOLVE_NAME => {
                 if !check_type_former_resolve_signature(signature) {
@@ -4242,6 +4811,16 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_THEOREM_IS_REGISTERED_INDEX,
                 ))
             }
+            ABI_THEOREM_REGISTER_ASSUMPTION_NAME => {
+                if !check_theorem_register_assumption_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_ASSUMPTION_INDEX,
+                ))
+            }
             ABI_THEOREM_REGISTER_REFLEXIVITY_NAME => {
                 if !check_theorem_register_reflexivity_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
@@ -4313,7 +4892,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME => {
-                if !check_theorem_register_truth_introduction_signature(signature) {
+                if !check_theorem_register_truth_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4323,7 +4904,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME => {
-                if !check_theorem_register_falsity_elimination_signature(signature) {
+                if !check_theorem_register_falsity_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4333,7 +4916,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME => {
-                if !check_theorem_register_conjunction_introduction_signature(signature) {
+                if !check_theorem_register_conjunction_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4363,7 +4948,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME => {
-                if !check_theorem_register_disjunction_elimination_signature(signature) {
+                if !check_theorem_register_disjunction_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4393,7 +4980,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME => {
-                if !check_theorem_register_implication_introduction_signature(signature) {
+                if !check_theorem_register_implication_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4403,7 +4992,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME => {
-                if !check_theorem_register_implication_elimination_signature(signature) {
+                if !check_theorem_register_implication_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4413,7 +5004,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME => {
-                if !check_theorem_register_iff_introduction_signature(signature) {
+                if !check_theorem_register_iff_introduction_signature(signature)
+                {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4423,7 +5015,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME => {
-                if !check_theorem_register_iff_left_elimination_signature(signature) {
+                if !check_theorem_register_iff_left_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4433,7 +5027,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME => {
-                if !check_theorem_register_negation_introduction_signature(signature) {
+                if !check_theorem_register_negation_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4443,7 +5039,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME => {
-                if !check_theorem_register_negation_elimination_signature(signature) {
+                if !check_theorem_register_negation_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4453,7 +5051,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME => {
-                if !check_theorem_register_forall_introduction_signature(signature) {
+                if !check_theorem_register_forall_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4463,7 +5063,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME => {
-                if !check_theorem_register_forall_elimination_signature(signature) {
+                if !check_theorem_register_forall_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4473,7 +5075,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME => {
-                if !check_theorem_register_exists_elimination_signature(signature) {
+                if !check_theorem_register_exists_elimination_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
@@ -4483,13 +5087,25 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME => {
-                if !check_theorem_register_exists_introduction_signature(signature) {
+                if !check_theorem_register_exists_introduction_signature(
+                    signature,
+                ) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
                     ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX,
+                ))
+            }
+            ABI_THEOREM_REGISTER_WEAKEN_NAME => {
+                if !check_theorem_register_weaken_signature(signature) {
+                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_WEAKEN_INDEX,
                 ))
             }
             ABI_THEOREM_SPLIT_CONCLUSION_NAME => {
