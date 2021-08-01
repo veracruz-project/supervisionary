@@ -106,11 +106,11 @@ impl AbiType {
 /* Type-former related calls. */
 
 /// The name of the `TypeFormer.Resolve` ABI call.
-pub const ABI_TYPE_FORMER_RESOLVE_NAME: &'static str = "__type_former_resolve";
+pub const ABI_TYPE_FORMER_RESOLVE_NAME: &str = "__type_former_resolve";
 /// The name of the `TypeFormer.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &'static str = "__type_former_is_registered";
+pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &str = "__type_former_is_registered";
 /// The name of the `TypeFormer.Register` ABI call.
-pub const ABI_TYPE_FORMER_REGISTER_NAME: &'static str = "__type_former_register";
+pub const ABI_TYPE_FORMER_REGISTER_NAME: &str = "__type_former_register";
 
 /// The host-call number of the `TypeFormer.Resolve` ABI call.
 pub const ABI_TYPE_FORMER_RESOLVE_INDEX: usize = 0;
@@ -122,32 +122,32 @@ pub const ABI_TYPE_FORMER_REGISTER_INDEX: usize = 2;
 /* Type-related calls. */
 
 /// The name of the `Type.IsRegistered` ABI call.
-pub const ABI_TYPE_IS_REGISTERED_NAME: &'static str = "__type_is_registered";
+pub const ABI_TYPE_IS_REGISTERED_NAME: &str = "__type_is_registered";
 /// The name of the `Type.Register.Variable` ABI call.
-pub const ABI_TYPE_REGISTER_VARIABLE_NAME: &'static str = "__type_register_variable";
+pub const ABI_TYPE_REGISTER_VARIABLE_NAME: &str = "__type_register_variable";
 /// The name of the `Type.Register.Combination` ABI call.
-pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &'static str = "__type_register_combination_name";
+pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &str = "__type_register_combination_name";
 /// The name of the `Type.Register.Function` ABI call.
-pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &'static str = "__type_register_function_name";
+pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &str = "__type_register_function_name";
 
 /// The name of the `Type.Split.Variable` ABI call.
-pub const ABI_TYPE_SPLIT_VARIABLE_NAME: &'static str = "__type_split_variable_name";
+pub const ABI_TYPE_SPLIT_VARIABLE_NAME: &str = "__type_split_variable_name";
 /// The name of the `Type.Split.Combination` ABI call.
-pub const ABI_TYPE_SPLIT_COMBINATION_NAME: &'static str = "__type_split_combination_name";
+pub const ABI_TYPE_SPLIT_COMBINATION_NAME: &str = "__type_split_combination_name";
 /// The name of the `Type.Split.Function` ABI call.
-pub const ABI_TYPE_SPLIT_FUNCTION_NAME: &'static str = "__type_split_function_name";
+pub const ABI_TYPE_SPLIT_FUNCTION_NAME: &str = "__type_split_function_name";
 
 /// The name of the `Type.Test.Variable` ABI call.
-pub const ABI_TYPE_TEST_VARIABLE_NAME: &'static str = "__type_test_variable";
+pub const ABI_TYPE_TEST_VARIABLE_NAME: &str = "__type_test_variable";
 /// The name of the `Type.Test.Combination` ABI call.
-pub const ABI_TYPE_TEST_COMBINATION_NAME: &'static str = "__type_test_combination";
+pub const ABI_TYPE_TEST_COMBINATION_NAME: &str = "__type_test_combination";
 /// The name of the `Type.Test.Function` ABI call.
-pub const ABI_TYPE_TEST_FUNCTION_NAME: &'static str = "__type_test_function";
+pub const ABI_TYPE_TEST_FUNCTION_NAME: &str = "__type_test_function";
 
 /// The name of the `Type.Variables` ABI call.
-pub const ABI_TYPE_FTV_NAME: &'static str = "__type_variables";
+pub const ABI_TYPE_FTV_NAME: &str = "__type_variables";
 /// The name of the `Type.Substitute` ABI call.
-pub const ABI_TYPE_SUBSTITUTE_NAME: &'static str = "__type_substitute";
+pub const ABI_TYPE_SUBSTITUTE_NAME: &str = "__type_substitute";
 
 /// The host-call number of the `Type.IsRegistered` ABI call.
 pub const ABI_TYPE_IS_REGISTERED_INDEX: usize = 3;
@@ -180,11 +180,11 @@ pub const ABI_TYPE_SUBSTITUTE_INDEX: usize = 14;
 /* Constant-related calls. */
 
 /// The name of the `Constant.Resolve` ABI call.
-pub const ABI_CONSTANT_RESOLVE_NAME: &'static str = "__constant_resolve";
+pub const ABI_CONSTANT_RESOLVE_NAME: &str = "__constant_resolve";
 /// The name of the `Constant.IsRegistered` ABI call.
-pub const ABI_CONSTANT_IS_REGISTERED_NAME: &'static str = "__constant_is_registered";
+pub const ABI_CONSTANT_IS_REGISTERED_NAME: &str = "__constant_is_registered";
 /// The name of the `Constant.Register` ABI call.
-pub const ABI_CONSTANT_REGISTER_NAME: &'static str = "__constant_register";
+pub const ABI_CONSTANT_REGISTER_NAME: &str = "__constant_register";
 
 /// The host-call number of the `Constant.Resolve` ABI call.
 pub const ABI_CONSTANT_RESOLVE_INDEX: usize = 15;
@@ -196,87 +196,87 @@ pub const ABI_CONSTANT_REGISTER_INDEX: usize = 17;
 /* Term-related calls. */
 
 /// The name of the `Term.Register.Variable` ABI call.
-pub const ABI_TERM_REGISTER_VARIABLE_NAME: &'static str = "__term_register_variable";
+pub const ABI_TERM_REGISTER_VARIABLE_NAME: &str = "__term_register_variable";
 /// The name of the `Term.Register.Constant` ABI call.
-pub const ABI_TERM_REGISTER_CONSTANT_NAME: &'static str = "__term_register_constant";
+pub const ABI_TERM_REGISTER_CONSTANT_NAME: &str = "__term_register_constant";
 /// The name of the `Term.Register.Application` ABI call.
-pub const ABI_TERM_REGISTER_APPLICATION_NAME: &'static str = "__term_register_application";
+pub const ABI_TERM_REGISTER_APPLICATION_NAME: &str = "__term_register_application";
 /// The name of the `Term.Register.Lambda` ABI call.
-pub const ABI_TERM_REGISTER_LAMBDA_NAME: &'static str = "__term_register_lambda";
+pub const ABI_TERM_REGISTER_LAMBDA_NAME: &str = "__term_register_lambda";
 /// The name of the `Term.Register.Negation` ABI call.
-pub const ABI_TERM_REGISTER_NEGATION_NAME: &'static str = "__term_register_negation";
+pub const ABI_TERM_REGISTER_NEGATION_NAME: &str = "__term_register_negation";
 /// The name of the `Term.Register.Conjunction` ABI call.
-pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &'static str = "__term_register_conjunction";
+pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &str = "__term_register_conjunction";
 /// The name of the `Term.Register.Disjunction` ABI call.
-pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &'static str = "__term_register_disjunction";
+pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &str = "__term_register_disjunction";
 /// The name of the `Term.Register.Implication` ABI call.
-pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &'static str = "__term_register_implication";
+pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &str = "__term_register_implication";
 /// The name of the `Term.Register.Equality` ABI call.
-pub const ABI_TERM_REGISTER_EQUALITY_NAME: &'static str = "__term_register_equality";
+pub const ABI_TERM_REGISTER_EQUALITY_NAME: &str = "__term_register_equality";
 /// The name of the `Term.Register.Forall` ABI call.
-pub const ABI_TERM_REGISTER_FORALL_NAME: &'static str = "__term_register_forall";
+pub const ABI_TERM_REGISTER_FORALL_NAME: &str = "__term_register_forall";
 /// The name of the `Term.Register.Exists` ABI call.
-pub const ABI_TERM_REGISTER_EXISTS_NAME: &'static str = "__term_register_exists";
+pub const ABI_TERM_REGISTER_EXISTS_NAME: &str = "__term_register_exists";
 
 /// The name of the `Term.Split.Variable` ABI call.
-pub const ABI_TERM_SPLIT_VARIABLE_NAME: &'static str = "__term_split_variable";
+pub const ABI_TERM_SPLIT_VARIABLE_NAME: &str = "__term_split_variable";
 /// The name of the `Term.Split.Constant` ABI call.
-pub const ABI_TERM_SPLIT_CONSTANT_NAME: &'static str = "__term_split_constant";
+pub const ABI_TERM_SPLIT_CONSTANT_NAME: &str = "__term_split_constant";
 /// The name of the `Term.Split.Application` ABI call.
-pub const ABI_TERM_SPLIT_APPLICATION_NAME: &'static str = "__term_split_application";
+pub const ABI_TERM_SPLIT_APPLICATION_NAME: &str = "__term_split_application";
 /// The name of the `Term.Split.Lambda` ABI call.
-pub const ABI_TERM_SPLIT_LAMBDA_NAME: &'static str = "__term_split_lambda";
+pub const ABI_TERM_SPLIT_LAMBDA_NAME: &str = "__term_split_lambda";
 /// The name of the `Term.Split.Negation` ABI call.
-pub const ABI_TERM_SPLIT_NEGATION_NAME: &'static str = "__term_split_negation";
+pub const ABI_TERM_SPLIT_NEGATION_NAME: &str = "__term_split_negation";
 /// The name of the `Term.Split.Conjunction` ABI call.
-pub const ABI_TERM_SPLIT_CONJUNCTION_NAME: &'static str = "__term_split_conjunction";
+pub const ABI_TERM_SPLIT_CONJUNCTION_NAME: &str = "__term_split_conjunction";
 /// The name of the `Term.Split.Disjunction` ABI call.
-pub const ABI_TERM_SPLIT_DISJUNCTION_NAME: &'static str = "__term_split_disjunction";
+pub const ABI_TERM_SPLIT_DISJUNCTION_NAME: &str = "__term_split_disjunction";
 /// The name of the `Term.Split.Implication` ABI call.
-pub const ABI_TERM_SPLIT_IMPLICATION_NAME: &'static str = "__term_split_implication";
+pub const ABI_TERM_SPLIT_IMPLICATION_NAME: &str = "__term_split_implication";
 /// The name of the `Term.Split.Equality` ABI call.
-pub const ABI_TERM_SPLIT_EQUALITY_NAME: &'static str = "__term_split_equality";
+pub const ABI_TERM_SPLIT_EQUALITY_NAME: &str = "__term_split_equality";
 /// The name of the `Term.Split.Forall` ABI call.
-pub const ABI_TERM_SPLIT_FORALL_NAME: &'static str = "__term_split_forall";
+pub const ABI_TERM_SPLIT_FORALL_NAME: &str = "__term_split_forall";
 /// The name of the `Term.Split.Exists` ABI call.
-pub const ABI_TERM_SPLIT_EXISTS_NAME: &'static str = "__term_split_exists";
+pub const ABI_TERM_SPLIT_EXISTS_NAME: &str = "__term_split_exists";
 
 /// The name of the `Term.Test.Variable` ABI call.
-pub const ABI_TERM_TEST_VARIABLE_NAME: &'static str = "__term_test_variable";
+pub const ABI_TERM_TEST_VARIABLE_NAME: &str = "__term_test_variable";
 /// The name of the `Term.Test.Constant` ABI call.
-pub const ABI_TERM_TEST_CONSTANT_NAME: &'static str = "__term_test_constant";
+pub const ABI_TERM_TEST_CONSTANT_NAME: &str = "__term_test_constant";
 /// The name of the `Term.Test.Application` ABI call.
-pub const ABI_TERM_TEST_APPLICATION_NAME: &'static str = "__term_test_application";
+pub const ABI_TERM_TEST_APPLICATION_NAME: &str = "__term_test_application";
 /// The name of the `Term.Test.Lambda` ABI call.
-pub const ABI_TERM_TEST_LAMBDA_NAME: &'static str = "__term_test_lambda";
+pub const ABI_TERM_TEST_LAMBDA_NAME: &str = "__term_test_lambda";
 /// The name of the `Term.Test.Negation` ABI call.
-pub const ABI_TERM_TEST_NEGATION_NAME: &'static str = "__term_test_negation";
+pub const ABI_TERM_TEST_NEGATION_NAME: &str = "__term_test_negation";
 /// The name of the `Term.Test.Conjunction` ABI call.
-pub const ABI_TERM_TEST_CONJUNCTION_NAME: &'static str = "__term_test_conjunction";
+pub const ABI_TERM_TEST_CONJUNCTION_NAME: &str = "__term_test_conjunction";
 /// The name of the `Term.Test.Disjunction` ABI call.
-pub const ABI_TERM_TEST_DISJUNCTION_NAME: &'static str = "__term_test_disjunction";
+pub const ABI_TERM_TEST_DISJUNCTION_NAME: &str = "__term_test_disjunction";
 /// The name of the `Term.Test.Implication` ABI call.
-pub const ABI_TERM_TEST_IMPLICATION_NAME: &'static str = "__term_test_implication";
+pub const ABI_TERM_TEST_IMPLICATION_NAME: &str = "__term_test_implication";
 /// The name of the `Term.Test.Equality` ABI call.
-pub const ABI_TERM_TEST_EQUALITY_NAME: &'static str = "__term_test_equality";
+pub const ABI_TERM_TEST_EQUALITY_NAME: &str = "__term_test_equality";
 /// The name of the `Term.Test.Forall` ABI call.
-pub const ABI_TERM_TEST_FORALL_NAME: &'static str = "__term_test_forall";
+pub const ABI_TERM_TEST_FORALL_NAME: &str = "__term_test_forall";
 /// The name of the `Term.Test.Exists` ABI call.
-pub const ABI_TERM_TEST_EXISTS_NAME: &'static str = "__term_test_exists";
+pub const ABI_TERM_TEST_EXISTS_NAME: &str = "__term_test_exists";
 
 /// The name of the `Term.FreeVariables` ABI call.
-pub const ABI_TERM_FV_NAME: &'static str = "__term_fv";
+pub const ABI_TERM_FREE_VARIABLES_NAME: &str = "__term_free_variables";
 /// The name of the `Term.Substitution` ABI call.
-pub const ABI_TERM_SUBSTITUTION_NAME: &'static str = "__term_substitution";
+pub const ABI_TERM_SUBSTITUTION_NAME: &str = "__term_substitution";
 
 /// The name of the `Term.Type.Variables` ABI call.
-pub const ABI_TERM_TYPE_VARIABLES_NAME: &'static str = "__term_type_variables";
+pub const ABI_TERM_TYPE_VARIABLES_NAME: &str = "__term_type_variables";
 /// The name of the `Term.Type.Substitution` ABI call.
-pub const ABI_TERM_TYPE_SUBSTITUTION_NAME: &'static str = "__term_type_substitution";
+pub const ABI_TERM_TYPE_SUBSTITUTION_NAME: &str = "__term_type_substitution";
 /// The name of the `Term.Type.Infer` ABI call.
-pub const ABI_TERM_TYPE_INFER_NAME: &'static str = "__term_type_infer";
+pub const ABI_TERM_TYPE_INFER_NAME: &str = "__term_type_infer";
 /// The name of the `Term.Type.IsProposition` ABI call.
-pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &'static str = "__term_type_is_proposition";
+pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &str = "__term_type_is_proposition";
 
 /// The host-call number of the `Term.Register.Variable` ABI call.
 pub const ABI_TERM_REGISTER_VARIABLE_INDEX: usize = 18;
@@ -348,7 +348,7 @@ pub const ABI_TERM_TEST_FORALL_INDEX: usize = 49;
 pub const ABI_TERM_TEST_EXISTS_INDEX: usize = 50;
 
 /// The host-call number of the `Term.FreeVariables` ABI call.
-pub const ABI_TERM_FV_INDEX: usize = 51;
+pub const ABI_TERM_FREE_VARIABLES_INDEX: usize = 51;
 /// The host-call number of the `Term.Substitution` ABI call.
 pub const ABI_TERM_SUBSTITUTION_INDEX: usize = 52;
 
@@ -364,94 +364,93 @@ pub const ABI_TERM_TYPE_IS_PROPOSITION_INDEX: usize = 56;
 /* Theorem-related calls. */
 
 /// The name of the `Theorem.IsRegistered` ABI call.
-pub const ABI_THEOREM_IS_REGISTERED_NAME: &'static str = "__theorem_is_registered";
+pub const ABI_THEOREM_IS_REGISTERED_NAME: &str = "__theorem_is_registered";
 
 /// The name of the `Theorem.Register.Reflexivity` ABI call.
-pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &'static str = "__theorem_register_reflexivity";
+pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &str = "__theorem_register_reflexivity";
 /// The name of the `Theorem.Register.Symmetry` ABI call.
-pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &'static str = "__theorem_register_symmetry";
+pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &str = "__theorem_register_symmetry";
 /// The name of the `Theorem.Register.Transitivity` ABI call.
-pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &'static str = "__theorem_register_transitivity";
+pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &str = "__theorem_register_transitivity";
 /// The name of the `Theorem.Register.Beta` ABI call.
-pub const ABI_THEOREM_REGISTER_BETA_NAME: &'static str = "__theorem_register_beta";
+pub const ABI_THEOREM_REGISTER_BETA_NAME: &str = "__theorem_register_beta";
 /// The name of the `Theorem.Register.Eta` ABI call.
-pub const ABI_THEOREM_REGISTER_ETA_NAME: &'static str = "__theorem_register_eta";
+pub const ABI_THEOREM_REGISTER_ETA_NAME: &str = "__theorem_register_eta";
 /// The name of the `Theorem.Register.Application` ABI call.
-pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &'static str = "__theorem_register_application";
+pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &str = "__theorem_register_application";
 /// The name of the `Theorem.Register.Lambda` ABI call.
-pub const ABI_THEOREM_REGISTER_LAMBDA_NAME: &'static str = "__theorem_register_lambda";
+pub const ABI_THEOREM_REGISTER_LAMBDA_NAME: &str = "__theorem_register_lambda";
 
 /// The name of the `Theorem.Register.Substitution` ABI call.
-pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &'static str = "__theorem_register_substitution";
+pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &str = "__theorem_register_substitution";
 /// The name of the `Theorem.Register.TypeSubstitution` ABI call.
-pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &str =
     "__theorem_register_type_substitution";
 
 /// The name of the `Theorem.Register.TruthIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME: &str =
     "__theorem_register_truth_introduction";
 /// The name of the `Theorem.Register.FalsityElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME: &str =
     "__theorem_register_falsity_elimination";
 
 /// The name of the `Theorem.Register.ConjunctionIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME: &str =
     "__theorem_register_conjunction_introduction";
 /// The name of the `Theorem.Register.ConjunctionLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME: &str =
     "__theorem_register_conjunction_left_elimination";
 /// The name of the `Theorem.Register.ConjunctionRightElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME: &str =
     "__theorem_register_conjunction_right_elimination";
 
 /// The name of the `Theorem.Register.DisjunctionElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME: &str =
     "__theorem_register_disjunction_elimination";
 /// The name of the `Theorem.Register.DisjunctionLeftIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_NAME: &str =
     "__theorem_register_disjunction_left_introduction";
 /// The name of the `Theorem.Register.DisjunctionRightIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_NAME: &str =
     "__theorem_register_disjunction_right_introduction";
 
 /// The name of the `Theorem.Register.ImplicationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME: &str =
     "__theorem_register_implication_introduction";
 /// The name of the `Theorem.Register.ImplicationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME: &str =
     "__theorem_register_implication_elimination";
 
 /// The name of the `Theorem.Register.IffIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &'static str =
-    "__theorem_register_iff_elimination";
+pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &str = "__theorem_register_iff_elimination";
 /// The name of the `Theorem.Register.IffLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME: &str =
     "__theorem_register_iff_left_elimination";
 
 /// The name of the `Theorem.Register.NegationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME: &str =
     "__theorem_register_negation_introduction";
 /// The name of the `Theorem.Register.NegationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME: &str =
     "__theorem_register_negation_elimination";
 
 /// The name of the `Theorem.Register.ForallIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME: &str =
     "__theorem_register_forall_introduction";
 /// The name of the `Theorem.Register.ForallElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME: &str =
     "__theorem_register_forall_elimination";
 /// The name of the `Theorem.Register.ExistsIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &str =
     "__theorem_register_exists_introduction";
 /// The name of the `Theorem.Register.ExistsElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &'static str =
+pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &str =
     "__theorem_register_exists_elimination";
 
 /// The name of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &'static str = "__theorem_split_hypotheses";
+pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &str = "__theorem_split_hypotheses";
 /// The name of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &'static str = "__theorem_split_conclusion";
+pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &str = "__theorem_split_conclusion";
 
 /// The index of the `Theorem.IsRegistered` ABI call.
 pub const ABI_THEOREM_IS_REGISTERED_INDEX: usize = 57;
@@ -762,6 +761,27 @@ impl WasmiRuntimeState {
         Ok(())
     }
 
+    /// Writes a `bool` value to the WASM guest's memory module at a specified
+    /// address.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryWriteFailed)` if the write to memory at
+    /// address, `address`, failed.
+    fn write_bool<T, U>(&self, address: T, value: U) -> Result<(), RuntimeTrap>
+        where
+            T: Into<semantic_types::Pointer>,
+            U: Into<bool>,
+    {
+        let mut buffer = Vec::new();
+        LittleEndian::write_u32(&mut buffer, value.into() as u32);
+
+        self.write_bytes(address, &buffer)
+    }
+
     /// Writes a handle to the WASM guest's memory module at a specified
     /// address.
     ///
@@ -872,6 +892,25 @@ impl WasmiRuntimeState {
     {
         let buffer = self.read_bytes(address, size_of::<u64>())?;
         Ok(LittleEndian::read_u64(&buffer))
+    }
+
+    /// Reads a `bool` value from the WASM guest's memory module at a specified
+    /// `address`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryNotRegistered)` if the WASM guest's
+    /// memory module has not been registered with the runtime state.
+    ///
+    /// Returns `Err(RuntimeTrap::MemoryReadFailed)` if the read from memory at
+    /// address, `address`, failed.
+    #[inline]
+    fn read_bool<T>(&self, address: T) -> Result<bool, RuntimeTrap>
+        where
+            T: Into<semantic_types::Pointer>,
+    {
+        let u = self.read_u32(address)?;
+        Ok(u == 0_u32)
     }
 
     /// Reads multiple `u64` values, as described by `count`, from the WASM
@@ -1703,6 +1742,33 @@ impl WasmiRuntimeState {
         T: Borrow<Handle<tags::Term>>,
     {
         self.kernel.borrow_mut().term_type_is_proposition(handle)
+    }
+
+    /// Lifting of the `theorem_is_registered` function.
+    #[inline]
+    fn theorem_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: Borrow<Handle<tags::Theorem>>
+    {
+        self.kernel.borrow().theorem_is_registered(handle)
+    }
+
+    /// Lifting of the `theorem_split_conclusion` function.
+    #[inline]
+    fn theorem_split_conclusion<T>(&self, handle: T) -> Result<Handle<tags::Term>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>
+    {
+        self.kernel.borrow().theorem_split_conclusion(handle)
+    }
+
+    /// Lifting of the `theorem_split_hypotheses` function.
+    #[inline]
+    fn theorem_split_hypotheses<T>(&self, handle: T) -> Result<Vec<Handle<tags::Term>>, KernelErrorCode>
+        where
+            T: Borrow<Handle<tags::Theorem>>
+    {
+        self.kernel.borrow().theorem_split_hypotheses(handle)
     }
 }
 
@@ -2618,13 +2684,13 @@ fn check_theorem_register_forall_elimination_signature(signature: &Signature) ->
 
 /// Checks the signature of the `Theorem.Register.ExistsIntroduction` ABI function.
 #[inline]
-fn check_theorem_register_exists_introduction_signature(signature: &Signature) -> bool {
+fn check_theorem_register_exists_introduction_signature(_signature: &Signature) -> bool {
     unimplemented!()
 }
 
 /// Checks the signature of the `Theorem.Register.ExistsElimination` ABI function.
 #[inline]
-fn check_theorem_register_exists_elimination_signature(signature: &Signature) -> bool {
+fn check_theorem_register_exists_elimination_signature(_signature: &Signature) -> bool {
     unimplemented!()
 }
 
@@ -2793,7 +2859,7 @@ impl Externals for WasmiRuntimeState {
                 match self.type_test_variable(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
-                        self.write_i32(result_ptr, result)?;
+                        self.write_bool(result_ptr, result)?;
 
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
@@ -2807,7 +2873,7 @@ impl Externals for WasmiRuntimeState {
                 match self.type_test_combination(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
-                        self.write_i32(result_ptr, result)?;
+                        self.write_bool(result_ptr, result)?;
 
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
@@ -2821,7 +2887,7 @@ impl Externals for WasmiRuntimeState {
                 match self.type_test_function(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
-                        self.write_i32(result_ptr, result)?;
+                        self.write_bool(result_ptr, result)?;
 
                         Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
                     }
@@ -3093,34 +3159,498 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_TERM_SPLIT_VARIABLE_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_CONSTANT_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_APPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_LAMBDA_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_NEGATION_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_CONJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_DISJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_IMPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_EQUALITY_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_FORALL_INDEX => unimplemented!(),
-            ABI_TERM_SPLIT_EXISTS_INDEX => unimplemented!(),
-            ABI_TERM_TEST_VARIABLE_INDEX => unimplemented!(),
-            ABI_TERM_TEST_CONSTANT_INDEX => unimplemented!(),
-            ABI_TERM_TEST_APPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_TEST_LAMBDA_INDEX => unimplemented!(),
-            ABI_TERM_TEST_NEGATION_INDEX => unimplemented!(),
-            ABI_TERM_TEST_CONJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_TEST_DISJUNCTION_INDEX => unimplemented!(),
-            ABI_TERM_TEST_IMPLICATION_INDEX => unimplemented!(),
-            ABI_TERM_TEST_EQUALITY_INDEX => unimplemented!(),
-            ABI_TERM_TEST_FORALL_INDEX => unimplemented!(),
-            ABI_TERM_TEST_EXISTS_INDEX => unimplemented!(),
-            ABI_TERM_FV_INDEX => unimplemented!(),
-            ABI_TERM_SUBSTITUTION_INDEX => unimplemented!(),
-            ABI_TERM_TYPE_VARIABLES_INDEX => unimplemented!(),
-            ABI_TERM_TYPE_SUBSTITUTION_INDEX => unimplemented!(),
-            ABI_TERM_TYPE_INFER_INDEX => unimplemented!(),
-            ABI_TERM_TYPE_IS_PROPOSITION_INDEX => unimplemented!(),
+            ABI_TERM_SPLIT_VARIABLE_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_variable(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((name, tau)) => {
+                        self.write_u64(result_name_ptr, name)?;
+                        self.write_handle(result_type_ptr, tau)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_CONSTANT_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_const_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_constant(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((constant, tau)) => {
+                        self.write_handle(result_const_ptr, constant)?;
+                        self.write_handle(result_type_ptr, tau)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_APPLICATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_application(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((left, right)) => {
+                        self.write_handle(result_left_ptr, left)?;
+                        self.write_handle(result_right_ptr, right)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_LAMBDA_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
+                let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_split_lambda(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((name, tau, body)) => {
+                        self.write_u64(result_name_ptr, name)?;
+                        self.write_handle(result_type_ptr, tau)?;
+                        self.write_handle(result_body_ptr, body)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_NEGATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_body_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_split_negation(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(body) => {
+                        self.write_handle(result_body_ptr, body)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            }
+            ABI_TERM_SPLIT_CONJUNCTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_conjunction(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((left, right)) => {
+                        self.write_handle(result_left_ptr, left)?;
+                        self.write_handle(result_right_ptr, right)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_DISJUNCTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_disjunction(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((left, right)) => {
+                        self.write_handle(result_left_ptr, left)?;
+                        self.write_handle(result_right_ptr, right)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_IMPLICATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_implication(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((left, right)) => {
+                        self.write_handle(result_left_ptr, left)?;
+                        self.write_handle(result_right_ptr, right)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_EQUALITY_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_left_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_right_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_split_equality(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((left, right)) => {
+                        self.write_handle(result_left_ptr, left)?;
+                        self.write_handle(result_right_ptr, right)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_FORALL_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
+                let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_split_forall(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((name, tau, body)) => {
+                        self.write_u64(result_name_ptr, name)?;
+                        self.write_handle(result_type_ptr, tau)?;
+                        self.write_handle(result_body_ptr, body)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SPLIT_EXISTS_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_name_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_ptr = args.nth::<semantic_types::Pointer>(2);
+                let result_body_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.term_split_exists(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok((name, tau, body)) => {
+                        self.write_u64(result_name_ptr, name)?;
+                        self.write_handle(result_type_ptr, tau)?;
+                        self.write_handle(result_body_ptr, body)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_VARIABLE_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_variable(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_CONSTANT_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_constant(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_APPLICATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_application(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_LAMBDA_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_lambda(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_NEGATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_negation(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_CONJUNCTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_conjunction(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_DISJUNCTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_disjunction(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_IMPLICATION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_implication(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_EQUALITY_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_equality(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_FORALL_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_forall(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TEST_EXISTS_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_test_exists(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_FREE_VARIABLES_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_name_base_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_name_len_ptr = args.nth::<semantic_types::Pointer>(2);
+                let result_type_base_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_type_len_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_free_variables(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        let (names, types): (Vec<Name>, Vec<Handle<tags::Type>>) = result.iter().cloned().unzip();
+
+                        self.write_u64(result_name_len_ptr, names.len() as u64)?;
+                        self.write_u64s(result_name_base_ptr, names)?;
+                        self.write_u64(result_type_len_ptr, types.len() as u64)?;
+                        self.write_handles(result_type_base_ptr, types)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_SUBSTITUTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self.term_substitution(term_handle, subst) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TYPE_VARIABLES_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_base_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_len_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.term_type_variables(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_u64(result_len_ptr, result.len() as u64)?;
+                        self.write_u64s(result_base_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TYPE_SUBSTITUTION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self.term_type_substitution(term_handle, subst) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TYPE_INFER_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_type_infer(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_TERM_TYPE_IS_PROPOSITION_INDEX => {
+                let term_handle: Handle<tags::Term> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.term_type_is_proposition(term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_THEOREM_IS_REGISTERED_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result = self.theorem_is_registered(theorem_handle);
+
+                Ok(Some(RuntimeValue::I32(result.into())))
+            },
+            ABI_THEOREM_SPLIT_CONCLUSION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.theorem_split_conclusion(theorem_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
+            ABI_THEOREM_SPLIT_HYPOTHESES_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> =
+                    Handle::from(args.nth::<semantic_types::Handle>(0) as usize);
+                let result_base_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_len_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_split_hypotheses(theorem_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_u64(result_len_ptr, result.len() as u64)?;
+                        self.write_handles(result_base_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
+                    }
+                }
+            },
             _otherwise => Err(host_trap(RuntimeTrap::NoSuchFunction)),
         }
     }
@@ -3642,14 +4172,14 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TERM_TEST_EXISTS_INDEX,
                 ))
             }
-            ABI_TERM_FV_NAME => {
+            ABI_TERM_FREE_VARIABLES_NAME => {
                 if !check_term_fv_signature(signature) {
                     return Err(host_error(KernelErrorCode::SignatureFailure));
                 }
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TERM_FV_INDEX,
+                    ABI_TERM_FREE_VARIABLES_INDEX,
                 ))
             }
             ABI_TERM_SUBSTITUTION_NAME => {

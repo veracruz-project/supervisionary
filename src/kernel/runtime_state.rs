@@ -15,6 +15,8 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
+use log::{info, error};
+
 use crate::kernel::{
     _type::{
         Type, TYPE_ALPHA, TYPE_BETA, TYPE_BINARY_CONNECTIVE, TYPE_POLYMORPHIC_BINARY_PREDICATE,
@@ -40,8 +42,7 @@ use crate::kernel::{
         PREALLOCATED_HANDLE_TYPE_UNARY_PREDICATE, PREALLOCATED_HANDLE_UPPER_BOUND,
     },
     kernel_panic::{
-        kernel_error, kernel_info, kernel_panic, DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR,
-        PRIMITIVE_CONSTRUCTION_ERROR,
+        DANGLING_HANDLE_ERROR, HANDLE_EXHAUST_ERROR, PRIMITIVE_CONSTRUCTION_ERROR,
     },
     name::Name,
     term::{
@@ -51,8 +52,7 @@ use crate::kernel::{
     },
     theorem::Theorem,
 };
-use std::fmt::Debug;
-use std::{borrow::Borrow, collections::HashMap, fmt::Display, iter::FromIterator};
+use std::{borrow::Borrow, collections::HashMap, fmt::{Debug, Display}, iter::FromIterator};
 
 ////////////////////////////////////////////////////////////////////////////////
 // The runtime state.
@@ -105,11 +105,11 @@ impl RuntimeState {
         let next = self.next_handle;
 
         match self.next_handle.checked_add(1) {
-            None => kernel_panic(HANDLE_EXHAUST_ERROR),
+            None => panic!(HANDLE_EXHAUST_ERROR),
             Some(next) => self.next_handle = next,
         }
 
-        kernel_info(format!("Generating fresh handle: {}.", next));
+        info!("Generating fresh handle: {}.", next);
 
         return Handle::from(next);
     }
@@ -124,10 +124,10 @@ impl RuntimeState {
     where
         T: Into<usize> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering new type-former with arity: {}.",
             arity.clone().into()
-        ));
+        );
         let handle = self.issue_handle();
         self.type_formers.insert(handle.clone(), arity.into());
         handle
@@ -140,10 +140,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
-        kernel_info(format!(
+        info!(
             "Resolving type-former with handle: {}.",
             handle.borrow()
-        ));
+        );
         self.type_formers.get(handle.borrow())
     }
 
@@ -154,10 +154,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::TypeFormer>>,
     {
-        kernel_info(format!(
+        info!(
             "Checking type-former {} is registered.",
             handle.borrow()
-        ));
+        );
 
         self.type_former_resolve(handle).is_some()
     }
@@ -173,11 +173,11 @@ impl RuntimeState {
     /// Functions calling this should ensure that the type argument, `tau`, is
     /// well-formed before calling.
     fn admit_type(&mut self, tau: Type) -> Handle<tags::Type> {
-        kernel_info(format!("Admitting type: {:?}.", tau));
+        info!("Admitting type: {:?}.", tau);
 
         for (handle, registered) in self.types.iter() {
             if registered == &tau {
-                kernel_info(format!("Type already registered with handle: {}.", handle));
+                info!("Type already registered with handle: {}.", handle);
                 return handle.clone();
             }
         }
@@ -185,7 +185,7 @@ impl RuntimeState {
         let handle = self.issue_handle();
         self.types.insert(handle.clone(), tau);
 
-        kernel_info(format!("Type newly registered with handle: {}.", handle));
+        info!("Type newly registered with handle: {}.", handle);
 
         handle
     }
@@ -197,7 +197,7 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!("Resolving type with handle: {}.", handle.borrow()));
+        info!("Resolving type with handle: {}.", handle.borrow());
 
         self.types.get(handle.borrow())
     }
@@ -209,7 +209,7 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!("Checking type {} is registered.", handle.borrow()));
+        info!("Checking type {} is registered.", handle.borrow());
 
         self.resolve_type_handle(handle).is_some()
     }
@@ -222,10 +222,10 @@ impl RuntimeState {
     where
         T: Into<Name> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering type-variable: {}.",
             name.clone().into()
-        ));
+        );
 
         self.admit_type(Type::variable(name))
     }
@@ -256,16 +256,16 @@ impl RuntimeState {
         T: Into<Handle<tags::TypeFormer>> + Clone + Display,
         U: Into<Handle<tags::Type>> + Clone + Debug,
     {
-        kernel_info(format!(
+        info!(
             "Registering type-former {} applied to arguments {:?}.",
             former.clone(),
             arguments.clone()
-        ));
+        );
 
         let former = former.into();
 
         let arity = self.type_former_resolve(former.clone()).ok_or({
-            kernel_error("Type-former handle is not registered.");
+            error!("Type-former handle is not registered.");
 
             ErrorCode::NoSuchTypeFormerRegistered
         })?;
@@ -274,16 +274,16 @@ impl RuntimeState {
             .iter()
             .all(|a| self.type_is_registered(a.clone().into()))
         {
-            kernel_error("Not all type argument handles are registered.");
+            error!("Not all type argument handles are registered.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if arguments.len() != *arity {
-            kernel_error(format!(
+            error!(
                 "Number of arguments provided does not match registered arity: {}.",
                 arity,
-            ));
+            );
 
             return Err(ErrorCode::MismatchedArity);
         }
@@ -310,22 +310,22 @@ impl RuntimeState {
     where
         T: Into<Handle<tags::Type>> + Display,
     {
-        kernel_info(format!(
+        info!(
             "Registering function type with domain {} and range {}.",
             domain, range
-        ));
+        );
 
         let domain = domain.into();
         let range = range.into();
 
         if !self.type_is_registered(&domain) {
-            kernel_error("Domain type handle is not registered.");
+            error!("Domain type handle is not registered.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.type_is_registered(&range) {
-            kernel_error("Range type handle is not registered.");
+            error!("Range type handle is not registered.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
@@ -350,19 +350,19 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting handle {} into type variable.",
             handle.borrow()
-        ));
+        );
 
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_variable().ok_or({
-                kernel_error("Handle is not a type variable.");
+                error!("Handle is not a type variable.");
 
                 ErrorCode::NotATypeVariable
             })
         } else {
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
 
             Err(ErrorCode::NoSuchTypeRegistered)
         }
@@ -387,18 +387,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting handle {} into type combination.",
             handle.borrow()
-        ));
+        );
 
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_combination().ok_or({
-                kernel_error("Handle is not a type combination.");
+                error!("Handle is not a type combination.");
                 ErrorCode::NotATypeCombination
             })
         } else {
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -420,19 +420,19 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting handle {} into function type.",
             handle.borrow()
-        ));
+        );
 
         if let Some(tau) = self.resolve_type_handle(handle) {
             tau.split_function().ok_or({
-                kernel_error("Handle is not a function type.");
+                error!("Handle is not a function type.");
 
                 ErrorCode::NotAFunctionType
             })
         } else {
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
 
             Err(ErrorCode::NoSuchTypeRegistered)
         }
@@ -450,15 +450,15 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing handle {} as type-variable.",
             handle.borrow()
-        ));
+        );
 
         Ok(self
             .resolve_type_handle(handle)
             .ok_or({
-                kernel_error("Unknown handle.");
+                error!("Unknown handle.");
 
                 ErrorCode::NoSuchTypeRegistered
             })?
@@ -478,15 +478,15 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing handle {} as type combination.",
             handle.borrow()
-        ));
+        );
 
         Ok(self
             .resolve_type_handle(handle)
             .ok_or({
-                kernel_error("Unknown handle.");
+                error!("Unknown handle.");
 
                 ErrorCode::NoSuchTypeRegistered
             })?
@@ -506,15 +506,15 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing handle {} as function type.",
             handle.borrow()
-        ));
+        );
 
         Ok(self
             .resolve_type_handle(handle)
             .ok_or({
-                kernel_error("Unknown handle.");
+                error!("Unknown handle.");
 
                 ErrorCode::NoSuchTypeRegistered
             })?
@@ -536,10 +536,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        kernel_info(format!("Computing variables of term {}.", handle.borrow()));
+        info!("Computing variables of term {}.", handle.borrow());
 
         let tau = self.resolve_type_handle(handle).ok_or({
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
 
             ErrorCode::NoSuchTypeRegistered
         })?;
@@ -555,7 +555,7 @@ impl RuntimeState {
                         .iter()
                         .map(|a| {
                             self.resolve_type_handle(a)
-                                .unwrap_or_else(|| kernel_panic(DANGLING_HANDLE_ERROR))
+                                .unwrap_or_else(|| panic!(DANGLING_HANDLE_ERROR))
                         })
                         .collect();
                     work_list.append(&mut arguments);
@@ -592,16 +592,16 @@ impl RuntimeState {
         U: Into<Name> + Clone + Debug,
         V: Into<Handle<tags::Type>> + Clone + Debug,
     {
-        kernel_info(format!(
+        info!(
             "Substituting {:?} in type {}.",
             sigma,
             tau.borrow()
-        ));
+        );
 
         let mut tau = self
             .resolve_type_handle(tau)
             .ok_or({
-                kernel_error("Unknown handle.");
+                error!("Unknown handle.");
 
                 ErrorCode::NoSuchTypeRegistered
             })?
@@ -609,7 +609,7 @@ impl RuntimeState {
 
         for (domain, range) in sigma.clone() {
             let range = self.resolve_type_handle(&range.into()).ok_or({
-                kernel_error("Unknown handle.");
+                error!("Unknown handle.");
 
                 ErrorCode::NoSuchTypeRegistered
             })?;
@@ -655,13 +655,13 @@ impl RuntimeState {
     where
         T: Into<Handle<tags::Type>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering constant with type handle: {}.",
             handle.clone().into()
-        ));
+        );
 
         if !self.type_is_registered(handle.clone().into()) {
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
@@ -683,10 +683,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Constant>>,
     {
-        kernel_info(format!(
+        info!(
             "Resolving constant with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         self.constants
             .get(handle.borrow())
@@ -700,10 +700,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Constant>>,
     {
-        kernel_info(format!(
+        info!(
             "Checking constant {} is registered.",
             handle.borrow()
-        ));
+        );
 
         self.constant_resolve(handle).is_ok()
     }
@@ -749,14 +749,14 @@ impl RuntimeState {
         T: Into<Name> + Clone,
         U: Into<Handle<tags::Type>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering variable with name {} and type handle {}.",
             name.clone().into(),
             handle.clone().into()
-        ));
+        );
 
         if !self.type_is_registered(handle.clone().into()) {
-            kernel_error("Unknown handle.");
+            error!("Unknown handle.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
@@ -787,10 +787,10 @@ impl RuntimeState {
         U: Into<Name> + Clone + Debug,
         V: Into<Handle<tags::Type>> + Clone + Debug,
     {
-        kernel_info(format!(
+        info!(
             "Registering constant with handle: {}.",
             handle.clone().into()
-        ));
+        );
 
         let cnst = self.constant_resolve(handle.clone().into())?.clone();
 
@@ -822,19 +822,19 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering application with left handle: {} and right handle: {}.",
             left.clone().into(),
             right.clone().into()
-        ));
+        );
 
         if !self.is_term_registered(left.clone().into()) {
-            kernel_error("Unknown left handle.");
+            error!("Unknown left handle.");
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
         if !self.is_term_registered(right.clone().into()) {
-            kernel_error("Unknown right handle.");
+            error!("Unknown right handle.");
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
@@ -844,7 +844,7 @@ impl RuntimeState {
         let (dom, _rng) = self.type_split_function(&ltau)?;
 
         if dom != &rtau {
-            kernel_error("Domain-type mismatch in application.");
+            error!("Domain-type mismatch in application.");
 
             return Err(ErrorCode::DomainTypeMismatch);
         }
@@ -874,21 +874,21 @@ impl RuntimeState {
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering lambda-abstraction with name: {}, type handle: {}, and body handle: {}.",
             name.clone().into(),
             tau.clone().into(),
             body.clone().into()
-        ));
+        );
 
         if !self.type_is_registered(tau.clone().into()) {
-            kernel_error("Unknown type handle.");
+            error!("Unknown type handle.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.is_term_registered(body.clone().into()) {
-            kernel_error("Unknown body handle.");
+            error!("Unknown body handle.");
 
             return Err(ErrorCode::NoSuchTermRegistered);
         }
@@ -910,13 +910,13 @@ impl RuntimeState {
     where
         T: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering negation with handle: {}.",
             term.clone().into()
-        ));
+        );
 
         if !self.term_type_is_proposition(term.clone().into())? {
-            kernel_error("Term is not a proposition.");
+            error!("Term is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
@@ -945,23 +945,23 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering equality with left-handle: {} and right-handle: {}.",
             left.clone().into(),
             right.clone().into()
-        ));
+        );
 
         let ltau = self.term_type_infer(left.clone().into())?;
         let rtau = self.term_type_infer(right.clone().into())?;
 
         if ltau != rtau {
-            kernel_error("Domain type mismatch in equality.");
+            error!("Domain type mismatch in equality.");
 
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
         let spec =
-            self.term_type_substitution(PREALLOCATED_HANDLE_TERM_EQUALITY, vec![(0u64, ltau)])?;
+            self.term_type_substitution(PREALLOCATED_HANDLE_TERM_EQUALITY, vec![(0_u64, ltau)])?;
 
         let inner = self.term_register_application(spec, left)?;
 
@@ -988,20 +988,20 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering disjunction with left-handle: {} and right-handle: {}.",
             left.clone().into(),
             right.clone().into()
-        ));
+        );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            kernel_error("Left term is not a proposition");
+            error!("Left term is not a proposition");
 
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            kernel_error("Right term is not a proposition");
+            error!("Right term is not a proposition");
 
             return Err(ErrorCode::NotAProposition);
         }
@@ -1031,20 +1031,20 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering conjunction with left-handle: {} and right-handle: {}.",
             left.clone().into(),
             right.clone().into()
-        ));
+        );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            kernel_error("Left term is not a proposition.");
+            error!("Left term is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            kernel_error("Right term is not a proposition.");
+            error!("Right term is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
@@ -1074,20 +1074,20 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering implication with left-handle: {} and right-handle: {}.",
             left.clone().into(),
             right.clone().into()
-        ));
+        );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            kernel_error("Left term is not a proposition.");
+            error!("Left term is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            kernel_error("Right term is not a proposition.");
+            error!("Right term is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
@@ -1121,32 +1121,32 @@ impl RuntimeState {
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering universal quantifier with name: {}, type handle: {}, and body handle: {}.",
             name.clone().into(),
             tau.clone().into(),
             body.clone().into()
-        ));
+        );
 
         if !self.type_is_registered(tau.clone().into()) {
-            kernel_error("Type handle not registered.");
+            error!("Type handle not registered.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.term_type_is_proposition(body.clone().into())? {
-            kernel_error("Body is not a proposition.");
+            error!("Body is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
 
         let lambda = self
             .term_register_lambda(name, tau.clone(), body)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
         let univ = self
-            .term_type_substitution(PREALLOCATED_HANDLE_TERM_FORALL, vec![(0u64, tau)])
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+            .term_type_substitution(PREALLOCATED_HANDLE_TERM_FORALL, vec![(0_u64, tau)])
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
         self.term_register_application(univ, lambda)
     }
@@ -1175,32 +1175,32 @@ impl RuntimeState {
         U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Registering existential quantifier with name: {}, type handle: {} and body handle: {}.",
             name.clone().into(),
             tau.clone().into(),
             body.clone().into()
-        ));
+        );
 
         if !self.type_is_registered(tau.clone().into()) {
-            kernel_error("Type handle is not registered.");
+            error!("Type handle is not registered.");
 
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.term_type_is_proposition(body.clone().into())? {
-            kernel_error("Body is not a proposition.");
+            error!("Body is not a proposition.");
 
             return Err(ErrorCode::NotAProposition);
         }
 
         let lambda = self
             .term_register_lambda(name, tau.clone(), body)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
         let univ = self
-            .term_type_substitution(PREALLOCATED_HANDLE_TERM_EXISTS, vec![(0u64, tau)])
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+            .term_type_substitution(PREALLOCATED_HANDLE_TERM_EXISTS, vec![(0_u64, tau)])
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
         self.term_register_application(univ, lambda)
     }
@@ -1217,10 +1217,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!("Resolving term with handle: {}.", handle.borrow()));
+        info!("Resolving term with handle: {}.", handle.borrow());
 
         self.terms.get(handle.borrow()).ok_or({
-            kernel_error("Term is not registered.");
+            error!("Term is not registered.");
 
             ErrorCode::NoSuchTermRegistered
         })
@@ -1233,10 +1233,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Checking if term with handle {} is registered.",
             handle.borrow()
-        ));
+        );
 
         self.resolve_term_handle(handle).is_ok()
     }
@@ -1259,17 +1259,17 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting variable with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Variable { name, tau: _type } = trm {
             Ok((name, _type))
         } else {
-            kernel_error("Term is not a variable.");
+            error!("Term is not a variable.");
 
             Err(ErrorCode::NotAVariable)
         }
@@ -1293,10 +1293,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting constant with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle)?;
 
@@ -1307,7 +1307,7 @@ impl RuntimeState {
         {
             Ok((handle, _type))
         } else {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             Err(ErrorCode::NotAConstant)
         }
@@ -1320,17 +1320,17 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting application with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle)?;
 
         if let Term::Application { left, right } = trm {
             Ok((left, right))
         } else {
-            kernel_error("Term is not an application.");
+            error!("Term is not an application.");
 
             Err(ErrorCode::NotAnApplication)
         }
@@ -1343,10 +1343,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting lambda-abstraction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle)?;
 
@@ -1358,7 +1358,7 @@ impl RuntimeState {
         {
             Ok((name, _type, body))
         } else {
-            kernel_error("Term is not a lambda-abstraction.");
+            error!("Term is not a lambda-abstraction.");
 
             Err(ErrorCode::NotALambda)
         }
@@ -1368,28 +1368,28 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting negation with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotANegation
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not an application.");
+            error!("Term is not an application.");
 
             ErrorCode::NotANegation
         })?;
 
         if constant != &PREALLOCATED_HANDLE_CONSTANT_NEGATION {
-            kernel_error("Constant is not a negation.");
+            error!("Constant is not a negation.");
 
             return Err(ErrorCode::NotANegation);
         }
@@ -1404,32 +1404,32 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting equality with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAnEquality
             })?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAnEquality
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotAnEquality
         })?;
@@ -1437,7 +1437,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_EQUALITY {
             Ok((mid, right))
         } else {
-            kernel_error("Constant is not an equality.");
+            error!("Constant is not an equality.");
 
             Err(ErrorCode::NotAnEquality)
         }
@@ -1450,32 +1450,32 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting disjunction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotADisjunction
             })?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotADisjunction
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotADisjunction
         })?;
@@ -1483,7 +1483,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION {
             Ok((mid, right))
         } else {
-            kernel_error("Constant is not a disjunction.");
+            error!("Constant is not a disjunction.");
 
             Err(ErrorCode::NotADisjunction)
         }
@@ -1496,32 +1496,32 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting conjunction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAConjunction
             })?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAConjunction
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotAConjunction
         })?;
@@ -1529,7 +1529,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION {
             Ok((mid, right))
         } else {
-            kernel_error("Constant is not a conjunction.");
+            error!("Constant is not a conjunction.");
 
             Err(ErrorCode::NotAConjunction)
         }
@@ -1542,32 +1542,32 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting implication with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAnImplication
             })?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
-            .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
+            .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR))
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAnImplication
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotAnImplication
         })?;
@@ -1575,7 +1575,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_IMPLICATION {
             Ok((mid, right))
         } else {
-            kernel_error("Constant is not an implication.");
+            error!("Constant is not an implication.");
 
             Err(ErrorCode::NotAnImplication)
         }
@@ -1588,28 +1588,28 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting universal quantifier with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAForall
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotAForall
         })?;
 
         let (name, _type, body) = self.term_split_lambda(right).map_err(|_e| {
-            kernel_error("Term is not a lambda-abstraction.");
+            error!("Term is not a lambda-abstraction.");
 
             ErrorCode::NotAForall
         })?;
@@ -1617,7 +1617,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_FORALL {
             Ok((name, _type, body))
         } else {
-            kernel_error("Constant is not a universal quantifier.");
+            error!("Constant is not a universal quantifier.");
 
             Err(ErrorCode::NotAForall)
         }
@@ -1630,28 +1630,28 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Splitting existential quantifier with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
             .ok_or({
-                kernel_error("Term is not an application.");
+                error!("Term is not an application.");
 
                 ErrorCode::NotAnExists
             })?;
 
         let (constant, _tau) = self.term_split_constant(left).map_err(|_e| {
-            kernel_error("Term is not a constant.");
+            error!("Term is not a constant.");
 
             ErrorCode::NotAnExists
         })?;
 
         let (name, _type, body) = self.term_split_lambda(right).map_err(|_e| {
-            kernel_error("Term is not a lambda-abstraction.");
+            error!("Term is not a lambda-abstraction.");
 
             ErrorCode::NotAnExists
         })?;
@@ -1659,7 +1659,7 @@ impl RuntimeState {
         if constant == &PREALLOCATED_HANDLE_CONSTANT_EXISTS {
             Ok((name, _type, body))
         } else {
-            kernel_error("Constant is not an existential quantifier.");
+            error!("Constant is not an existential quantifier.");
 
             Err(ErrorCode::NotAnExists)
         }
@@ -1670,10 +1670,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing variable with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_variable(handle).is_ok())
     }
@@ -1683,10 +1683,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing constant with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_constant(handle).is_ok())
     }
@@ -1696,10 +1696,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing application with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_application(handle).is_ok())
     }
@@ -1709,10 +1709,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing lambda-abstraction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_lambda(handle).is_ok())
     }
@@ -1721,7 +1721,7 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!("Testing truth with handle: {}.", handle.borrow()));
+        info!("Testing truth with handle: {}.", handle.borrow());
 
         let (handle, tau) = self
             .resolve_term_handle(handle)?
@@ -1735,7 +1735,7 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!("Testing falsity with handle: {}.", handle.borrow()));
+        info!("Testing falsity with handle: {}.", handle.borrow());
 
         let (handle, tau) = self
             .resolve_term_handle(handle)?
@@ -1750,10 +1750,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing negation with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_negation(handle).is_ok())
     }
@@ -1763,10 +1763,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing equality with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_equality(handle).is_ok())
     }
@@ -1776,10 +1776,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing disjunction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_disjunction(handle).is_ok())
     }
@@ -1789,10 +1789,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing conjunction with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_conjunction(handle).is_ok())
     }
@@ -1802,10 +1802,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing implication with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_implication(handle).is_ok())
     }
@@ -1815,10 +1815,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing universal quantifier with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_forall(handle).is_ok())
     }
@@ -1828,10 +1828,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing existential quantifier with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_split_exists(handle).is_ok())
     }
@@ -1847,13 +1847,13 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Computing type-variables of term with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle).map_err(|e| {
-            kernel_error("Term handle not registered.");
+            error!("Term handle not registered.");
 
             e
         })?;
@@ -1866,22 +1866,22 @@ impl RuntimeState {
                 Term::Variable { tau: _type, .. } => {
                     let mut fvs = self
                         .type_variables(_type)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                     ftv.append(&mut fvs);
                 }
                 Term::Constant { tau: _type, .. } => {
                     let mut fvs = self
                         .type_variables(_type)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                     ftv.append(&mut fvs);
                 }
                 Term::Application { left, right } => {
                     let left = self
                         .resolve_term_handle(left)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                     let right = self
                         .resolve_term_handle(right)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
                     work_list.push(left);
                     work_list.push(right);
@@ -1891,7 +1891,7 @@ impl RuntimeState {
                 } => {
                     let body = self
                         .resolve_term_handle(body)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                     let mut fvs = self.type_variables(_type)?;
 
                     ftv.append(&mut fvs);
@@ -1913,13 +1913,13 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Computing free variables of term with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let term = self.resolve_term_handle(handle).map_err(|e| {
-            kernel_error("Term handle is not registered.");
+            error!("Term handle is not registered.");
 
             e
         })?;
@@ -1930,10 +1930,10 @@ impl RuntimeState {
             Term::Application { left, right } => {
                 let mut left = self
                     .term_free_variables(left)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                 let mut right = self
                     .term_free_variables(right)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
                 left.append(&mut right);
 
@@ -1946,7 +1946,7 @@ impl RuntimeState {
             } => {
                 let body = self
                     .term_free_variables(body)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
                 Ok(body
                     .iter()
@@ -1959,8 +1959,8 @@ impl RuntimeState {
 
     pub fn substitution<T, U, V>(
         &mut self,
-        handle: T,
-        sigma: Vec<(U, V)>,
+        _handle: T,
+        _sigma: Vec<(U, V)>,
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Term>>,
@@ -1972,8 +1972,8 @@ impl RuntimeState {
 
     pub fn term_type_substitution<T, U, V>(
         &mut self,
-        handle: T,
-        sigma: Vec<(U, V)>,
+        _handle: T,
+        _sigma: Vec<(U, V)>,
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Term>>,
@@ -1987,13 +1987,13 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Inferring type of term with handle: {}.",
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle).map_err(|e| {
-            kernel_error("Term handle is not registered.");
+            error!("Term handle is not registered.");
 
             e
         })?;
@@ -2007,8 +2007,8 @@ impl RuntimeState {
                 let ltau = self.term_type_infer(&left)?;
                 let rtau = self.term_type_infer(&right)?;
 
-                let (dom, rng) = self.type_split_function(&ltau).map_err(|e| {
-                    kernel_error("Left-hand-side of application is not a function.");
+                let (dom, rng) = self.type_split_function(&ltau).map_err(|_e| {
+                    error!("Left-hand-side of application is not a function.");
 
                     ErrorCode::NotAFunctionType
                 })?;
@@ -2016,7 +2016,7 @@ impl RuntimeState {
                 if dom == &rtau {
                     Ok(rng.clone())
                 } else {
-                    kernel_error("Domain type mismatch in application.");
+                    error!("Domain type mismatch in application.");
 
                     Err(ErrorCode::DomainTypeMismatch)
                 }
@@ -2045,10 +2045,10 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing if term with handle {} is propositional.",
             handle.borrow()
-        ));
+        );
 
         Ok(self.term_type_infer(handle)? == PREALLOCATED_HANDLE_TYPE_PROP)
     }
@@ -2059,12 +2059,12 @@ impl RuntimeState {
         U: Into<Name> + Clone,
         V: Into<Name> + Clone,
     {
-        kernel_info(format!(
+        info!(
             "Swapping name: {} for name: {} in term with handle: {}.",
             a.clone().into(),
             b.clone().into(),
             handle.borrow()
-        ));
+        );
 
         let trm = self.resolve_term_handle(handle.clone())?.clone();
 
@@ -2082,10 +2082,10 @@ impl RuntimeState {
             Term::Application { left, right } => {
                 let left = self
                     .swap(&left, a.clone(), b.clone())
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                 let right = self
                     .swap(&right, a, b)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
                 Ok(self.admit_term(Term::application(left, right)))
             }
@@ -2096,7 +2096,7 @@ impl RuntimeState {
             } => {
                 let body = self
                     .swap(&body, a.clone(), b.clone())
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                 if name == a.clone().into() {
                     Ok(self.admit_term(Term::lambda(b, _type.clone(), body)))
                 } else if name == b.into() {
@@ -2142,10 +2142,10 @@ impl RuntimeState {
             ) => {
                 let left = self
                     .is_alpha_equivalent(left0, left1)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                 let right = self
                     .is_alpha_equivalent(right0, right1)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                 Ok(left && right)
             }
             (
@@ -2163,21 +2163,21 @@ impl RuntimeState {
                 if name0 == name1 {
                     let body = self.is_alpha_equivalent(body0, body1)?;
                     Ok(body && _type0 == _type1)
-                } else if !self
+                } else if self
                     .term_free_variables(body1)
-                    .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR))
+                    .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR))
                     .contains(&(name0, _type0))
                 {
+                    Ok(false)
+                } else {
                     let body1 = self
                         .swap(body1, name0.clone(), name1.clone())
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
                     let body = self
                         .is_alpha_equivalent(body0, &body1)
-                        .unwrap_or_else(|_e| kernel_panic(DANGLING_HANDLE_ERROR));
+                        .unwrap_or_else(|_e| panic!(DANGLING_HANDLE_ERROR));
 
                     Ok(body && _type0 == _type1)
-                } else {
-                    Ok(false)
                 }
             }
             _otherwise => Ok(false),
@@ -2189,16 +2189,16 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        kernel_info(format!(
+        info!(
             "Testing terms with handles: {} and: {} for alpha-equivalence.",
             left.borrow(),
             right.borrow()
-        ));
+        );
 
         let left = self
             .resolve_term_handle(left)
             .map_err(|e| {
-                kernel_error("Term handle is not registered.");
+                error!("Term handle is not registered.");
 
                 e
             })?
@@ -2206,7 +2206,7 @@ impl RuntimeState {
         let right = self
             .resolve_term_handle(right)
             .map_err(|e| {
-                kernel_error("Term handle is not registered.");
+                error!("Term handle is not registered.");
 
                 e
             })?
@@ -2248,11 +2248,41 @@ impl RuntimeState {
     /// Returns `true` iff `handle` points to a registered theorem in the
     /// runtime state's theorem table.
     #[inline]
-    pub fn is_theorem_registered<T>(&self, handle: T) -> bool
+    pub fn theorem_is_registered<T>(&self, handle: T) -> bool
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
         self.resolve_theorem_handle(handle).is_some()
+    }
+
+    /// Returns a handle to the conclusions of a theorem object pointed-to by
+    /// `handle`.
+    #[inline]
+    pub fn theorem_split_conclusion<T>(&self, handle: T) -> Result<Handle<tags::Term>, ErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>
+    {
+        Ok(self
+            .resolve_theorem_handle(handle)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?
+            .conclusion()
+            .clone())
+    }
+
+    /// Returns a handle to the set of hypotheses of a theorem object pointed-to
+    /// by `handle`.
+    #[inline]
+    pub fn theorem_split_hypotheses<T>(&self, handle: T) -> Result<Vec<Handle<tags::Term>>, ErrorCode>
+        where
+            T: Borrow<Handle<tags::Theorem>>
+    {
+        Ok(self
+            .resolve_theorem_handle(handle)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?
+            .hypotheses()
+            .iter()
+            .cloned()
+            .collect())
     }
 
     pub fn register_reflexivity_theorem<T, U>(
@@ -2889,8 +2919,8 @@ impl RuntimeState {
 
     pub fn register_universal_elimination_theorem<T, U>(
         &mut self,
-        handle: T,
-        trm: U,
+        _handle: T,
+        _trm: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -2901,8 +2931,8 @@ impl RuntimeState {
 
     pub fn register_universal_introduction_theorem<T, U>(
         &mut self,
-        handle: T,
-        name: U,
+        _handle: T,
+        _name: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -2913,8 +2943,8 @@ impl RuntimeState {
 
     pub fn register_existential_introduction_theorem<T, U>(
         &mut self,
-        handle: T,
-        trm: U,
+        _handle: T,
+        _trm: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -3218,12 +3248,12 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         let fvs = state.term_free_variables(&v).unwrap();
 
-        assert_eq!(fvs, vec![(&0u64, &PREALLOCATED_HANDLE_TYPE_PROP)]);
+        assert_eq!(fvs, vec![(&0_u64, &PREALLOCATED_HANDLE_TYPE_PROP)]);
     }
 
     #[test]
@@ -3242,10 +3272,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l = state
-            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .term_register_lambda(0_u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
             .unwrap();
 
         let fvs = state.term_free_variables(&l).unwrap();
@@ -3258,17 +3288,17 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
             .unwrap();
         let l = state
-            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
+            .term_register_lambda(0_u64, PREALLOCATED_HANDLE_TYPE_PROP, v)
             .unwrap();
 
         let fvs = state.term_free_variables(&l).unwrap();
 
         assert_eq!(
             fvs,
-            vec![(&0u64, &PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)]
+            vec![(&0_u64, &PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)]
         );
     }
 
@@ -3278,7 +3308,7 @@ mod test {
 
         let l = state
             .term_register_lambda(
-                0u64,
+                0_u64,
                 PREALLOCATED_HANDLE_TYPE_PROP,
                 PREALLOCATED_HANDLE_TERM_TRUE,
             )
@@ -3295,19 +3325,19 @@ mod test {
 
         let l = state
             .term_register_lambda(
-                0u64,
+                0_u64,
                 PREALLOCATED_HANDLE_TYPE_PROP,
                 PREALLOCATED_HANDLE_TERM_TRUE,
             )
             .unwrap();
         let v = state
-            .term_register_variable(5u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(5_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let t = state.term_register_application(l, v).unwrap();
 
         let fvs = state.term_free_variables(&t).unwrap();
 
-        assert_eq!(fvs, vec![(&5u64, &PREALLOCATED_HANDLE_TYPE_PROP)])
+        assert_eq!(fvs, vec![(&5_u64, &PREALLOCATED_HANDLE_TYPE_PROP)])
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -3319,7 +3349,7 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         assert!(state.is_alpha_equivalent(&v, &v).unwrap());
@@ -3330,10 +3360,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let q = state
-            .term_register_variable(1u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(1_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
 
         assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
@@ -3344,10 +3374,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let q = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE)
             .unwrap();
 
         assert!(!state.is_alpha_equivalent(&v, &q).unwrap());
@@ -3358,10 +3388,10 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l = state
-            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v.clone())
+            .term_register_lambda(0_u64, PREALLOCATED_HANDLE_TYPE_PROP, v.clone())
             .unwrap();
         let c = state.term_register_application(l, v).unwrap();
 
@@ -3373,18 +3403,18 @@ mod test {
         let mut state = RuntimeState::new();
 
         let v0 = state
-            .term_register_variable(0u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(0_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l0 = state
-            .term_register_lambda(0u64, PREALLOCATED_HANDLE_TYPE_PROP, v0.clone())
+            .term_register_lambda(0_u64, PREALLOCATED_HANDLE_TYPE_PROP, v0.clone())
             .unwrap();
         let c0 = state.term_register_application(l0, v0).unwrap();
 
         let v1 = state
-            .term_register_variable(1u64, PREALLOCATED_HANDLE_TYPE_PROP)
+            .term_register_variable(1_u64, PREALLOCATED_HANDLE_TYPE_PROP)
             .unwrap();
         let l1 = state
-            .term_register_lambda(1u64, PREALLOCATED_HANDLE_TYPE_PROP, v1.clone())
+            .term_register_lambda(1_u64, PREALLOCATED_HANDLE_TYPE_PROP, v1.clone())
             .unwrap();
         let c1 = state.term_register_application(l1, v1).unwrap();
 

@@ -17,7 +17,7 @@
 // Miscellaneous material.
 ////////////////////////////////////////////////////////////////////////////////
 
-use crate::kernel::kernel_panic::{kernel_info, kernel_panic};
+use log::info;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Names and related material.
@@ -40,10 +40,10 @@ where
             if let Some(next) = counter.checked_add(1) {
                 counter = next;
             } else {
-                kernel_panic("Exhausted fresh name generation.");
+                panic!("Exhausted fresh name generation.");
             }
         } else {
-            kernel_info(format!("Fresh name generated: {}.", counter));
+            info!("Fresh name generated: {}.", counter);
             return counter;
         }
     }
