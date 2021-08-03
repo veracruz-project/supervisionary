@@ -2541,13 +2541,14 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_equality_introduction_theorem<T>(
+    pub fn theorem_register_iff_introduction<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
     {
         let left = self
             .resolve_theorem_handle(left)
@@ -2579,7 +2580,7 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_equality_elimination_theorem<T>(
+    pub fn theorem_register_iff_left_elimination<T>(
         &mut self,
         handle: T,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
@@ -2785,14 +2786,16 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_disjunction_elimination_theorem<T>(
+    pub fn theorem_register_disjunction_elimination<T, U, V>(
         &mut self,
         left: T,
-        mid: T,
-        right: T,
+        mid: U,
+        right: V,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+        V: Borrow<Handle<tags::Theorem>>,
     {
         let left = self
             .resolve_theorem_handle(left)
@@ -2878,13 +2881,14 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn theorem_register_implication_elimination<T>(
+    pub fn theorem_register_implication_elimination<T, U>(
         &mut self,
         left: T,
-        right: T,
+        right: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
     {
         let left = self
             .resolve_theorem_handle(left)
@@ -2963,7 +2967,31 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_universal_elimination_theorem<T, U>(
+    pub fn theorem_register_negation_introduction<T, U>(
+        &mut self,
+        _theorem_handle: T,
+        _term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
+        unimplemented!()
+    }
+
+    pub fn theorem_register_negation_elimination<T, U>(
+        &mut self,
+        _left_handle: T,
+        _right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        unimplemented!()
+    }
+
+    pub fn theorem_register_forall_elimination<T, U>(
         &mut self,
         _handle: T,
         _trm: U,
@@ -2975,7 +3003,7 @@ impl RuntimeState {
         unimplemented!()
     }
 
-    pub fn register_universal_introduction_theorem<T, U>(
+    pub fn theorem_register_forall_introduction<T, U>(
         &mut self,
         _handle: T,
         _name: U,
@@ -2987,7 +3015,7 @@ impl RuntimeState {
         unimplemented!()
     }
 
-    pub fn register_existential_introduction_theorem<T, U>(
+    pub fn theorem_register_exists_introduction<T, U>(
         &mut self,
         _handle: T,
         _trm: U,
@@ -2995,6 +3023,18 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Theorem>>,
         U: Into<Handle<tags::Term>>,
+    {
+        unimplemented!()
+    }
+
+    pub fn theorem_register_exists_elimination<T, U>(
+        &mut self,
+        _left_handle: T,
+        _right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, ErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
     {
         unimplemented!()
     }

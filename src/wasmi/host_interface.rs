@@ -462,8 +462,6 @@ pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &str =
 /// The name of the `Theorem.Register.ExistsElimination` ABI call.
 pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &str =
     "__theorem_register_exists_elimination";
-/// The name of the `Theorem.Register.Weaken` ABI call.
-pub const ABI_THEOREM_REGISTER_WEAKEN_NAME: &str = "__theorem_register_weaken";
 
 /// The name of the `Theorem.Split.Hypotheses` ABI call.
 pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &str =
@@ -540,13 +538,11 @@ pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX: usize = 83;
 pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX: usize = 84;
 /// The index of the `Theorem.Register.ExistsElimination` ABI call.
 pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX: usize = 85;
-/// The index of the `Theorem.Register.Weaken` ABI call.
-pub const ABI_THEOREM_REGISTER_WEAKEN_INDEX: usize = 86;
 
 /// The index of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_INDEX: usize = 87;
+pub const ABI_THEOREM_SPLIT_HYPOTHESES_INDEX: usize = 86;
 /// The index of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_INDEX: usize = 88;
+pub const ABI_THEOREM_SPLIT_CONCLUSION_INDEX: usize = 87;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Errors and traps.
@@ -1889,7 +1885,7 @@ impl WasmiRuntimeState {
     fn theorem_register_falsity_elimination<T, U>(
         &self,
         theorem_handle: T,
-        conclusion_handle: U,
+        term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -1897,10 +1893,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_falsity_elimination(
-                theorem_handle,
-                conclusion_handle,
-            )
+            .theorem_register_falsity_elimination(theorem_handle, term_handle)
     }
 
     /// Lifting of the `theorem_register_conjunction_introduction` function.
@@ -1990,6 +1983,29 @@ impl WasmiRuntimeState {
             )
     }
 
+    /// Lifting of the `theorem_register_disjunction_right_introduction`
+    /// function.
+    #[inline]
+    fn theorem_register_disjunction_elimination<T, U, V>(
+        &self,
+        left_handle: T,
+        mid_handle: U,
+        right_handle: V,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+        V: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_disjunction_elimination(
+                left_handle,
+                mid_handle,
+                right_handle,
+            )
+    }
+
     /// Lifting of the `theorem_register_negation_introduction` function.
     #[inline]
     fn theorem_register_negation_introduction<T, U>(
@@ -2008,7 +2024,7 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `theorem_register_negation_elimination` function.
     #[inline]
-    fn theorem_register_negation_introduction<T, U>(
+    fn theorem_register_negation_elimination<T, U>(
         &self,
         left_handle: T,
         right_handle: U,
@@ -2019,7 +2035,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_negation_elimination(theorem_handle, term_handle)
+            .theorem_register_negation_elimination(left_handle, right_handle)
     }
 
     /// Lifting of the `theorem_register_implication_introduction` function.
@@ -2055,6 +2071,100 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow_mut()
             .theorem_register_implication_elimination(left_handle, right_handle)
+    }
+
+    /// Lifting of the `theorem_register_iff_introduction` function.
+    #[inline]
+    fn theorem_register_iff_introduction<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_iff_introduction(left_handle, right_handle)
+    }
+
+    /// Lifting of the `theorem_register_iff_left_elimination` function.
+    #[inline]
+    fn theorem_register_iff_left_elimination<T>(
+        &self,
+        theorem_handle: T,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_iff_left_elimination(theorem_handle)
+    }
+
+    /// Lifting of the `theorem_register_forall_introduction` function.
+    #[inline]
+    fn theorem_register_forall_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        name: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Name>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_forall_introduction(theorem_handle, name)
+    }
+
+    /// Lifting of the `theorem_register_forall_elimination` function.
+    #[inline]
+    fn theorem_register_forall_elimination<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_forall_elimination(theorem_handle, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_exists_introduction` function.
+    #[inline]
+    fn theorem_register_exists_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_exists_introduction(theorem_handle, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_exists_elimination` function.
+    #[inline]
+    fn theorem_register_exists_elimination<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_exists_elimination(left_handle, right_handle)
     }
 
     /// Lifting of the `theorem_split_conclusion` function.
@@ -3054,16 +3164,6 @@ fn check_theorem_register_exists_elimination_signature(
     _signature: &Signature,
 ) -> bool {
     unimplemented!()
-}
-
-/// Checks the signature of the `Theorem.Register.Weaken` ABI function.
-#[inline]
-fn check_theorem_register_weaken_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
 }
 
 /// Checks the signature of the `Theorem.Split.Conclusion` ABI function.
@@ -4236,53 +4336,645 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_THEOREM_REGISTER_ASSUMPTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_SYMMETRY_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_BETA_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_ETA_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_APPLICATION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_LAMBDA_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_ASSUMPTION_INDEX => {
+                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
+                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                let hyps_handles =
+                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+
+                match self
+                    .theorem_register_assumption(hyps_handles, term_handle)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX => {
+                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
+                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                let hyps_handles =
+                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+
+                match self
+                    .theorem_register_reflexivity(hyps_handles, term_handle)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_SYMMETRY_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.theorem_register_symmetry(theorem_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX => {
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self
+                    .theorem_register_transitivity(left_handle, right_handle)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_BETA_INDEX => {
+                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
+                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                let hyps_handles =
+                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+
+                match self.theorem_register_beta(hyps_handles, term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_ETA_INDEX => {
+                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
+                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                let hyps_handles =
+                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+
+                match self.theorem_register_eta(hyps_handles, term_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_APPLICATION_INDEX => {
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self
+                    .theorem_register_application(left_handle, right_handle)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_LAMBDA_INDEX => {
+                let name: Name = args.nth::<semantic_types::Name>(0);
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.theorem_register_lambda(
+                    name,
+                    type_handle,
+                    theorem_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self.theorem_register_substitution(theorem_handle, subst)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let dom_ptr = args.nth::<semantic_types::Pointer>(1);
+                let dom_len = args.nth::<semantic_types::Size>(2);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
+                let rng_len = args.nth::<semantic_types::Size>(4);
+                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+
+                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+
+                let subst = doms
+                    .iter()
+                    .zip(rngs)
+                    .map(|(d, r)| (d.clone(), r.clone()))
+                    .collect();
+
+                match self
+                    .theorem_register_type_substitution(theorem_handle, subst)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX => {
+                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
+                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                let hyps_handles =
+                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+
+                match self.theorem_register_truth_introduction(hyps_handles) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_falsity_elimination(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
             ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX => {
-                unimplemented!()
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_conjunction_introduction(
+                    left_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.theorem_register_conjunction_left_elimination(
+                    theorem_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.theorem_register_conjunction_right_elimination(
+                    theorem_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX => {
-                unimplemented!()
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let mid_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(2) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
+
+                match self.theorem_register_disjunction_elimination(
+                    left_handle,
+                    mid_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_disjunction_left_introduction(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_disjunction_right_introduction(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_implication_introduction(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
             ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX => {
-                unimplemented!()
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_implication_elimination(
+                    left_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
-            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX => {
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_iff_introduction(
+                    left_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.theorem_register_iff_left_elimination(theorem_handle)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
             ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX => {
-                unimplemented!()
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_negation_introduction(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
             }
-            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX => unimplemented!(),
-            ABI_THEOREM_REGISTER_WEAKEN_INDEX => unimplemented!(),
+            ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX => {
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_negation_elimination(
+                    left_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let name: Name = args.nth::<semantic_types::Name>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self
+                    .theorem_register_forall_introduction(theorem_handle, name)
+                {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_forall_elimination(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX => {
+                let theorem_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_exists_introduction(
+                    theorem_handle,
+                    term_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX => {
+                let left_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let right_handle: Handle<tags::Theorem> = Handle::from(
+                    args.nth::<semantic_types::Handle>(1) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(2);
+
+                match self.theorem_register_exists_elimination(
+                    left_handle,
+                    right_handle,
+                ) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_handle(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
             _otherwise => Err(host_trap(RuntimeTrap::NoSuchFunction)),
         }
     }
@@ -5163,16 +5855,6 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
                     ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX,
-                ))
-            }
-            ABI_THEOREM_REGISTER_WEAKEN_NAME => {
-                if !check_theorem_register_weaken_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
-                }
-
-                Ok(FuncInstance::alloc_host(
-                    signature.clone(),
-                    ABI_THEOREM_REGISTER_WEAKEN_INDEX,
                 ))
             }
             ABI_THEOREM_SPLIT_CONCLUSION_NAME => {
