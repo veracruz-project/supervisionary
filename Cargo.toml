@@ -1,6 +1,8 @@
 [workspace]
 members = [
+    "driver",
     "kernel",
+    "libsupervisionary",
     "wasmi-bindings"
 ]
 
