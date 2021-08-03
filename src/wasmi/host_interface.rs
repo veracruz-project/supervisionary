@@ -1990,6 +1990,73 @@ impl WasmiRuntimeState {
             )
     }
 
+    /// Lifting of the `theorem_register_negation_introduction` function.
+    #[inline]
+    fn theorem_register_negation_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_negation_introduction(theorem_handle, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_negation_elimination` function.
+    #[inline]
+    fn theorem_register_negation_introduction<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_negation_elimination(theorem_handle, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_implication_introduction` function.
+    #[inline]
+    fn theorem_register_implication_introduction<T, U>(
+        &self,
+        theorem_handle: T,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_implication_introduction(
+                theorem_handle,
+                term_handle,
+            )
+    }
+
+    /// Lifting of the `theorem_register_implication_elimination` function.
+    #[inline]
+    fn theorem_register_implication_elimination<T, U>(
+        &self,
+        left_handle: T,
+        right_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Theorem>>,
+        U: Borrow<Handle<tags::Theorem>>,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_implication_elimination(left_handle, right_handle)
+    }
+
     /// Lifting of the `theorem_split_conclusion` function.
     #[inline]
     fn theorem_split_conclusion<T>(

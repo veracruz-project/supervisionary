@@ -2842,7 +2842,7 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_implication_introduction_theorem<T, U>(
+    pub fn theorem_register_implication_introduction<T, U>(
         &mut self,
         handle: T,
         intro: U,
@@ -2878,7 +2878,7 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn register_implication_elimination_theorem<T>(
+    pub fn theorem_register_implication_elimination<T>(
         &mut self,
         left: T,
         right: T,
