@@ -15,9 +15,9 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use log::{error, info};
+use log::info;
 
-use crate::kernel::{
+use crate::{
     _type::{
         Type, TYPE_ALPHA, TYPE_BETA, TYPE_BINARY_CONNECTIVE,
         TYPE_POLYMORPHIC_BINARY_PREDICATE, TYPE_POLYMORPHIC_QUANTIFIER,
@@ -274,27 +274,18 @@ impl RuntimeState {
 
         let former = former.into();
 
-        let arity = self.type_former_resolve(former.clone()).ok_or({
-            error!("Type-former handle is not registered.");
-
-            ErrorCode::NoSuchTypeFormerRegistered
-        })?;
+        let arity = self
+            .type_former_resolve(former.clone())
+            .ok_or(ErrorCode::NoSuchTypeFormerRegistered)?;
 
         if !arguments
             .iter()
             .all(|a| self.type_is_registered(a.clone().into()))
         {
-            error!("Not all type argument handles are registered.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if arguments.len() != *arity {
-            error!(
-                "Number of arguments provided does not match registered arity: {}.",
-                arity,
-            );
-
             return Err(ErrorCode::MismatchedArity);
         }
 
@@ -329,14 +320,10 @@ impl RuntimeState {
         let range = range.into();
 
         if !self.type_is_registered(&domain) {
-            error!("Domain type handle is not registered.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.type_is_registered(&range) {
-            error!("Range type handle is not registered.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -363,14 +350,8 @@ impl RuntimeState {
         info!("Splitting handle {} into type variable.", handle.borrow());
 
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_variable().ok_or({
-                error!("Handle is not a type variable.");
-
-                ErrorCode::NotATypeVariable
-            })
+            tau.split_variable().ok_or(ErrorCode::NotATypeVariable)
         } else {
-            error!("Unknown handle.");
-
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -400,12 +381,9 @@ impl RuntimeState {
         );
 
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_combination().ok_or({
-                error!("Handle is not a type combination.");
-                ErrorCode::NotATypeCombination
-            })
+            tau.split_combination()
+                .ok_or(ErrorCode::NotATypeCombination)
         } else {
-            error!("Unknown handle.");
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -430,14 +408,8 @@ impl RuntimeState {
         info!("Splitting handle {} into function type.", handle.borrow());
 
         if let Some(tau) = self.resolve_type_handle(handle) {
-            tau.split_function().ok_or({
-                error!("Handle is not a function type.");
-
-                ErrorCode::NotAFunctionType
-            })
+            tau.split_function().ok_or(ErrorCode::NotAFunctionType)
         } else {
-            error!("Unknown handle.");
-
             Err(ErrorCode::NoSuchTypeRegistered)
         }
     }
@@ -458,11 +430,7 @@ impl RuntimeState {
 
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or({
-                error!("Unknown handle.");
-
-                ErrorCode::NoSuchTypeRegistered
-            })?
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?
             .split_variable()
             .is_some())
     }
@@ -483,11 +451,7 @@ impl RuntimeState {
 
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or({
-                error!("Unknown handle.");
-
-                ErrorCode::NoSuchTypeRegistered
-            })?
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?
             .split_combination()
             .is_some())
     }
@@ -508,11 +472,7 @@ impl RuntimeState {
 
         Ok(self
             .resolve_type_handle(handle)
-            .ok_or({
-                error!("Unknown handle.");
-
-                ErrorCode::NoSuchTypeRegistered
-            })?
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?
             .split_function()
             .is_some())
     }
@@ -533,11 +493,9 @@ impl RuntimeState {
     {
         info!("Computing variables of term {}.", handle.borrow());
 
-        let tau = self.resolve_type_handle(handle).ok_or({
-            error!("Unknown handle.");
-
-            ErrorCode::NoSuchTypeRegistered
-        })?;
+        let tau = self
+            .resolve_type_handle(handle)
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?;
 
         let mut ftv = Vec::new();
         let mut work_list = vec![tau];
@@ -592,19 +550,13 @@ impl RuntimeState {
 
         let mut tau = self
             .resolve_type_handle(tau)
-            .ok_or({
-                error!("Unknown handle.");
-
-                ErrorCode::NoSuchTypeRegistered
-            })?
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?
             .clone();
 
         for (domain, range) in sigma.clone() {
-            let range = self.resolve_type_handle(&range.into()).ok_or({
-                error!("Unknown handle.");
-
-                ErrorCode::NoSuchTypeRegistered
-            })?;
+            let range = self
+                .resolve_type_handle(&range.into())
+                .ok_or(ErrorCode::NoSuchTypeRegistered)?;
 
             match tau {
                 Type::Variable { ref name } => {
@@ -657,8 +609,6 @@ impl RuntimeState {
         );
 
         if !self.type_is_registered(handle.clone().into()) {
-            error!("Unknown handle.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -749,8 +699,6 @@ impl RuntimeState {
         );
 
         if !self.type_is_registered(handle.clone().into()) {
-            error!("Unknown handle.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
@@ -822,12 +770,10 @@ impl RuntimeState {
         );
 
         if !self.is_term_registered(left.clone().into()) {
-            error!("Unknown left handle.");
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
         if !self.is_term_registered(right.clone().into()) {
-            error!("Unknown right handle.");
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
@@ -837,8 +783,6 @@ impl RuntimeState {
         let (dom, _rng) = self.type_split_function(&ltau)?;
 
         if dom != &rtau {
-            error!("Domain-type mismatch in application.");
-
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
@@ -875,14 +819,10 @@ impl RuntimeState {
         );
 
         if !self.type_is_registered(tau.clone().into()) {
-            error!("Unknown type handle.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.is_term_registered(body.clone().into()) {
-            error!("Unknown body handle.");
-
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
@@ -909,8 +849,6 @@ impl RuntimeState {
         info!("Registering negation with handle: {}.", term.clone().into());
 
         if !self.term_type_is_proposition(term.clone().into())? {
-            error!("Term is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -948,8 +886,6 @@ impl RuntimeState {
         let rtau = self.term_type_infer(right.clone().into())?;
 
         if ltau != rtau {
-            error!("Domain type mismatch in equality.");
-
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
@@ -990,14 +926,10 @@ impl RuntimeState {
         );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            error!("Left term is not a proposition");
-
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            error!("Right term is not a proposition");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -1036,14 +968,10 @@ impl RuntimeState {
         );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            error!("Left term is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            error!("Right term is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -1082,14 +1010,10 @@ impl RuntimeState {
         );
 
         if !self.term_type_is_proposition(left.clone().into())? {
-            error!("Left term is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
         if !self.term_type_is_proposition(right.clone().into())? {
-            error!("Right term is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -1133,14 +1057,10 @@ impl RuntimeState {
         );
 
         if !self.type_is_registered(tau.clone().into()) {
-            error!("Type handle not registered.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.term_type_is_proposition(body.clone().into())? {
-            error!("Body is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -1190,14 +1110,10 @@ impl RuntimeState {
         );
 
         if !self.type_is_registered(tau.clone().into()) {
-            error!("Type handle is not registered.");
-
             return Err(ErrorCode::NoSuchTypeRegistered);
         }
 
         if !self.term_type_is_proposition(body.clone().into())? {
-            error!("Body is not a proposition.");
-
             return Err(ErrorCode::NotAProposition);
         }
 
@@ -1229,11 +1145,9 @@ impl RuntimeState {
     {
         info!("Resolving term with handle: {}.", handle.borrow());
 
-        self.terms.get(handle.borrow()).ok_or({
-            error!("Term is not registered.");
-
-            ErrorCode::NoSuchTermRegistered
-        })
+        self.terms
+            .get(handle.borrow())
+            .ok_or(ErrorCode::NoSuchTermRegistered)
     }
 
     /// Returns `true` iff `handle` points-to a registered term in the runtime
@@ -1276,8 +1190,6 @@ impl RuntimeState {
         if let Term::Variable { name, tau: _type } = trm {
             Ok((name, _type))
         } else {
-            error!("Term is not a variable.");
-
             Err(ErrorCode::NotAVariable)
         }
     }
@@ -1311,8 +1223,6 @@ impl RuntimeState {
         {
             Ok((handle, _type))
         } else {
-            error!("Term is not a constant.");
-
             Err(ErrorCode::NotAConstant)
         }
     }
@@ -1331,8 +1241,6 @@ impl RuntimeState {
         if let Term::Application { left, right } = trm {
             Ok((left, right))
         } else {
-            error!("Term is not an application.");
-
             Err(ErrorCode::NotAnApplication)
         }
     }
@@ -1359,8 +1267,6 @@ impl RuntimeState {
         {
             Ok((name, _type, body))
         } else {
-            error!("Term is not a lambda-abstraction.");
-
             Err(ErrorCode::NotALambda)
         }
     }
@@ -1377,22 +1283,13 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotANegation)?;
 
-                ErrorCode::NotANegation
-            })?;
-
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not an application.");
-
-                ErrorCode::NotANegation
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotANegation)?;
 
         if constant != &PREALLOCATED_HANDLE_CONSTANT_NEGATION {
-            error!("Constant is not a negation.");
-
             return Err(ErrorCode::NotANegation);
         }
 
@@ -1411,34 +1308,21 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
-
-                ErrorCode::NotAnEquality
-            })?;
+            .ok_or(ErrorCode::NotAnEquality)?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR))
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotAnEquality)?;
 
-                ErrorCode::NotAnEquality
-            })?;
-
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotAnEquality
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotAnEquality)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_EQUALITY {
             Ok((mid, right))
         } else {
-            error!("Constant is not an equality.");
-
             Err(ErrorCode::NotAnEquality)
         }
     }
@@ -1455,34 +1339,21 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
-
-                ErrorCode::NotADisjunction
-            })?;
+            .ok_or(ErrorCode::NotADisjunction)?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR))
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotADisjunction)?;
 
-                ErrorCode::NotADisjunction
-            })?;
-
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotADisjunction
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotADisjunction)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION {
             Ok((mid, right))
         } else {
-            error!("Constant is not a disjunction.");
-
             Err(ErrorCode::NotADisjunction)
         }
     }
@@ -1499,34 +1370,21 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
-
-                ErrorCode::NotAConjunction
-            })?;
+            .ok_or(ErrorCode::NotAConjunction)?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR))
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotAConjunction)?;
 
-                ErrorCode::NotAConjunction
-            })?;
-
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotAConjunction
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotAConjunction)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION {
             Ok((mid, right))
         } else {
-            error!("Constant is not a conjunction.");
-
             Err(ErrorCode::NotAConjunction)
         }
     }
@@ -1543,34 +1401,21 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
-
-                ErrorCode::NotAnImplication
-            })?;
+            .ok_or(ErrorCode::NotAnImplication)?;
 
         let (left, mid) = self
             .resolve_term_handle(left)
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR))
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotAnImplication)?;
 
-                ErrorCode::NotAnImplication
-            })?;
-
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotAnImplication
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotAnImplication)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_IMPLICATION {
             Ok((mid, right))
         } else {
-            error!("Constant is not an implication.");
-
             Err(ErrorCode::NotAnImplication)
         }
     }
@@ -1590,31 +1435,19 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotAForall)?;
 
-                ErrorCode::NotAForall
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotAForall)?;
 
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotAForall
-            })?;
-
-        let (name, _type, body) =
-            self.term_split_lambda(right).map_err(|_e| {
-                error!("Term is not a lambda-abstraction.");
-
-                ErrorCode::NotAForall
-            })?;
+        let (name, _type, body) = self
+            .term_split_lambda(right)
+            .map_err(|_e| ErrorCode::NotAForall)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_FORALL {
             Ok((name, _type, body))
         } else {
-            error!("Constant is not a universal quantifier.");
-
             Err(ErrorCode::NotAForall)
         }
     }
@@ -1634,31 +1467,19 @@ impl RuntimeState {
         let (left, right) = self
             .resolve_term_handle(handle)?
             .split_application()
-            .ok_or({
-                error!("Term is not an application.");
+            .ok_or(ErrorCode::NotAnExists)?;
 
-                ErrorCode::NotAnExists
-            })?;
+        let (constant, _tau) = self
+            .term_split_constant(left)
+            .map_err(|_e| ErrorCode::NotAnExists)?;
 
-        let (constant, _tau) =
-            self.term_split_constant(left).map_err(|_e| {
-                error!("Term is not a constant.");
-
-                ErrorCode::NotAnExists
-            })?;
-
-        let (name, _type, body) =
-            self.term_split_lambda(right).map_err(|_e| {
-                error!("Term is not a lambda-abstraction.");
-
-                ErrorCode::NotAnExists
-            })?;
+        let (name, _type, body) = self
+            .term_split_lambda(right)
+            .map_err(|_e| ErrorCode::NotAnExists)?;
 
         if constant == &PREALLOCATED_HANDLE_CONSTANT_EXISTS {
             Ok((name, _type, body))
         } else {
-            error!("Constant is not an existential quantifier.");
-
             Err(ErrorCode::NotAnExists)
         }
     }
@@ -1831,11 +1652,7 @@ impl RuntimeState {
             handle.borrow()
         );
 
-        let trm = self.resolve_term_handle(handle).map_err(|e| {
-            error!("Term handle not registered.");
-
-            e
-        })?;
+        let trm = self.resolve_term_handle(handle)?;
 
         let mut work_list = vec![trm];
         let mut ftv = vec![];
@@ -1902,11 +1719,7 @@ impl RuntimeState {
             handle.borrow()
         );
 
-        let term = self.resolve_term_handle(handle).map_err(|e| {
-            error!("Term handle is not registered.");
-
-            e
-        })?;
+        let term = self.resolve_term_handle(handle)?;
 
         match term {
             Term::Variable { name, tau: _type } => Ok(vec![(name, _type)]),
@@ -1976,11 +1789,7 @@ impl RuntimeState {
     {
         info!("Inferring type of term with handle: {}.", handle.borrow());
 
-        let trm = self.resolve_term_handle(handle).map_err(|e| {
-            error!("Term handle is not registered.");
-
-            e
-        })?;
+        let trm = self.resolve_term_handle(handle)?;
 
         let trm = trm.clone();
 
@@ -1991,20 +1800,13 @@ impl RuntimeState {
                 let ltau = self.term_type_infer(&left)?;
                 let rtau = self.term_type_infer(&right)?;
 
-                let (dom, rng) =
-                    self.type_split_function(&ltau).map_err(|_e| {
-                        error!(
-                            "Left-hand-side of application is not a function."
-                        );
-
-                        ErrorCode::NotAFunctionType
-                    })?;
+                let (dom, rng) = self
+                    .type_split_function(&ltau)
+                    .map_err(|_e| ErrorCode::NotAFunctionType)?;
 
                 if dom == &rtau {
                     Ok(rng.clone())
                 } else {
-                    error!("Domain type mismatch in application.");
-
                     Err(ErrorCode::DomainTypeMismatch)
                 }
             }
@@ -2201,22 +2003,8 @@ impl RuntimeState {
             right.borrow()
         );
 
-        let left = self
-            .resolve_term_handle(left)
-            .map_err(|e| {
-                error!("Term handle is not registered.");
-
-                e
-            })?
-            .clone();
-        let right = self
-            .resolve_term_handle(right)
-            .map_err(|e| {
-                error!("Term handle is not registered.");
-
-                e
-            })?
-            .clone();
+        let left = self.resolve_term_handle(left)?.clone();
+        let right = self.resolve_term_handle(right)?.clone();
 
         self.is_alpha_equivalent_inner(&left, &right)
     }
@@ -2244,7 +2032,7 @@ impl RuntimeState {
     /// Returns `Some(thm)` iff `handle` points-to a registered theorem in the
     /// runtime state's theorem table.
     #[inline]
-    pub fn resolve_theorem_handle<T>(&self, handle: T) -> Option<&Theorem>
+    fn resolve_theorem_handle<T>(&self, handle: T) -> Option<&Theorem>
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
@@ -2258,6 +2046,11 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
+        info!(
+            "Checking if theorem with handle {:?} is registered.",
+            handle.borrow()
+        );
+
         self.resolve_theorem_handle(handle).is_some()
     }
 
@@ -2271,6 +2064,11 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
+        info!(
+            "Splitting conclusions of theorem with handle {:?}.",
+            handle.borrow()
+        );
+
         Ok(self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -2288,6 +2086,11 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
+        info!(
+            "Splitting hypotheses of theorem with handle {:?}.",
+            handle.borrow()
+        );
+
         Ok(self
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
@@ -2318,12 +2121,17 @@ impl RuntimeState {
         T: Into<Handle<tags::Term>> + Clone,
         U: Into<Handle<tags::Term>> + Clone,
     {
+        info!(
+            "Registering reflexivity theorem of term with handle {}.",
+            trm.clone().into()
+        );
+
         if !self.term_type_is_proposition(trm.clone().into())? {
             return Err(ErrorCode::NotAProposition);
         }
 
         for c in hypotheses.iter().cloned() {
-            if !self.term_type_is_proposition(&c.into())? {
+            if !self.term_type_is_proposition(&c.clone().into())? {
                 return Err(ErrorCode::NotAProposition);
             }
         }

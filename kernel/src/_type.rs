@@ -13,7 +13,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::{
+use crate::{
     handle::{
         tags, Handle, PREALLOCATED_HANDLE_TYPE_ALPHA,
         PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
@@ -232,7 +232,7 @@ lazy_static! {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::{
+    use crate::{
         _type::Type,
         handle::{
             tags, Handle, PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,

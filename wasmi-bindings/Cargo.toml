@@ -1,0 +1,19 @@
+[package]
+name       = "wasmi-bindings"
+version    = "0.1.0"
+authors    = ["The Supervisionary Development Team"]
+edition    = "2018"
+desription = "The WASMI bindings for the Supervisionary kernel."
+
+[dependencies]
+byteorder   = "1.4.2"
+env_logger  = "0.8.2"
+kernel      = { path = "../kernel", features = ["wasmi-hosterror"] }
+lazy_static = "1.4.0"
+log         = "0.4.14"
+wasmi       = "0.9.0"
+
+[profile.release]
+lto           = true
+opt-level     = 3
+codegen-units = 1

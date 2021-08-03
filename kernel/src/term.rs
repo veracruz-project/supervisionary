@@ -13,7 +13,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::{
+use crate::{
     handle::{
         tags, Handle, PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
         PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,

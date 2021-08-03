@@ -23,8 +23,11 @@ use std::{
     fmt::{Display, Error as DisplayError, Formatter},
 };
 
+#[cfg(feature = "wasmi-hosterror")]
+use wasmi::HostError;
+
 /// The upper limit (exclusive) on the encoding space of the `ErrorCode` type.
-pub const ERRORCODE_ENCODING_UPPER_BOUND: usize = 29;
+pub const ERRORCODE_ENCODING_UPPER_BOUND: usize = 28;
 
 /// Error codes, used for passing back information on why a kernel operation
 /// failed to prover-space.  These codes are intra-convertible between the `i32`
@@ -34,8 +37,6 @@ pub enum ErrorCode {
     /* ABI errors. */
     /// The operation completed successfully.
     Success,
-    /// The type-signature of an ABI function was not as expected.
-    SignatureFailure,
     /// The WASM guest program tried to call a host function that does not
     /// exist.
     NoSuchFunction,
@@ -71,7 +72,11 @@ pub enum ErrorCode {
     /// A term passed to a function was expected to be a constant but it was
     /// not.
     NotAConstant,
+    /// A term passed to a function was expected to be a universal quantifier
+    /// but it was not.
     NotAForall,
+    /// A term passed to a function was expected to be a disjunction but it was
+    /// not.
     NotADisjunction,
     /// A term passed to a function was expected to be a lambda-abstraction but
     /// it was not.
@@ -79,8 +84,14 @@ pub enum ErrorCode {
     /// A term passed to a function was expected to be an application but it was
     /// not.
     NotAnApplication,
+    /// A term passed to a function was expected to be an equality but it was
+    /// not.
     NotAnEquality,
+    /// A term passed to a function was expected to be an existential quantifier
+    /// but it was not.
     NotAnExists,
+    /// A term passed to a function was expected to be an implication but it was
+    /// not.
     NotAnImplication,
     /// A term passed to a function was expected to be a negation but it was
     /// not.
@@ -109,7 +120,6 @@ impl Display for ErrorCode {
     fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
         match self {
             ErrorCode::Success => write!(f, "Success"),
-            ErrorCode::SignatureFailure => write!(f, "SignatureFailure"),
             ErrorCode::NoSuchFunction => write!(f, "NoSuchFunction"),
             ErrorCode::NoSuchConstantRegistered => {
                 write!(f, "NoSuchConstantRegistered")
@@ -153,39 +163,47 @@ impl Display for ErrorCode {
     }
 }
 
+/* XXX: this is a horror show, as we're forced to either have an-almost false
+ * dependency on WASMI in this crate to declare `ErrorCode` to be an
+ * instantiation of the `HostError` crate, or have a duplicate copy of the
+ * `HostError` type in the `wasmi-bindings` crate to work around the rules about
+ * trait instantiations in Rust.
+ */
+#[cfg(feature = "wasmi-hosterror")]
+impl HostError for ErrorCode {}
+
 /// Conversion into an `i32` type for ABI transport.
 impl Into<i32> for ErrorCode {
     fn into(self) -> i32 {
         match self {
             ErrorCode::Success => 0,
-            ErrorCode::SignatureFailure => 1,
-            ErrorCode::NoSuchFunction => 2,
-            ErrorCode::NoSuchConstantRegistered => 3,
-            ErrorCode::NoSuchTermRegistered => 4,
-            ErrorCode::NoSuchTheoremRegistered => 5,
-            ErrorCode::NoSuchTypeFormerRegistered => 6,
-            ErrorCode::MismatchedArity => 7,
-            ErrorCode::DomainTypeMismatch => 8,
-            ErrorCode::NoSuchTypeRegistered => 9,
-            ErrorCode::NotAFunctionType => 10,
-            ErrorCode::NotATypeCombination => 11,
-            ErrorCode::NotATypeVariable => 12,
-            ErrorCode::TypeNotWellformed => 13,
-            ErrorCode::NotAConjunction => 14,
-            ErrorCode::NotAConstant => 15,
-            ErrorCode::NotAForall => 16,
-            ErrorCode::NotADisjunction => 17,
-            ErrorCode::NotALambda => 18,
-            ErrorCode::NotAnApplication => 19,
-            ErrorCode::NotAnEquality => 20,
-            ErrorCode::NotAnExists => 21,
-            ErrorCode::NotAnImplication => 22,
-            ErrorCode::NotANegation => 23,
-            ErrorCode::NotAProposition => 24,
-            ErrorCode::NotAVariable => 25,
-            ErrorCode::TermNotWellformed => 26,
-            ErrorCode::ShapeMismatch => 27,
-            ErrorCode::TheoremNotWellformed => 28,
+            ErrorCode::NoSuchFunction => 1,
+            ErrorCode::NoSuchConstantRegistered => 2,
+            ErrorCode::NoSuchTermRegistered => 3,
+            ErrorCode::NoSuchTheoremRegistered => 4,
+            ErrorCode::NoSuchTypeFormerRegistered => 5,
+            ErrorCode::MismatchedArity => 6,
+            ErrorCode::DomainTypeMismatch => 7,
+            ErrorCode::NoSuchTypeRegistered => 8,
+            ErrorCode::NotAFunctionType => 9,
+            ErrorCode::NotATypeCombination => 10,
+            ErrorCode::NotATypeVariable => 11,
+            ErrorCode::TypeNotWellformed => 12,
+            ErrorCode::NotAConjunction => 13,
+            ErrorCode::NotAConstant => 14,
+            ErrorCode::NotAForall => 15,
+            ErrorCode::NotADisjunction => 16,
+            ErrorCode::NotALambda => 17,
+            ErrorCode::NotAnApplication => 18,
+            ErrorCode::NotAnEquality => 19,
+            ErrorCode::NotAnExists => 20,
+            ErrorCode::NotAnImplication => 21,
+            ErrorCode::NotANegation => 22,
+            ErrorCode::NotAProposition => 23,
+            ErrorCode::NotAVariable => 24,
+            ErrorCode::TermNotWellformed => 25,
+            ErrorCode::ShapeMismatch => 26,
+            ErrorCode::TheoremNotWellformed => 27,
         }
     }
 }
@@ -196,34 +214,33 @@ impl TryFrom<i32> for ErrorCode {
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(ErrorCode::Success),
-            1 => Ok(ErrorCode::SignatureFailure),
-            2 => Ok(ErrorCode::NoSuchFunction),
-            3 => Ok(ErrorCode::NoSuchConstantRegistered),
-            4 => Ok(ErrorCode::NoSuchTermRegistered),
-            5 => Ok(ErrorCode::NoSuchTheoremRegistered),
-            6 => Ok(ErrorCode::NoSuchTypeFormerRegistered),
-            7 => Ok(ErrorCode::MismatchedArity),
-            8 => Ok(ErrorCode::DomainTypeMismatch),
-            9 => Ok(ErrorCode::NoSuchTypeRegistered),
-            10 => Ok(ErrorCode::NotAFunctionType),
-            11 => Ok(ErrorCode::NotATypeCombination),
-            12 => Ok(ErrorCode::NotATypeVariable),
-            13 => Ok(ErrorCode::TypeNotWellformed),
-            14 => Ok(ErrorCode::NotAConjunction),
-            15 => Ok(ErrorCode::NotAConstant),
-            16 => Ok(ErrorCode::NotAForall),
-            17 => Ok(ErrorCode::NotADisjunction),
-            18 => Ok(ErrorCode::NotALambda),
-            19 => Ok(ErrorCode::NotAnApplication),
-            20 => Ok(ErrorCode::NotAnEquality),
-            21 => Ok(ErrorCode::NotAnExists),
-            22 => Ok(ErrorCode::NotAnImplication),
-            23 => Ok(ErrorCode::NotANegation),
-            24 => Ok(ErrorCode::NotAProposition),
-            25 => Ok(ErrorCode::NotAVariable),
-            26 => Ok(ErrorCode::TermNotWellformed),
-            27 => Ok(ErrorCode::ShapeMismatch),
-            28 => Ok(ErrorCode::TheoremNotWellformed),
+            1 => Ok(ErrorCode::NoSuchFunction),
+            2 => Ok(ErrorCode::NoSuchConstantRegistered),
+            3 => Ok(ErrorCode::NoSuchTermRegistered),
+            4 => Ok(ErrorCode::NoSuchTheoremRegistered),
+            5 => Ok(ErrorCode::NoSuchTypeFormerRegistered),
+            6 => Ok(ErrorCode::MismatchedArity),
+            7 => Ok(ErrorCode::DomainTypeMismatch),
+            8 => Ok(ErrorCode::NoSuchTypeRegistered),
+            9 => Ok(ErrorCode::NotAFunctionType),
+            10 => Ok(ErrorCode::NotATypeCombination),
+            11 => Ok(ErrorCode::NotATypeVariable),
+            12 => Ok(ErrorCode::TypeNotWellformed),
+            13 => Ok(ErrorCode::NotAConjunction),
+            14 => Ok(ErrorCode::NotAConstant),
+            15 => Ok(ErrorCode::NotAForall),
+            16 => Ok(ErrorCode::NotADisjunction),
+            17 => Ok(ErrorCode::NotALambda),
+            18 => Ok(ErrorCode::NotAnApplication),
+            19 => Ok(ErrorCode::NotAnEquality),
+            20 => Ok(ErrorCode::NotAnExists),
+            21 => Ok(ErrorCode::NotAnImplication),
+            22 => Ok(ErrorCode::NotANegation),
+            23 => Ok(ErrorCode::NotAProposition),
+            24 => Ok(ErrorCode::NotAVariable),
+            25 => Ok(ErrorCode::TermNotWellformed),
+            26 => Ok(ErrorCode::ShapeMismatch),
+            27 => Ok(ErrorCode::TheoremNotWellformed),
             _otherwise => Err(()),
         }
     }
@@ -235,9 +252,7 @@ impl TryFrom<i32> for ErrorCode {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::error_code::{
-        ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND,
-    };
+    use crate::error_code::{ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND};
     use std::convert::{TryFrom, TryInto};
 
     /// Tests conversion from an `i32` and back again gets you back to where you
@@ -265,15 +280,6 @@ mod test {
         let i: i32 = ErrorCode::into(ErrorCode::Success);
         let e: ErrorCode = ErrorCode::try_from(i).unwrap();
         assert_eq!(e, ErrorCode::Success);
-    }
-
-    /// Pointwise test that conversion to an `i32` and back again gets you back
-    /// to where you started.
-    #[test]
-    pub fn errorcode_test3() {
-        let i: i32 = ErrorCode::into(ErrorCode::SignatureFailure);
-        let e: ErrorCode = ErrorCode::try_from(i).unwrap();
-        assert_eq!(e, ErrorCode::SignatureFailure);
     }
 
     /// Pointwise test that conversion to an `i32` and back again gets you back

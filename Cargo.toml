@@ -1,16 +1,8 @@
-[package]
-name       = "supervisionary"
-version    = "0.1.0"
-authors    = ["The Supervisionary Development Team"]
-edition    = "2018"
-desription = "Supervisionary is a novel proof-checker, structured like an operating system, with a trusted privileged proof-checking kernel accessed through a defined ABI."
-
-[dependencies]
-byteorder   = "1.4.2"
-env_logger  = "0.8.2"
-lazy_static = "1.4.0"
-log         = "0.4.14"
-wasmi       = "0.7.0"
+[workspace]
+members = [
+    "kernel",
+    "wasmi-bindings"
+]
 
 [profile.release]
 lto           = true

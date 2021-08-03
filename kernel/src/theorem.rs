@@ -13,7 +13,7 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::kernel::handle::{tags, Handle};
+use crate::handle::{tags, Handle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Theorems, proper.
@@ -72,7 +72,7 @@ impl Theorem {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::{
+    use crate::{
         handle::{tags, Handle, PREALLOCATED_HANDLE_TERM_TRUE},
         theorem::Theorem,
     };

@@ -1,4 +1,4 @@
-//! # WASMI host interface
+//! # WASMI runtime state
 //!
 //! This binds the kernel code, proper, to the guest WASM program-facing ABI
 //! interface, routing host-calls as appropriate.
@@ -16,585 +16,149 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::{
-    borrow::Borrow,
-    cell::RefCell,
-    fmt::{Debug, Display, Error as DisplayError, Formatter},
-    mem::size_of,
-};
+use std::{borrow::Borrow, cell::RefCell, fmt::Debug, mem::size_of};
 
 use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
     Error as WasmiError, Externals, FuncInstance, FuncRef, HostError,
     MemoryInstance, ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature,
-    Trap, TrapKind, ValueType,
+    Trap,
 };
 
-use crate::kernel::{
+use kernel::{
     error_code::ErrorCode as KernelErrorCode,
     handle::{tags, Handle},
     name::Name,
     runtime_state::RuntimeState as KernelRuntimeState,
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// Semantic types for the WASM ABI.
-////////////////////////////////////////////////////////////////////////////////
-
-/// Type-synonyms for declaratively describing the intended purpose of WASM
-/// types passed across the ABI boundary.
-mod semantic_types {
-    /// A WASM address, used for reading-from and writing-to the guest WASM
-    /// program heap, assuming the `wasm32-abi`.
-    pub type Pointer = u32;
-    /// An arity of a type-former.
-    pub type Arity = u64;
-    /// A handle to a kernel object.
-    pub type Handle = u64;
-    /// A name of a variable (e.g. a lambda-abstracted variable, or
-    /// type-variable).
-    pub type Name = u64;
-    /// A size of a buffer, or other heap-allocated structure, used for
-    /// reading-from and writing-to the guest WASM program heap, assuming the
-    /// `wasm32-abi`.
-    pub type Size = u64;
-}
-
-/// A type capturing semantic types of the ABI, more descriptive than the base
-/// types of WASM.  Note that the constructors of this type are intended to shadow
-/// the type-synyonyms defined in the `semantic_types` module.
-enum AbiType {
-    /// A handle pointing-to a kernel object.
-    Handle,
-    /// A name (e.g. of a lambda-abstracted variable, or similar).
-    Name,
-    /// An arity for a type-former.
-    Arity,
-    /// A pointer into the host WASM program's heap.
-    Pointer,
-    /// A size (or length) of an object appearing in the WASM program's heap.
-    Size,
-    /// A Boolean value.
-    Boolean,
-    /// An error code returned from an ABI function.
-    ErrorCode,
-}
-
-impl AbiType {
-    /// Returns `true` iff the current `AbiType` is implemented by the WASM
-    /// value type, `tau`.
-    fn implemented_by(&self, tau: &ValueType) -> bool {
-        match self {
-            AbiType::Boolean => tau == &ValueType::I32,
-            AbiType::Handle => tau == &ValueType::I64,
-            AbiType::Arity => tau == &ValueType::I64,
-            AbiType::Name => tau == &ValueType::I64,
-            AbiType::Pointer => tau == &ValueType::I32,
-            AbiType::Size => tau == &ValueType::I64,
-            AbiType::ErrorCode => tau == &ValueType::I32,
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// ABI: host-call names and numbers.
-////////////////////////////////////////////////////////////////////////////////
-
-/* Type-former related calls. */
-
-/// The name of the `TypeFormer.Resolve` ABI call.
-pub const ABI_TYPE_FORMER_RESOLVE_NAME: &str = "__type_former_resolve";
-/// The name of the `TypeFormer.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_IS_REGISTERED_NAME: &str =
-    "__type_former_is_registered";
-/// The name of the `TypeFormer.Register` ABI call.
-pub const ABI_TYPE_FORMER_REGISTER_NAME: &str = "__type_former_register";
-
-/// The host-call number of the `TypeFormer.Resolve` ABI call.
-pub const ABI_TYPE_FORMER_RESOLVE_INDEX: usize = 0;
-/// The host-call number of the `TypeFormer.IsRegistered` ABI call.
-pub const ABI_TYPE_FORMER_IS_REGISTERED_INDEX: usize = 1;
-/// The host-call number of the `TypeFormer.Register` ABI call.
-pub const ABI_TYPE_FORMER_REGISTER_INDEX: usize = 2;
-
-/* Type-related calls. */
-
-/// The name of the `Type.IsRegistered` ABI call.
-pub const ABI_TYPE_IS_REGISTERED_NAME: &str = "__type_is_registered";
-/// The name of the `Type.Register.Variable` ABI call.
-pub const ABI_TYPE_REGISTER_VARIABLE_NAME: &str = "__type_register_variable";
-/// The name of the `Type.Register.Combination` ABI call.
-pub const ABI_TYPE_REGISTER_COMBINATION_NAME: &str =
-    "__type_register_combination_name";
-/// The name of the `Type.Register.Function` ABI call.
-pub const ABI_TYPE_REGISTER_FUNCTION_NAME: &str =
-    "__type_register_function_name";
-
-/// The name of the `Type.Split.Variable` ABI call.
-pub const ABI_TYPE_SPLIT_VARIABLE_NAME: &str = "__type_split_variable_name";
-/// The name of the `Type.Split.Combination` ABI call.
-pub const ABI_TYPE_SPLIT_COMBINATION_NAME: &str =
-    "__type_split_combination_name";
-/// The name of the `Type.Split.Function` ABI call.
-pub const ABI_TYPE_SPLIT_FUNCTION_NAME: &str = "__type_split_function_name";
-
-/// The name of the `Type.Test.Variable` ABI call.
-pub const ABI_TYPE_TEST_VARIABLE_NAME: &str = "__type_test_variable";
-/// The name of the `Type.Test.Combination` ABI call.
-pub const ABI_TYPE_TEST_COMBINATION_NAME: &str = "__type_test_combination";
-/// The name of the `Type.Test.Function` ABI call.
-pub const ABI_TYPE_TEST_FUNCTION_NAME: &str = "__type_test_function";
-
-/// The name of the `Type.Variables` ABI call.
-pub const ABI_TYPE_FTV_NAME: &str = "__type_variables";
-/// The name of the `Type.Substitute` ABI call.
-pub const ABI_TYPE_SUBSTITUTE_NAME: &str = "__type_substitute";
-
-/// The host-call number of the `Type.IsRegistered` ABI call.
-pub const ABI_TYPE_IS_REGISTERED_INDEX: usize = 3;
-/// The host-call number of the `Type.Register.Variable` ABI call.
-pub const ABI_TYPE_REGISTER_VARIABLE_INDEX: usize = 4;
-/// The host-call number of the `Type.Register.Combination` ABI call.
-pub const ABI_TYPE_REGISTER_COMBINATION_INDEX: usize = 5;
-/// The host-call number of the `Type.Register.Function` ABI call.
-pub const ABI_TYPE_REGISTER_FUNCTION_INDEX: usize = 6;
-
-/// The host-call number of the `Type.Split.Variable` ABI call.
-pub const ABI_TYPE_SPLIT_VARIABLE_INDEX: usize = 7;
-/// The host-call number of the `Type.Split.Combination` ABI call.
-pub const ABI_TYPE_SPLIT_COMBINATION_INDEX: usize = 8;
-/// The host-call number of the `Type.Split.Function` ABI call.
-pub const ABI_TYPE_SPLIT_FUNCTION_INDEX: usize = 9;
-
-/// The host-call number of the `Type.Test.Variable` ABI call.
-pub const ABI_TYPE_TEST_VARIABLE_INDEX: usize = 10;
-/// The host-call number of the `Type.Test.Combination` ABI call.
-pub const ABI_TYPE_TEST_COMBINATION_INDEX: usize = 11;
-/// The host-call number of the `Type.Test.Function` ABI call.
-pub const ABI_TYPE_TEST_FUNCTION_INDEX: usize = 12;
-
-/// The host-call number of the `Type.Variables` ABI call.
-pub const ABI_TYPE_VARIABLES_INDEX: usize = 13;
-/// The host-call number of the `Type.Substitute` ABI call.
-pub const ABI_TYPE_SUBSTITUTE_INDEX: usize = 14;
-
-/* Constant-related calls. */
-
-/// The name of the `Constant.Resolve` ABI call.
-pub const ABI_CONSTANT_RESOLVE_NAME: &str = "__constant_resolve";
-/// The name of the `Constant.IsRegistered` ABI call.
-pub const ABI_CONSTANT_IS_REGISTERED_NAME: &str = "__constant_is_registered";
-/// The name of the `Constant.Register` ABI call.
-pub const ABI_CONSTANT_REGISTER_NAME: &str = "__constant_register";
-
-/// The host-call number of the `Constant.Resolve` ABI call.
-pub const ABI_CONSTANT_RESOLVE_INDEX: usize = 15;
-/// The host-call number of the `Constant.IsRegistered` ABI call.
-pub const ABI_CONSTANT_IS_REGISTERED_INDEX: usize = 16;
-/// The host-call number of the `Constant.Register` ABI call.
-pub const ABI_CONSTANT_REGISTER_INDEX: usize = 17;
-
-/* Term-related calls. */
-
-/// The name of the `Term.Register.Variable` ABI call.
-pub const ABI_TERM_REGISTER_VARIABLE_NAME: &str = "__term_register_variable";
-/// The name of the `Term.Register.Constant` ABI call.
-pub const ABI_TERM_REGISTER_CONSTANT_NAME: &str = "__term_register_constant";
-/// The name of the `Term.Register.Application` ABI call.
-pub const ABI_TERM_REGISTER_APPLICATION_NAME: &str =
-    "__term_register_application";
-/// The name of the `Term.Register.Lambda` ABI call.
-pub const ABI_TERM_REGISTER_LAMBDA_NAME: &str = "__term_register_lambda";
-/// The name of the `Term.Register.Negation` ABI call.
-pub const ABI_TERM_REGISTER_NEGATION_NAME: &str = "__term_register_negation";
-/// The name of the `Term.Register.Conjunction` ABI call.
-pub const ABI_TERM_REGISTER_CONJUNCTION_NAME: &str =
-    "__term_register_conjunction";
-/// The name of the `Term.Register.Disjunction` ABI call.
-pub const ABI_TERM_REGISTER_DISJUNCTION_NAME: &str =
-    "__term_register_disjunction";
-/// The name of the `Term.Register.Implication` ABI call.
-pub const ABI_TERM_REGISTER_IMPLICATION_NAME: &str =
-    "__term_register_implication";
-/// The name of the `Term.Register.Equality` ABI call.
-pub const ABI_TERM_REGISTER_EQUALITY_NAME: &str = "__term_register_equality";
-/// The name of the `Term.Register.Forall` ABI call.
-pub const ABI_TERM_REGISTER_FORALL_NAME: &str = "__term_register_forall";
-/// The name of the `Term.Register.Exists` ABI call.
-pub const ABI_TERM_REGISTER_EXISTS_NAME: &str = "__term_register_exists";
-
-/// The name of the `Term.Split.Variable` ABI call.
-pub const ABI_TERM_SPLIT_VARIABLE_NAME: &str = "__term_split_variable";
-/// The name of the `Term.Split.Constant` ABI call.
-pub const ABI_TERM_SPLIT_CONSTANT_NAME: &str = "__term_split_constant";
-/// The name of the `Term.Split.Application` ABI call.
-pub const ABI_TERM_SPLIT_APPLICATION_NAME: &str = "__term_split_application";
-/// The name of the `Term.Split.Lambda` ABI call.
-pub const ABI_TERM_SPLIT_LAMBDA_NAME: &str = "__term_split_lambda";
-/// The name of the `Term.Split.Negation` ABI call.
-pub const ABI_TERM_SPLIT_NEGATION_NAME: &str = "__term_split_negation";
-/// The name of the `Term.Split.Conjunction` ABI call.
-pub const ABI_TERM_SPLIT_CONJUNCTION_NAME: &str = "__term_split_conjunction";
-/// The name of the `Term.Split.Disjunction` ABI call.
-pub const ABI_TERM_SPLIT_DISJUNCTION_NAME: &str = "__term_split_disjunction";
-/// The name of the `Term.Split.Implication` ABI call.
-pub const ABI_TERM_SPLIT_IMPLICATION_NAME: &str = "__term_split_implication";
-/// The name of the `Term.Split.Equality` ABI call.
-pub const ABI_TERM_SPLIT_EQUALITY_NAME: &str = "__term_split_equality";
-/// The name of the `Term.Split.Forall` ABI call.
-pub const ABI_TERM_SPLIT_FORALL_NAME: &str = "__term_split_forall";
-/// The name of the `Term.Split.Exists` ABI call.
-pub const ABI_TERM_SPLIT_EXISTS_NAME: &str = "__term_split_exists";
-
-/// The name of the `Term.Test.Variable` ABI call.
-pub const ABI_TERM_TEST_VARIABLE_NAME: &str = "__term_test_variable";
-/// The name of the `Term.Test.Constant` ABI call.
-pub const ABI_TERM_TEST_CONSTANT_NAME: &str = "__term_test_constant";
-/// The name of the `Term.Test.Application` ABI call.
-pub const ABI_TERM_TEST_APPLICATION_NAME: &str = "__term_test_application";
-/// The name of the `Term.Test.Lambda` ABI call.
-pub const ABI_TERM_TEST_LAMBDA_NAME: &str = "__term_test_lambda";
-/// The name of the `Term.Test.Negation` ABI call.
-pub const ABI_TERM_TEST_NEGATION_NAME: &str = "__term_test_negation";
-/// The name of the `Term.Test.Conjunction` ABI call.
-pub const ABI_TERM_TEST_CONJUNCTION_NAME: &str = "__term_test_conjunction";
-/// The name of the `Term.Test.Disjunction` ABI call.
-pub const ABI_TERM_TEST_DISJUNCTION_NAME: &str = "__term_test_disjunction";
-/// The name of the `Term.Test.Implication` ABI call.
-pub const ABI_TERM_TEST_IMPLICATION_NAME: &str = "__term_test_implication";
-/// The name of the `Term.Test.Equality` ABI call.
-pub const ABI_TERM_TEST_EQUALITY_NAME: &str = "__term_test_equality";
-/// The name of the `Term.Test.Forall` ABI call.
-pub const ABI_TERM_TEST_FORALL_NAME: &str = "__term_test_forall";
-/// The name of the `Term.Test.Exists` ABI call.
-pub const ABI_TERM_TEST_EXISTS_NAME: &str = "__term_test_exists";
-
-/// The name of the `Term.FreeVariables` ABI call.
-pub const ABI_TERM_FREE_VARIABLES_NAME: &str = "__term_free_variables";
-/// The name of the `Term.Substitution` ABI call.
-pub const ABI_TERM_SUBSTITUTION_NAME: &str = "__term_substitution";
-
-/// The name of the `Term.Type.Variables` ABI call.
-pub const ABI_TERM_TYPE_VARIABLES_NAME: &str = "__term_type_variables";
-/// The name of the `Term.Type.Substitution` ABI call.
-pub const ABI_TERM_TYPE_SUBSTITUTION_NAME: &str = "__term_type_substitution";
-/// The name of the `Term.Type.Infer` ABI call.
-pub const ABI_TERM_TYPE_INFER_NAME: &str = "__term_type_infer";
-/// The name of the `Term.Type.IsProposition` ABI call.
-pub const ABI_TERM_TYPE_IS_PROPOSITION_NAME: &str =
-    "__term_type_is_proposition";
-
-/// The host-call number of the `Term.Register.Variable` ABI call.
-pub const ABI_TERM_REGISTER_VARIABLE_INDEX: usize = 18;
-/// The host-call number of the `Term.Register.Constant` ABI call.
-pub const ABI_TERM_REGISTER_CONSTANT_INDEX: usize = 19;
-/// The host-call number of the `Term.Register.Application` ABI call.
-pub const ABI_TERM_REGISTER_APPLICATION_INDEX: usize = 20;
-/// The host-call number of the `Term.Register.Lambda` ABI call.
-pub const ABI_TERM_REGISTER_LAMBDA_INDEX: usize = 21;
-/// The host-call number of the `Term.Register.Negation` ABI call.
-pub const ABI_TERM_REGISTER_NEGATION_INDEX: usize = 22;
-/// The host-call number of the `Term.Register.Conjunction` ABI call.
-pub const ABI_TERM_REGISTER_CONJUNCTION_INDEX: usize = 23;
-/// The host-call number of the `Term.Register.Disjunction` ABI call.
-pub const ABI_TERM_REGISTER_DISJUNCTION_INDEX: usize = 24;
-/// The host-call number of the `Term.Register.Implication` ABI call.
-pub const ABI_TERM_REGISTER_IMPLICATION_INDEX: usize = 25;
-/// The host-call number of the `Term.Register.Equality` ABI call.
-pub const ABI_TERM_REGISTER_EQUALITY_INDEX: usize = 26;
-/// The host-call number of the `Term.Register.Forall` ABI call.
-pub const ABI_TERM_REGISTER_FORALL_INDEX: usize = 27;
-/// The host-call number of the `Term.Register.Exists` ABI call.
-pub const ABI_TERM_REGISTER_EXISTS_INDEX: usize = 28;
-
-/// The host-call number of the `Term.Split.Variable` ABI call.
-pub const ABI_TERM_SPLIT_VARIABLE_INDEX: usize = 29;
-/// The host-call number of the `Term.Split.Constant` ABI call.
-pub const ABI_TERM_SPLIT_CONSTANT_INDEX: usize = 30;
-/// The host-call number of the `Term.Split.Application` ABI call.
-pub const ABI_TERM_SPLIT_APPLICATION_INDEX: usize = 31;
-/// The host-call number of the `Term.Split.Lambda` ABI call.
-pub const ABI_TERM_SPLIT_LAMBDA_INDEX: usize = 32;
-/// The host-call number of the `Term.Split.Negation` ABI call.
-pub const ABI_TERM_SPLIT_NEGATION_INDEX: usize = 33;
-/// The host-call number of the `Term.Split.Conjunction` ABI call.
-pub const ABI_TERM_SPLIT_CONJUNCTION_INDEX: usize = 34;
-/// The host-call number of the `Term.Split.Disjunction` ABI call.
-pub const ABI_TERM_SPLIT_DISJUNCTION_INDEX: usize = 35;
-/// The host-call number of the `Term.Split.Implication` ABI call.
-pub const ABI_TERM_SPLIT_IMPLICATION_INDEX: usize = 36;
-/// The host-call number of the `Term.Split.Equality` ABI call.
-pub const ABI_TERM_SPLIT_EQUALITY_INDEX: usize = 37;
-/// The host-call number of the `Term.Split.Forall` ABI call.
-pub const ABI_TERM_SPLIT_FORALL_INDEX: usize = 38;
-/// The host-call number of the `Term.Split.Exists` ABI call.
-pub const ABI_TERM_SPLIT_EXISTS_INDEX: usize = 39;
-
-/// The host-call number of the `Term.Test.Variable` ABI call.
-pub const ABI_TERM_TEST_VARIABLE_INDEX: usize = 40;
-/// The host-call number of the `Term.Test.Constant` ABI call.
-pub const ABI_TERM_TEST_CONSTANT_INDEX: usize = 41;
-/// The host-call number of the `Term.Test.Application` ABI call.
-pub const ABI_TERM_TEST_APPLICATION_INDEX: usize = 42;
-/// The host-call number of the `Term.Test.Lambda` ABI call.
-pub const ABI_TERM_TEST_LAMBDA_INDEX: usize = 43;
-/// The host-call number of the `Term.Test.Negation` ABI call.
-pub const ABI_TERM_TEST_NEGATION_INDEX: usize = 44;
-/// The host-call number of the `Term.Test.Conjunction` ABI call.
-pub const ABI_TERM_TEST_CONJUNCTION_INDEX: usize = 45;
-/// The host-call number of the `Term.Test.Disjunction` ABI call.
-pub const ABI_TERM_TEST_DISJUNCTION_INDEX: usize = 46;
-/// The host-call number of the `Term.Test.Implication` ABI call.
-pub const ABI_TERM_TEST_IMPLICATION_INDEX: usize = 47;
-/// The host-call number of the `Term.Test.Equality` ABI call.
-pub const ABI_TERM_TEST_EQUALITY_INDEX: usize = 48;
-/// The host-call number of the `Term.Test.Forall` ABI call.
-pub const ABI_TERM_TEST_FORALL_INDEX: usize = 49;
-/// The host-call number of the `Term.Test.Exists` ABI call.
-pub const ABI_TERM_TEST_EXISTS_INDEX: usize = 50;
-
-/// The host-call number of the `Term.FreeVariables` ABI call.
-pub const ABI_TERM_FREE_VARIABLES_INDEX: usize = 51;
-/// The host-call number of the `Term.Substitution` ABI call.
-pub const ABI_TERM_SUBSTITUTION_INDEX: usize = 52;
-
-/// The host-call number of the `Term.Type.Variables` ABI call.
-pub const ABI_TERM_TYPE_VARIABLES_INDEX: usize = 53;
-/// The host-call number of the `Term.Type.Substitution` ABI call.
-pub const ABI_TERM_TYPE_SUBSTITUTION_INDEX: usize = 54;
-/// The host-call number of the `Term.Type.Infer` ABI call.
-pub const ABI_TERM_TYPE_INFER_INDEX: usize = 55;
-/// The host-call number of the `Term.Type.IsProposition` ABI call.
-pub const ABI_TERM_TYPE_IS_PROPOSITION_INDEX: usize = 56;
-
-/* Theorem-related calls. */
-
-/// The name of the `Theorem.IsRegistered` ABI call.
-pub const ABI_THEOREM_IS_REGISTERED_NAME: &str = "__theorem_is_registered";
-
-/// The name of the `Theorem.Register.Assumption` ABI call.
-pub const ABI_THEOREM_REGISTER_ASSUMPTION_NAME: &str =
-    "__theorem_register_assumption";
-
-/// The name of the `Theorem.Register.Reflexivity` ABI call.
-pub const ABI_THEOREM_REGISTER_REFLEXIVITY_NAME: &str =
-    "__theorem_register_reflexivity";
-/// The name of the `Theorem.Register.Symmetry` ABI call.
-pub const ABI_THEOREM_REGISTER_SYMMETRY_NAME: &str =
-    "__theorem_register_symmetry";
-/// The name of the `Theorem.Register.Transitivity` ABI call.
-pub const ABI_THEOREM_REGISTER_TRANSITIVITY_NAME: &str =
-    "__theorem_register_transitivity";
-/// The name of the `Theorem.Register.Beta` ABI call.
-pub const ABI_THEOREM_REGISTER_BETA_NAME: &str = "__theorem_register_beta";
-/// The name of the `Theorem.Register.Eta` ABI call.
-pub const ABI_THEOREM_REGISTER_ETA_NAME: &str = "__theorem_register_eta";
-/// The name of the `Theorem.Register.Application` ABI call.
-pub const ABI_THEOREM_REGISTER_APPLICATION_NAME: &str =
-    "__theorem_register_application";
-/// The name of the `Theorem.Register.Lambda` ABI call.
-pub const ABI_THEOREM_REGISTER_LAMBDA_NAME: &str = "__theorem_register_lambda";
-
-/// The name of the `Theorem.Register.Substitution` ABI call.
-pub const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &str =
-    "__theorem_register_substitution";
-/// The name of the `Theorem.Register.TypeSubstitution` ABI call.
-pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &str =
-    "__theorem_register_type_substitution";
-
-/// The name of the `Theorem.Register.TruthIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME: &str =
-    "__theorem_register_truth_introduction";
-/// The name of the `Theorem.Register.FalsityElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME: &str =
-    "__theorem_register_falsity_elimination";
-
-/// The name of the `Theorem.Register.ConjunctionIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME: &str =
-    "__theorem_register_conjunction_introduction";
-/// The name of the `Theorem.Register.ConjunctionLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME: &str =
-    "__theorem_register_conjunction_left_elimination";
-/// The name of the `Theorem.Register.ConjunctionRightElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME: &str =
-    "__theorem_register_conjunction_right_elimination";
-
-/// The name of the `Theorem.Register.DisjunctionElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME: &str =
-    "__theorem_register_disjunction_elimination";
-/// The name of the `Theorem.Register.DisjunctionLeftIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_NAME: &str =
-    "__theorem_register_disjunction_left_introduction";
-/// The name of the `Theorem.Register.DisjunctionRightIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_NAME: &str =
-    "__theorem_register_disjunction_right_introduction";
-
-/// The name of the `Theorem.Register.ImplicationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME: &str =
-    "__theorem_register_implication_introduction";
-/// The name of the `Theorem.Register.ImplicationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME: &str =
-    "__theorem_register_implication_elimination";
-
-/// The name of the `Theorem.Register.IffIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME: &str =
-    "__theorem_register_iff_elimination";
-/// The name of the `Theorem.Register.IffLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME: &str =
-    "__theorem_register_iff_left_elimination";
-
-/// The name of the `Theorem.Register.NegationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME: &str =
-    "__theorem_register_negation_introduction";
-/// The name of the `Theorem.Register.NegationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME: &str =
-    "__theorem_register_negation_elimination";
-
-/// The name of the `Theorem.Register.ForallIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME: &str =
-    "__theorem_register_forall_introduction";
-/// The name of the `Theorem.Register.ForallElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME: &str =
-    "__theorem_register_forall_elimination";
-/// The name of the `Theorem.Register.ExistsIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME: &str =
-    "__theorem_register_exists_introduction";
-/// The name of the `Theorem.Register.ExistsElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME: &str =
-    "__theorem_register_exists_elimination";
-
-/// The name of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_NAME: &str =
-    "__theorem_split_hypotheses";
-/// The name of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_NAME: &str =
-    "__theorem_split_conclusion";
-
-/// The index of the `Theorem.IsRegistered` ABI call.
-pub const ABI_THEOREM_IS_REGISTERED_INDEX: usize = 57;
-
-/// The index of the `Theorem.Register.Assumption` ABI call.
-pub const ABI_THEOREM_REGISTER_ASSUMPTION_INDEX: usize = 58;
-
-/// The index of the `Theorem.Register.Reflexivity` ABI call.
-pub const ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX: usize = 59;
-/// The index of the `Theorem.Register.Symmetry` ABI call.
-pub const ABI_THEOREM_REGISTER_SYMMETRY_INDEX: usize = 60;
-/// The index of the `Theorem.Register.Transitivity` ABI call.
-pub const ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX: usize = 61;
-/// The index of the `Theorem.Register.Beta` ABI call.
-pub const ABI_THEOREM_REGISTER_BETA_INDEX: usize = 62;
-/// The index of the `Theorem.Register.Eta` ABI call.
-pub const ABI_THEOREM_REGISTER_ETA_INDEX: usize = 63;
-/// The index of the `Theorem.Register.Application` ABI call.
-pub const ABI_THEOREM_REGISTER_APPLICATION_INDEX: usize = 64;
-/// The index of the `Theorem.Register.Lambda` ABI call.
-pub const ABI_THEOREM_REGISTER_LAMBDA_INDEX: usize = 65;
-
-/// The index of the `Theorem.Register.Substitution` ABI call.
-pub const ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX: usize = 66;
-/// The index of the `Theorem.Register.TypeSubstitution` ABI call.
-pub const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX: usize = 67;
-
-/// The index of the `Theorem.Register.TruthIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX: usize = 68;
-/// The index of the `Theorem.Register.FalsityElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX: usize = 69;
-
-/// The index of the `Theorem.Register.ConjunctionIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX: usize = 70;
-/// The index of the `Theorem.Register.ConjunctionLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX: usize = 71;
-/// The index of the `Theorem.Register.ConjunctionRightElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX: usize = 72;
-
-/// The index of the `Theorem.Register.DisjunctionElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX: usize = 73;
-/// The index of the `Theorem.Register.DisjunctionLeftIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX: usize = 74;
-/// The index of the `Theorem.Register.DisjunctionRightIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX: usize = 75;
-
-/// The index of the `Theorem.Register.ImplicationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX: usize = 76;
-/// The index of the `Theorem.Register.ImplicationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX: usize = 77;
-
-/// The index of the `Theorem.Register.IffIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX: usize = 78;
-/// The index of the `Theorem.Register.IffLeftElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX: usize = 79;
-
-/// The index of the `Theorem.Register.NegationIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX: usize = 80;
-/// The index of the `Theorem.Register.NegationElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX: usize = 81;
-
-/// The index of the `Theorem.Register.ForallIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX: usize = 82;
-/// The index of the `Theorem.Register.ForallElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX: usize = 83;
-/// The index of the `Theorem.Register.ExistsIntroduction` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX: usize = 84;
-/// The index of the `Theorem.Register.ExistsElimination` ABI call.
-pub const ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX: usize = 85;
-
-/// The index of the `Theorem.Split.Hypotheses` ABI call.
-pub const ABI_THEOREM_SPLIT_HYPOTHESES_INDEX: usize = 86;
-/// The index of the `Theorem.Split.Conclusion` ABI call.
-pub const ABI_THEOREM_SPLIT_CONCLUSION_INDEX: usize = 87;
+use crate::{
+    abi_types::semantic_types,
+    hostcall_number::{
+        ABI_CONSTANT_IS_REGISTERED_INDEX, ABI_CONSTANT_IS_REGISTERED_NAME,
+        ABI_CONSTANT_REGISTER_INDEX, ABI_CONSTANT_REGISTER_NAME,
+        ABI_CONSTANT_RESOLVE_INDEX, ABI_CONSTANT_RESOLVE_NAME,
+        ABI_TERM_FREE_VARIABLES_INDEX, ABI_TERM_FREE_VARIABLES_NAME,
+        ABI_TERM_REGISTER_APPLICATION_INDEX,
+        ABI_TERM_REGISTER_APPLICATION_NAME,
+        ABI_TERM_REGISTER_CONJUNCTION_INDEX,
+        ABI_TERM_REGISTER_CONJUNCTION_NAME, ABI_TERM_REGISTER_CONSTANT_INDEX,
+        ABI_TERM_REGISTER_CONSTANT_NAME, ABI_TERM_REGISTER_DISJUNCTION_INDEX,
+        ABI_TERM_REGISTER_DISJUNCTION_NAME, ABI_TERM_REGISTER_EQUALITY_INDEX,
+        ABI_TERM_REGISTER_EQUALITY_NAME, ABI_TERM_REGISTER_EXISTS_INDEX,
+        ABI_TERM_REGISTER_EXISTS_NAME, ABI_TERM_REGISTER_FORALL_INDEX,
+        ABI_TERM_REGISTER_FORALL_NAME, ABI_TERM_REGISTER_IMPLICATION_INDEX,
+        ABI_TERM_REGISTER_IMPLICATION_NAME, ABI_TERM_REGISTER_LAMBDA_INDEX,
+        ABI_TERM_REGISTER_LAMBDA_NAME, ABI_TERM_REGISTER_NEGATION_INDEX,
+        ABI_TERM_REGISTER_NEGATION_NAME, ABI_TERM_REGISTER_VARIABLE_INDEX,
+        ABI_TERM_REGISTER_VARIABLE_NAME, ABI_TERM_SPLIT_APPLICATION_INDEX,
+        ABI_TERM_SPLIT_APPLICATION_NAME, ABI_TERM_SPLIT_CONJUNCTION_INDEX,
+        ABI_TERM_SPLIT_CONJUNCTION_NAME, ABI_TERM_SPLIT_CONSTANT_INDEX,
+        ABI_TERM_SPLIT_CONSTANT_NAME, ABI_TERM_SPLIT_DISJUNCTION_INDEX,
+        ABI_TERM_SPLIT_DISJUNCTION_NAME, ABI_TERM_SPLIT_EQUALITY_INDEX,
+        ABI_TERM_SPLIT_EQUALITY_NAME, ABI_TERM_SPLIT_EXISTS_INDEX,
+        ABI_TERM_SPLIT_EXISTS_NAME, ABI_TERM_SPLIT_FORALL_INDEX,
+        ABI_TERM_SPLIT_FORALL_NAME, ABI_TERM_SPLIT_IMPLICATION_INDEX,
+        ABI_TERM_SPLIT_IMPLICATION_NAME, ABI_TERM_SPLIT_LAMBDA_INDEX,
+        ABI_TERM_SPLIT_LAMBDA_NAME, ABI_TERM_SPLIT_NEGATION_INDEX,
+        ABI_TERM_SPLIT_NEGATION_NAME, ABI_TERM_SPLIT_VARIABLE_INDEX,
+        ABI_TERM_SPLIT_VARIABLE_NAME, ABI_TERM_SUBSTITUTION_INDEX,
+        ABI_TERM_SUBSTITUTION_NAME, ABI_TERM_TEST_APPLICATION_INDEX,
+        ABI_TERM_TEST_APPLICATION_NAME, ABI_TERM_TEST_CONJUNCTION_INDEX,
+        ABI_TERM_TEST_CONJUNCTION_NAME, ABI_TERM_TEST_CONSTANT_INDEX,
+        ABI_TERM_TEST_CONSTANT_NAME, ABI_TERM_TEST_DISJUNCTION_INDEX,
+        ABI_TERM_TEST_DISJUNCTION_NAME, ABI_TERM_TEST_EQUALITY_INDEX,
+        ABI_TERM_TEST_EQUALITY_NAME, ABI_TERM_TEST_EXISTS_INDEX,
+        ABI_TERM_TEST_EXISTS_NAME, ABI_TERM_TEST_FORALL_INDEX,
+        ABI_TERM_TEST_FORALL_NAME, ABI_TERM_TEST_IMPLICATION_INDEX,
+        ABI_TERM_TEST_IMPLICATION_NAME, ABI_TERM_TEST_LAMBDA_INDEX,
+        ABI_TERM_TEST_LAMBDA_NAME, ABI_TERM_TEST_NEGATION_INDEX,
+        ABI_TERM_TEST_NEGATION_NAME, ABI_TERM_TEST_VARIABLE_INDEX,
+        ABI_TERM_TEST_VARIABLE_NAME, ABI_TERM_TYPE_INFER_INDEX,
+        ABI_TERM_TYPE_INFER_NAME, ABI_TERM_TYPE_IS_PROPOSITION_INDEX,
+        ABI_TERM_TYPE_IS_PROPOSITION_NAME, ABI_TERM_TYPE_SUBSTITUTION_INDEX,
+        ABI_TERM_TYPE_SUBSTITUTION_NAME, ABI_TERM_TYPE_VARIABLES_INDEX,
+        ABI_TERM_TYPE_VARIABLES_NAME, ABI_THEOREM_IS_REGISTERED_INDEX,
+        ABI_THEOREM_IS_REGISTERED_NAME, ABI_THEOREM_REGISTER_APPLICATION_INDEX,
+        ABI_THEOREM_REGISTER_APPLICATION_NAME,
+        ABI_THEOREM_REGISTER_ASSUMPTION_INDEX,
+        ABI_THEOREM_REGISTER_ASSUMPTION_NAME, ABI_THEOREM_REGISTER_BETA_INDEX,
+        ABI_THEOREM_REGISTER_BETA_NAME,
+        ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_ETA_INDEX, ABI_THEOREM_REGISTER_ETA_NAME,
+        ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_FORALL_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_IFF_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_LAMBDA_INDEX, ABI_THEOREM_REGISTER_LAMBDA_NAME,
+        ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_INDEX,
+        ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME,
+        ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX,
+        ABI_THEOREM_REGISTER_REFLEXIVITY_NAME,
+        ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX,
+        ABI_THEOREM_REGISTER_SUBSTITUTION_NAME,
+        ABI_THEOREM_REGISTER_SYMMETRY_INDEX,
+        ABI_THEOREM_REGISTER_SYMMETRY_NAME,
+        ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX,
+        ABI_THEOREM_REGISTER_TRANSITIVITY_NAME,
+        ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX,
+        ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME,
+        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX,
+        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME,
+        ABI_THEOREM_SPLIT_CONCLUSION_INDEX, ABI_THEOREM_SPLIT_CONCLUSION_NAME,
+        ABI_THEOREM_SPLIT_HYPOTHESES_INDEX, ABI_THEOREM_SPLIT_HYPOTHESES_NAME,
+        ABI_TYPE_FORMER_IS_REGISTERED_INDEX,
+        ABI_TYPE_FORMER_IS_REGISTERED_NAME, ABI_TYPE_FORMER_REGISTER_INDEX,
+        ABI_TYPE_FORMER_REGISTER_NAME, ABI_TYPE_FORMER_RESOLVE_INDEX,
+        ABI_TYPE_FORMER_RESOLVE_NAME, ABI_TYPE_IS_REGISTERED_INDEX,
+        ABI_TYPE_IS_REGISTERED_NAME, ABI_TYPE_REGISTER_COMBINATION_INDEX,
+        ABI_TYPE_REGISTER_COMBINATION_NAME, ABI_TYPE_REGISTER_FUNCTION_INDEX,
+        ABI_TYPE_REGISTER_FUNCTION_NAME, ABI_TYPE_REGISTER_VARIABLE_INDEX,
+        ABI_TYPE_REGISTER_VARIABLE_NAME, ABI_TYPE_SPLIT_COMBINATION_INDEX,
+        ABI_TYPE_SPLIT_COMBINATION_NAME, ABI_TYPE_SPLIT_FUNCTION_INDEX,
+        ABI_TYPE_SPLIT_FUNCTION_NAME, ABI_TYPE_SPLIT_VARIABLE_INDEX,
+        ABI_TYPE_SPLIT_VARIABLE_NAME, ABI_TYPE_SUBSTITUTE_INDEX,
+        ABI_TYPE_SUBSTITUTE_NAME, ABI_TYPE_TEST_COMBINATION_INDEX,
+        ABI_TYPE_TEST_COMBINATION_NAME, ABI_TYPE_TEST_FUNCTION_INDEX,
+        ABI_TYPE_TEST_FUNCTION_NAME, ABI_TYPE_TEST_VARIABLE_INDEX,
+        ABI_TYPE_TEST_VARIABLE_NAME, ABI_TYPE_VARIABLES_INDEX,
+        ABI_TYPE_VARIABLES_NAME,
+    },
+    runtime_trap,
+    runtime_trap::RuntimeTrap,
+    type_checking,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Errors and traps.
 ////////////////////////////////////////////////////////////////////////////////
-
-/// Runtime traps are unrecoverable errors raised by the WASM program host.
-/// These are equivalent, essentially, to kernel panics in a typical operating
-/// system.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum RuntimeTrap {
-    /// The WASM guest's memory was not registered with the runtime state.
-    MemoryNotRegistered,
-    /// An attempted read from the WASM guest's heap failed.
-    MemoryReadFailed,
-    /// An attempted write to the WASM guest's heap failed.
-    MemoryWriteFailed,
-    /// The WASM guest program tried to call a function that does not exist.
-    NoSuchFunction,
-    /// A type-signature check on a host-function failed.
-    SignatureFailure,
-}
-
-/// Pretty-printing for `RuntimeTrap` values.
-impl Display for RuntimeTrap {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
-        match self {
-            RuntimeTrap::NoSuchFunction => write!(f, "NoSuchFunction"),
-            RuntimeTrap::SignatureFailure => write!(f, "SignatureFailure"),
-            RuntimeTrap::MemoryNotRegistered => {
-                write!(f, "MemoryNotRegistered")
-            }
-            RuntimeTrap::MemoryReadFailed => write!(f, "MemoryReadFailed"),
-            RuntimeTrap::MemoryWriteFailed => write!(f, "MemoryWriteFailed"),
-        }
-    }
-}
-
-impl HostError for KernelErrorCode {}
-impl HostError for RuntimeTrap {}
-
-/// Lifts a kernel error into an error that can be passed back to the WASM
-/// program.
-#[inline]
-pub fn host_error(code: KernelErrorCode) -> WasmiError {
-    WasmiError::Host(Box::new(code))
-}
-
-/// Creates a WASMI `Trap` type from a `RuntimeTrap`.
-#[inline]
-pub fn host_trap(trap: RuntimeTrap) -> Trap {
-    Trap::new(TrapKind::Host(Box::new(trap)))
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // The WASMI runtime state.
@@ -2190,1000 +1754,6 @@ impl WasmiRuntimeState {
     {
         self.kernel.borrow().theorem_split_hypotheses(handle)
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Signature checking.
-////////////////////////////////////////////////////////////////////////////////
-
-/// Returns `true` iff the semantic function signature type described by
-/// `params` and `ret` is implemented by the WASM type described by
-/// `signature`.
-fn check_signature(
-    signature: &Signature,
-    params: &[AbiType],
-    ret: &Option<AbiType>,
-) -> bool {
-    let params = signature
-        .params()
-        .iter()
-        .zip(params)
-        .all(|(a, w)| w.implemented_by(a));
-
-    match (ret, signature.return_type()) {
-        (None, None) => params,
-        (Some(a), Some(w)) => a.implemented_by(&w) && params,
-        _otherwise => false,
-    }
-}
-
-/// Checks the signature of the `TypeFormer.Resolve` ABI function.
-#[inline]
-fn check_type_former_resolve_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `TypeFormer.Register` ABI function.
-#[inline]
-fn check_type_former_register_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Arity], &Some(AbiType::Handle))
-}
-
-/// Checks the signature of the `TypeFormer.IsRegistered` ABI function.
-#[inline]
-fn check_type_former_is_registered_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Handle], &Some(AbiType::Boolean))
-}
-
-/// Checks the signature of the `Type.Register.Variable` ABI function.
-#[inline]
-fn check_type_register_variable_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Name], &Some(AbiType::Handle))
-}
-
-/// Checks the signature of the `Type.Register.Combination` ABI function.
-#[inline]
-fn check_type_register_combination_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Register.Function` ABI function.
-#[inline]
-fn check_type_register_function_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.IsRegistered` ABI function.
-#[inline]
-fn check_type_is_registered_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Handle], &Some(AbiType::Boolean))
-}
-
-/// Checks the signature of the `Type.Split.Variable` ABI function.
-#[inline]
-fn check_type_split_variable_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Split.Combination` ABI function.
-#[inline]
-fn check_type_split_combination_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Pointer,
-            AbiType::Size,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Split.Function` ABI function.
-#[inline]
-fn check_type_split_function_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Test.Variable` ABI function.
-#[inline]
-fn check_type_test_variable_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Test.Combination` ABI function.
-#[inline]
-fn check_type_test_combination_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Test.Function` ABI function.
-#[inline]
-fn check_type_test_function_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.FTV` ABI function.
-#[inline]
-fn check_type_ftv_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Size],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Type.Substitute` ABI function.
-#[inline]
-fn check_type_substitute_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Constant.Register` ABI function.
-#[inline]
-fn check_constant_register_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Constant.Resolve` ABI function.
-#[inline]
-fn check_constant_resolve_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Constant.IsRegistered` ABI function.
-#[inline]
-fn check_constant_is_registered_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Handle], &Some(AbiType::Boolean))
-}
-
-/// Checks the signature of the `Term.Register.Variable` ABI function.
-#[inline]
-fn check_term_register_variable_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Name, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Constant` ABI function.
-#[inline]
-fn check_term_register_constant_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Application` ABI function.
-#[inline]
-fn check_term_register_application_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Lambda` ABI function.
-#[inline]
-fn check_term_register_lambda_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Name,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Negation` ABI function.
-#[inline]
-fn check_term_register_negation_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Conjunction` ABI function.
-#[inline]
-fn check_term_register_conjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Disjunction` ABI function.
-#[inline]
-fn check_term_register_disjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Implication` ABI function.
-#[inline]
-fn check_term_register_implication_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Equality` ABI function.
-#[inline]
-fn check_term_register_equality_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Forall` ABI function.
-#[inline]
-fn check_term_register_forall_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Name,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Register.Exists` ABI function.
-#[inline]
-fn check_term_register_exists_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Name,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Variable` ABI function.
-#[inline]
-fn check_term_split_variable_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Constant` ABI function.
-#[inline]
-fn check_term_split_constant_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Application` ABI function.
-#[inline]
-fn check_term_split_application_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Lambda` ABI function.
-#[inline]
-fn check_term_split_lambda_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Pointer,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Negation` ABI function.
-#[inline]
-fn check_term_split_negation_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Conjunction` ABI function.
-#[inline]
-fn check_term_split_conjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Disjunction` ABI function.
-#[inline]
-fn check_term_split_disjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Implication` ABI function.
-#[inline]
-fn check_term_split_implication_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Equality` ABI function.
-#[inline]
-fn check_term_split_equality_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Forall` ABI function.
-#[inline]
-fn check_term_split_forall_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Pointer,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Split.Exists` ABI function.
-#[inline]
-fn check_term_split_exists_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Pointer,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Variable` ABI function.
-#[inline]
-fn check_term_test_variable_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Constant` ABI function.
-#[inline]
-fn check_term_test_constant_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Application` ABI function.
-#[inline]
-fn check_term_test_application_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Lambda` ABI function.
-#[inline]
-fn check_term_test_lambda_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Negation` ABI function.
-#[inline]
-fn check_term_test_negation_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Conjunction` ABI function.
-#[inline]
-fn check_term_test_conjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Disjunction` ABI function.
-#[inline]
-fn check_term_test_disjunction_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Implication` ABI function.
-#[inline]
-fn check_term_test_implication_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Equality` ABI function.
-#[inline]
-fn check_term_test_equality_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Forall` ABI function.
-#[inline]
-fn check_term_test_forall_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Test.Exists` ABI function.
-#[inline]
-fn check_term_test_exists_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.FV` ABI function.
-#[inline]
-fn check_term_fv_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-            AbiType::Size,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Substitution` ABI function.
-#[inline]
-fn check_term_substitution_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Type.Variables` ABI function.
-#[inline]
-fn check_term_type_variables_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Size],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Type.Substitution` ABI function.
-#[inline]
-fn check_term_type_substitution_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Type.Infer` ABI function.
-#[inline]
-fn check_term_type_infer_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Term.Type.IsProposition` ABI function.
-#[inline]
-fn check_term_type_is_proposition_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.IsRegistered` ABI function.
-#[inline]
-fn check_theorem_is_registered_signature(signature: &Signature) -> bool {
-    check_signature(signature, &[AbiType::Handle], &Some(AbiType::ErrorCode))
-}
-
-/// Checks the signature of the `Theorem.Register.Assumption` ABI function.
-#[inline]
-fn check_theorem_register_assumption_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Reflexivity` ABI function.
-#[inline]
-fn check_theorem_register_reflexivity_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Symmetry` ABI function.
-#[inline]
-fn check_theorem_register_symmetry_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Transitivity` ABI function.
-#[inline]
-fn check_theorem_register_transitivity_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Application` ABI function.
-#[inline]
-fn check_theorem_register_application_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Lambda` ABI function.
-#[inline]
-fn check_theorem_register_lambda_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Name,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Beta` ABI function.
-#[inline]
-fn check_theorem_register_beta_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.Eta` ABI function.
-#[inline]
-fn check_theorem_register_eta_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.TruthIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_truth_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Pointer, AbiType::Size, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.FalsityElimination` ABI function.
-#[inline]
-fn check_theorem_register_falsity_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ConjunctionIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_conjunction_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ConjunctionLeftElimination` ABI function.
-#[inline]
-fn check_theorem_register_conjunction_left_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ConjunctionRightElimination` ABI function.
-#[inline]
-fn check_theorem_register_conjunction_right_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.DisjunctionElimination` ABI function.
-#[inline]
-fn check_theorem_register_disjunction_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.DisjunctionLeftIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_disjunction_left_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.DisjunctionRightIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_disjunction_right_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ImplicationIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_implication_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ImplicationElimination` ABI function.
-#[inline]
-fn check_theorem_register_implication_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.IffIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_iff_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.IffLeftElimination` ABI function.
-#[inline]
-fn check_theorem_register_iff_left_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.NegationIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_negation_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.NegationElimination` ABI function.
-#[inline]
-fn check_theorem_register_negation_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ForallIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_forall_introduction_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[
-            AbiType::Name,
-            AbiType::Handle,
-            AbiType::Handle,
-            AbiType::Pointer,
-        ],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ForallElimination` ABI function.
-#[inline]
-fn check_theorem_register_forall_elimination_signature(
-    signature: &Signature,
-) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Register.ExistsIntroduction` ABI function.
-#[inline]
-fn check_theorem_register_exists_introduction_signature(
-    _signature: &Signature,
-) -> bool {
-    unimplemented!()
-}
-
-/// Checks the signature of the `Theorem.Register.ExistsElimination` ABI function.
-#[inline]
-fn check_theorem_register_exists_elimination_signature(
-    _signature: &Signature,
-) -> bool {
-    unimplemented!()
-}
-
-/// Checks the signature of the `Theorem.Split.Conclusion` ABI function.
-#[inline]
-fn check_theorem_split_conclusion_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
-}
-
-/// Checks the signature of the `Theorem.Split.Hypotheses` ABI function.
-#[inline]
-fn check_theorem_split_hypotheses_signature(signature: &Signature) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Size],
-        &Some(AbiType::ErrorCode),
-    )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4975,7 +3545,9 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            _otherwise => Err(host_trap(RuntimeTrap::NoSuchFunction)),
+            _otherwise => {
+                Err(runtime_trap::host_trap(RuntimeTrap::NoSuchFunction))
+            }
         }
     }
 }
@@ -4991,8 +3563,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
     ) -> Result<FuncRef, WasmiError> {
         match field_name {
             ABI_TYPE_FORMER_RESOLVE_NAME => {
-                if !check_type_former_resolve_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_former_resolve_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5001,8 +3577,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_FORMER_REGISTER_NAME => {
-                if !check_type_former_register_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_former_register_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5011,8 +3591,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_FORMER_IS_REGISTERED_NAME => {
-                if !check_type_former_is_registered_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_former_is_registered_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5021,8 +3605,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_IS_REGISTERED_NAME => {
-                if !check_type_is_registered_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_is_registered_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5031,8 +3618,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_REGISTER_VARIABLE_NAME => {
-                if !check_type_register_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_register_variable_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5041,8 +3632,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_REGISTER_COMBINATION_NAME => {
-                if !check_type_register_combination_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_register_combination_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5051,8 +3646,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_REGISTER_FUNCTION_NAME => {
-                if !check_type_register_function_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_register_function_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5061,8 +3660,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_SPLIT_VARIABLE_NAME => {
-                if !check_type_split_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_split_variable_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5071,8 +3674,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_SPLIT_COMBINATION_NAME => {
-                if !check_type_split_combination_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_split_combination_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5081,8 +3688,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_SPLIT_FUNCTION_NAME => {
-                if !check_type_split_function_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_split_function_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5091,8 +3702,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_TEST_VARIABLE_NAME => {
-                if !check_type_test_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_test_variable_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5101,8 +3715,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_TEST_COMBINATION_NAME => {
-                if !check_type_test_combination_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_test_combination_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5111,8 +3729,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_TEST_FUNCTION_NAME => {
-                if !check_type_test_function_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_test_function_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5120,9 +3741,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TYPE_TEST_FUNCTION_INDEX,
                 ))
             }
-            ABI_TYPE_FTV_NAME => {
-                if !check_type_ftv_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+            ABI_TYPE_VARIABLES_NAME => {
+                if !type_checking::check_type_ftv_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5131,8 +3754,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TYPE_SUBSTITUTE_NAME => {
-                if !check_type_substitute_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_type_substitute_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5141,8 +3766,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_CONSTANT_RESOLVE_NAME => {
-                if !check_constant_resolve_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_constant_resolve_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5151,8 +3778,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_CONSTANT_IS_REGISTERED_NAME => {
-                if !check_constant_is_registered_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_constant_is_registered_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5161,8 +3792,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_CONSTANT_REGISTER_NAME => {
-                if !check_constant_register_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_constant_register_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5171,8 +3805,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_VARIABLE_NAME => {
-                if !check_term_register_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_variable_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5181,8 +3819,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_CONSTANT_NAME => {
-                if !check_term_register_constant_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_constant_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5191,8 +3833,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_APPLICATION_NAME => {
-                if !check_term_register_application_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_application_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5201,8 +3847,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_LAMBDA_NAME => {
-                if !check_term_register_lambda_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_lambda_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5211,8 +3861,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_NEGATION_NAME => {
-                if !check_term_register_negation_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_negation_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5221,8 +3875,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_CONJUNCTION_NAME => {
-                if !check_term_register_conjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_conjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5231,8 +3889,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_DISJUNCTION_NAME => {
-                if !check_term_register_disjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_disjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5241,8 +3903,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_IMPLICATION_NAME => {
-                if !check_term_register_implication_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_implication_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5251,8 +3917,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_EQUALITY_NAME => {
-                if !check_term_register_equality_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_equality_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5261,8 +3931,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_FORALL_NAME => {
-                if !check_term_register_forall_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_forall_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5271,8 +3945,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_REGISTER_EXISTS_NAME => {
-                if !check_term_register_exists_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_register_exists_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5281,8 +3959,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_VARIABLE_NAME => {
-                if !check_term_split_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_variable_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5291,8 +3973,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_CONSTANT_NAME => {
-                if !check_term_split_constant_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_constant_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5301,8 +3987,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_APPLICATION_NAME => {
-                if !check_term_split_application_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_application_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5311,8 +4001,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_LAMBDA_NAME => {
-                if !check_term_split_lambda_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_lambda_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5321,8 +4014,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_NEGATION_NAME => {
-                if !check_term_split_negation_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_negation_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5331,8 +4028,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_CONJUNCTION_NAME => {
-                if !check_term_split_conjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_conjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5341,8 +4042,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_DISJUNCTION_NAME => {
-                if !check_term_split_disjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_disjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5351,8 +4056,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_IMPLICATION_NAME => {
-                if !check_term_split_implication_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_implication_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5361,8 +4070,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_EQUALITY_NAME => {
-                if !check_term_split_equality_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_equality_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5371,8 +4084,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_FORALL_NAME => {
-                if !check_term_split_forall_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_forall_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5381,8 +4097,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SPLIT_EXISTS_NAME => {
-                if !check_term_split_exists_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_split_exists_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5391,8 +4110,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_VARIABLE_NAME => {
-                if !check_term_test_variable_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_variable_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5401,8 +4123,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_CONSTANT_NAME => {
-                if !check_term_test_constant_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_constant_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5411,8 +4136,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_APPLICATION_NAME => {
-                if !check_term_test_application_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_application_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5421,8 +4150,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_LAMBDA_NAME => {
-                if !check_term_test_lambda_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_lambda_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5431,8 +4162,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_NEGATION_NAME => {
-                if !check_term_test_negation_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_negation_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5441,8 +4175,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_CONJUNCTION_NAME => {
-                if !check_term_test_conjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_conjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5451,8 +4189,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_DISJUNCTION_NAME => {
-                if !check_term_test_disjunction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_disjunction_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5461,8 +4203,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_IMPLICATION_NAME => {
-                if !check_term_test_implication_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_implication_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5471,8 +4217,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_EQUALITY_NAME => {
-                if !check_term_test_equality_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_equality_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5481,8 +4230,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_FORALL_NAME => {
-                if !check_term_test_forall_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_forall_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5491,8 +4242,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TEST_EXISTS_NAME => {
-                if !check_term_test_exists_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_test_exists_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5501,8 +4254,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_FREE_VARIABLES_NAME => {
-                if !check_term_fv_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_fv_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5511,8 +4266,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_SUBSTITUTION_NAME => {
-                if !check_term_substitution_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_substitution_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5521,8 +4279,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TYPE_VARIABLES_NAME => {
-                if !check_term_type_variables_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_type_variables_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5531,8 +4293,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TYPE_SUBSTITUTION_NAME => {
-                if !check_term_type_substitution_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_type_substitution_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5541,8 +4307,10 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TYPE_INFER_NAME => {
-                if !check_term_type_infer_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_type_infer_signature(signature) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5551,8 +4319,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_TERM_TYPE_IS_PROPOSITION_NAME => {
-                if !check_term_type_is_proposition_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_term_type_is_proposition_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5561,8 +4333,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_IS_REGISTERED_NAME => {
-                if !check_theorem_is_registered_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_is_registered_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5571,8 +4347,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_ASSUMPTION_NAME => {
-                if !check_theorem_register_assumption_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_assumption_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5581,8 +4361,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_REFLEXIVITY_NAME => {
-                if !check_theorem_register_reflexivity_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_reflexivity_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5591,8 +4375,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_SYMMETRY_NAME => {
-                if !check_theorem_register_symmetry_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_symmetry_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5601,8 +4389,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_TRANSITIVITY_NAME => {
-                if !check_theorem_register_transitivity_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_transitivity_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5611,8 +4403,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_APPLICATION_NAME => {
-                if !check_theorem_register_application_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_application_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5621,8 +4417,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_LAMBDA_NAME => {
-                if !check_theorem_register_lambda_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_lambda_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5631,8 +4431,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_BETA_NAME => {
-                if !check_theorem_register_beta_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_beta_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5641,8 +4445,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_ETA_NAME => {
-                if !check_theorem_register_eta_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_eta_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5650,11 +4458,19 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_THEOREM_REGISTER_ETA_INDEX,
                 ))
             }
+            ABI_THEOREM_REGISTER_SUBSTITUTION_NAME => {
+                unimplemented!()
+            }
+            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME => {
+                unimplemented!()
+            }
             ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME => {
-                if !check_theorem_register_truth_introduction_signature(
+                if !type_checking::check_theorem_register_truth_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5663,10 +4479,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FALSITY_ELIMINATION_NAME => {
-                if !check_theorem_register_falsity_elimination_signature(
+                if !type_checking::check_theorem_register_falsity_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5675,10 +4493,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_INTRODUCTION_NAME => {
-                if !check_theorem_register_conjunction_introduction_signature(
+                if !type_checking::check_theorem_register_conjunction_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5687,8 +4507,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_LEFT_ELIMINATION_NAME => {
-                if !check_theorem_register_conjunction_left_elimination_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_conjunction_left_elimination_signature(signature) {
+                    return Err(WasmiError::Trap(
+                        runtime_trap::host_trap(RuntimeTrap::SignatureFailure)));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5697,8 +4518,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_CONJUNCTION_RIGHT_ELIMINATION_NAME => {
-                if !check_theorem_register_conjunction_right_elimination_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_conjunction_right_elimination_signature(signature) {
+                    return Err(WasmiError::Trap(
+                        runtime_trap::host_trap(RuntimeTrap::SignatureFailure)));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5707,10 +4529,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_ELIMINATION_NAME => {
-                if !check_theorem_register_disjunction_elimination_signature(
+                if !type_checking::check_theorem_register_disjunction_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5719,8 +4543,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_LEFT_INTRODUCTION_NAME => {
-                if !check_theorem_register_disjunction_left_introduction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_disjunction_left_introduction_signature(signature) {
+                    return Err(WasmiError::Trap(
+                        runtime_trap::host_trap(RuntimeTrap::SignatureFailure)));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5729,8 +4554,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_DISJUNCTION_RIGHT_INTRODUCTION_NAME => {
-                if !check_theorem_register_disjunction_right_introduction_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_register_disjunction_right_introduction_signature(signature) {
+                    return Err(WasmiError::Trap(
+                        runtime_trap::host_trap(RuntimeTrap::SignatureFailure)));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5739,10 +4565,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IMPLICATION_INTRODUCTION_NAME => {
-                if !check_theorem_register_implication_introduction_signature(
+                if !type_checking::check_theorem_register_implication_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5751,10 +4579,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IMPLICATION_ELIMINATION_NAME => {
-                if !check_theorem_register_implication_elimination_signature(
+                if !type_checking::check_theorem_register_implication_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5763,9 +4593,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IFF_INTRODUCTION_NAME => {
-                if !check_theorem_register_iff_introduction_signature(signature)
+                if !type_checking::check_theorem_register_iff_introduction_signature(signature)
                 {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5774,10 +4606,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_IFF_LEFT_ELIMINATION_NAME => {
-                if !check_theorem_register_iff_left_elimination_signature(
+                if !type_checking::check_theorem_register_iff_left_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5786,10 +4620,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME => {
-                if !check_theorem_register_negation_introduction_signature(
+                if !type_checking::check_theorem_register_negation_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5798,10 +4634,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_NEGATION_ELIMINATION_NAME => {
-                if !check_theorem_register_negation_elimination_signature(
+                if !type_checking::check_theorem_register_negation_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5810,10 +4648,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FORALL_INTRODUCTION_NAME => {
-                if !check_theorem_register_forall_introduction_signature(
+                if !type_checking::check_theorem_register_forall_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5822,10 +4662,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_FORALL_ELIMINATION_NAME => {
-                if !check_theorem_register_forall_elimination_signature(
+                if !type_checking::check_theorem_register_forall_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5834,10 +4676,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_EXISTS_ELIMINATION_NAME => {
-                if !check_theorem_register_exists_elimination_signature(
+                if !type_checking::check_theorem_register_exists_elimination_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5846,10 +4690,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_EXISTS_INTRODUCTION_NAME => {
-                if !check_theorem_register_exists_introduction_signature(
+                if !type_checking::check_theorem_register_exists_introduction_signature(
                     signature,
                 ) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5858,8 +4704,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_SPLIT_CONCLUSION_NAME => {
-                if !check_theorem_split_conclusion_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_split_conclusion_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5868,8 +4718,12 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_SPLIT_HYPOTHESES_NAME => {
-                if !check_theorem_split_hypotheses_signature(signature) {
-                    return Err(host_error(KernelErrorCode::SignatureFailure));
+                if !type_checking::check_theorem_split_hypotheses_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
                 }
 
                 Ok(FuncInstance::alloc_host(
@@ -5877,7 +4731,9 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_THEOREM_SPLIT_HYPOTHESES_INDEX,
                 ))
             }
-            _otherwise => Err(host_error(KernelErrorCode::NoSuchFunction)),
+            _otherwise => {
+                Err(runtime_trap::host_error(KernelErrorCode::NoSuchFunction))
+            }
         }
     }
 }
