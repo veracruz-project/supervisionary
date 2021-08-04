@@ -170,7 +170,7 @@ fn main() {
 
     info!("Wasmi environment resolver and module instance created.");
 
-    if !not_started_module.has_start() {
+    if not_started_module.has_start() {
         eprintln!("Wasm module contains 'start' function.");
         exit(1);
     };

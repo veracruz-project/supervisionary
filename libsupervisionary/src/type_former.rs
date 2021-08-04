@@ -43,7 +43,7 @@ extern "C" {
     /// Raw ABI binding to the `__type_former_resolve` function.
     fn __type_former_resolve(
         handle: RawHandle,
-        out: *mut usize,
+        out: *mut u64,
     ) -> RawKernelFailureMode;
 }
 
@@ -53,7 +53,7 @@ extern "C" {
 /// type-formers.
 pub fn type_former_register<T>(arity: T) -> Handle<tags::TypeFormer>
 where
-    T: Into<usize>,
+    T: Into<Arity>,
 {
     let handle = unsafe { __type_former_register(arity.into()) };
 
@@ -63,7 +63,7 @@ where
 /// Returns `true` iff `handle` points-to a registered type-former in the
 /// kernel's heap.
 pub fn type_former_is_registered(handle: Handle<tags::TypeFormer>) -> bool {
-    unsafe { __type_former_is_registered(*handle) }
+    unsafe { __type_former_is_registered(*handle as u64) }
 }
 
 /// Returns the arity of the type-former pointed-to by `handle` in the kernel's
@@ -71,10 +71,11 @@ pub fn type_former_is_registered(handle: Handle<tags::TypeFormer>) -> bool {
 pub fn type_former_resolve(
     handle: Handle<tags::TypeFormer>,
 ) -> Result<Arity, ErrorCode> {
-    let mut arity: Arity = 0usize;
+    let mut arity: Arity = 0u64;
 
-    let result =
-        unsafe { __type_former_resolve(*handle, &mut arity as *mut usize) };
+    let result = unsafe {
+        __type_former_resolve(*handle as u64, &mut arity as *mut u64)
+    };
 
     if result == 0 {
         Ok(arity)

@@ -30,11 +30,11 @@ fn main() {
 
     assert_eq!(
         type_former_resolve(PREALLOCATED_HANDLE_TYPE_FORMER_PROP),
-        Ok(0usize)
+        Ok(0u64)
     );
 
     assert_eq!(
         type_former_resolve(PREALLOCATED_HANDLE_TYPE_FORMER_ARROW),
-        Ok(2usize)
+        Ok(2u64)
     );
 }

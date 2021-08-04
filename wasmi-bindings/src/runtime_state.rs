@@ -19,6 +19,7 @@
 use std::{borrow::Borrow, cell::RefCell, fmt::Debug, mem::size_of};
 
 use byteorder::{ByteOrder, LittleEndian};
+use log::{error, info};
 use wasmi::{
     Error as WasmiError, Externals, FuncInstance, FuncRef, MemoryRef,
     ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap,
@@ -229,6 +230,10 @@ impl WasmiRuntimeState {
     where
         T: Into<semantic_types::Pointer>,
     {
+        let address = address.into();
+
+        info!("Writing {:?} bytes at address {}.", bytes, address);
+
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
             Some(memory) => memory,
@@ -257,8 +262,13 @@ impl WasmiRuntimeState {
         T: Into<semantic_types::Pointer>,
         U: Into<u64>,
     {
-        let mut buffer = Vec::new();
-        LittleEndian::write_u64(&mut buffer, value.into());
+        let address = address.into();
+        let value = value.into();
+
+        info!("Writing u64 value {} at address {}.", value, address);
+
+        let mut buffer = vec![0u8; 8];
+        LittleEndian::write_u64(&mut buffer, value);
 
         self.write_bytes(address, &buffer)
     }
@@ -284,6 +294,12 @@ impl WasmiRuntimeState {
     {
         let mut address = address.into();
 
+        info!(
+            "Writing {} u64 values starting at address {}.",
+            values.len(),
+            address
+        );
+
         for v in values.iter().cloned() {
             self.write_u64(address, v)?;
             address += 8;
@@ -307,8 +323,13 @@ impl WasmiRuntimeState {
         T: Into<semantic_types::Pointer>,
         U: Into<bool>,
     {
-        let mut buffer = Vec::new();
-        LittleEndian::write_u32(&mut buffer, value.into() as u32);
+        let mut buffer = vec![0u8; 4];
+        let address = address.into();
+        let value = value.into();
+
+        info!("Writing bool value {} at address {}.", value, address);
+
+        LittleEndian::write_u32(&mut buffer, value as u32);
 
         self.write_bytes(address, &buffer)
     }
@@ -332,9 +353,14 @@ impl WasmiRuntimeState {
     where
         T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
-        V: tags::IsTag,
+        V: tags::IsTag + Debug,
     {
-        self.write_u64(address, *handle.into() as u64)
+        let handle = handle.into();
+        let address = address.into();
+
+        info!("Writing handle {:?} at address {}.", handle, address);
+
+        self.write_u64(address, *handle as u64)
     }
 
     /// Writes a collection of handles to the WASM guest's memory module
@@ -355,9 +381,15 @@ impl WasmiRuntimeState {
     where
         T: Into<semantic_types::Pointer>,
         U: Into<Handle<V>>,
-        V: tags::IsTag,
+        V: tags::IsTag + Debug,
     {
         let mut address = address.into();
+
+        info!(
+            "Writing {} handles starting at address {}.",
+            handles.len(),
+            address
+        );
 
         for handle in handles {
             self.write_handle(address, handle)?;
@@ -386,6 +418,11 @@ impl WasmiRuntimeState {
         T: Into<semantic_types::Pointer>,
         U: Into<usize>,
     {
+        let address = address.into();
+        let byte_count = byte_count.into();
+
+        info!("Reading {} bytes at address {}.", byte_count, address);
+
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
             Some(memory) => memory,
@@ -1793,13 +1830,13 @@ impl Externals for WasmiRuntimeState {
                 let arity = args.nth::<semantic_types::Arity>(0);
                 let result = self.type_former_register(arity as usize);
 
-                Ok(Some(RuntimeValue::I32(*result as i32)))
+                Ok(Some(RuntimeValue::I64(*result as i64)))
             }
             ABI_TYPE_REGISTER_VARIABLE_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
                 let result = self.type_register_variable(name);
 
-                Ok(Some(RuntimeValue::I32(*result as i32)))
+                Ok(Some(RuntimeValue::I64(*result as i64)))
             }
             ABI_TYPE_REGISTER_COMBINATION_INDEX => {
                 let former_handle: Handle<tags::TypeFormer> = Handle::from(
@@ -3550,6 +3587,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_former_resolve_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_former_resolve.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3564,6 +3603,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_former_register_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_former_register.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3578,6 +3619,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_former_is_registered_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_former_is_registered.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));

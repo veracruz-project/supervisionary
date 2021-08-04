@@ -39,8 +39,8 @@ pub mod type_former;
 /// The kernel type of names.
 pub type Name = u64;
 /// The kernel type of arities.
-pub type Arity = usize;
+pub type Arity = u64;
 /// The "raw" representation of handles expected by the kernel.
-pub(crate) type RawHandle = usize;
+pub(crate) type RawHandle = u64;
 /// The "raw" representation of kernel error modes.
 pub(crate) type RawKernelFailureMode = i32;
