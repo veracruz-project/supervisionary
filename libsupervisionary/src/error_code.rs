@@ -107,6 +107,53 @@ pub enum ErrorCode {
 // Trait implementations.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Pretty-printing for error codes.
+impl Display for ErrorCode {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
+        match self {
+            ErrorCode::NoSuchFunction => write!(f, "NoSuchFunction"),
+            ErrorCode::NoSuchConstantRegistered => {
+                write!(f, "NoSuchConstantRegistered")
+            }
+            ErrorCode::NoSuchTermRegistered => {
+                write!(f, "NoSuchTermRegistered")
+            }
+            ErrorCode::NoSuchTheoremRegistered => {
+                write!(f, "NoSuchTheoremRegistered")
+            }
+            ErrorCode::NoSuchTypeFormerRegistered => {
+                write!(f, "NoSuchTypeFormerRegistered")
+            }
+            ErrorCode::MismatchedArity => write!(f, "MismatchedArity"),
+            ErrorCode::DomainTypeMismatch => write!(f, "DomainTypeMismatch"),
+            ErrorCode::NoSuchTypeRegistered => {
+                write!(f, "NoSuchTypeRegistered")
+            }
+            ErrorCode::NotAFunctionType => write!(f, "NotAFunctionType"),
+            ErrorCode::NotATypeCombination => write!(f, "NotATypeCombination"),
+            ErrorCode::NotATypeVariable => write!(f, "NotATypeVariable"),
+            ErrorCode::TypeNotWellformed => write!(f, "TypeNotWellformed"),
+            ErrorCode::NotAConjunction => write!(f, "NotAConjunction"),
+            ErrorCode::NotAConstant => write!(f, "NotAConstant"),
+            ErrorCode::NotAForall => write!(f, "NotAForall"),
+            ErrorCode::NotADisjunction => write!(f, "NotADisjunction"),
+            ErrorCode::NotALambda => write!(f, "NotALambda"),
+            ErrorCode::NotAnApplication => write!(f, "NotAnApplication"),
+            ErrorCode::NotAnEquality => write!(f, "NotAnEquality"),
+            ErrorCode::NotAnExists => write!(f, "NotAnExists"),
+            ErrorCode::NotAnImplication => write!(f, "NotAnImplication"),
+            ErrorCode::NotANegation => write!(f, "NotANegation"),
+            ErrorCode::NotAProposition => write!(f, "NotAProposition"),
+            ErrorCode::NotAVariable => write!(f, "NotAVariable"),
+            ErrorCode::TermNotWellformed => write!(f, "TermNotWellformed"),
+            ErrorCode::ShapeMismatch => write!(f, "ShapeMismatch"),
+            ErrorCode::TheoremNotWellformed => {
+                write!(f, "TheoremNotWellformed")
+            }
+        }
+    }
+}
+
 /// Conversion into an `i32` type for ABI transport.
 impl Into<i32> for ErrorCode {
     fn into(self) -> i32 {

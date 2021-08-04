@@ -13,12 +13,13 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::error_code::ErrorCode;
 use crate::{
+    error_code::ErrorCode,
     handle::{tags, Handle},
     Name, RawHandle,
 };
-use std::marker::PhantomData;
+
+use std::{convert::TryFrom, marker::PhantomData, ptr::null_mut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated type-related handles.
@@ -70,6 +71,7 @@ extern "C" {
     fn __type_split_variable(handle: RawHandle, result: *mut Name) -> i32;
     fn __type_split_combination(
         handle: RawHandle,
+        type_former: *mut RawHandle,
         argument_base: *mut RawHandle,
         argument_length: *mut u64,
     ) -> i32;
@@ -78,13 +80,13 @@ extern "C" {
         domain_handle: *mut RawHandle,
         range_handle: *mut RawHandle,
     ) -> i32;
-    fn __type_test_variable(handle: RawHandle) -> bool;
-    fn __type_test_combination(handle: RawHandle) -> bool;
-    fn __type_test_function(handle: RawHandle) -> bool;
+    fn __type_test_variable(handle: RawHandle, result: *mut u32) -> i32;
+    fn __type_test_combination(handle: RawHandle, result: *mut u32) -> i32;
+    fn __type_test_function(handle: RawHandle, result: *mut u32) -> i32;
     fn __type_variables(
         handle: RawHandle,
         result_base: *mut Name,
-        result_length: u64,
+        result_length: *mut u64,
     ) -> i32;
     fn __type_substitute(
         handle: RawHandle,
@@ -134,12 +136,254 @@ where
 /// Returns `ErrorCode::NoSuchType` if any of the handles in `arguments` does
 /// not point-to an allocated type in the kernel's heaps.
 pub fn type_register_combination<T, A>(
-    _type_former: T,
-    _arguments: Vec<A>,
+    type_former: T,
+    arguments: Vec<A>,
 ) -> Result<Handle<tags::Type>, ErrorCode>
 where
     T: Into<Handle<tags::TypeFormer>>,
-    A: Into<Handle<tags::Type>>,
+    A: Into<Handle<tags::Type>> + Clone,
 {
-    unimplemented!()
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __type_register_combination(
+            *type_former.into() as RawHandle,
+            arguments
+                .iter()
+                .cloned()
+                .map(|e| *e.into() as u64)
+                .collect::<Vec<_>>()
+                .as_ptr(),
+            arguments.len() as u64,
+            &mut result as *mut RawHandle,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_register_function<D, R>(
+    domain_handle: D,
+    range_handle: R,
+) -> Result<Handle<tags::Type>, ErrorCode>
+where
+    D: Into<Handle<tags::Type>>,
+    R: Into<Handle<tags::Type>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __type_register_function(
+            *domain_handle.into() as RawHandle,
+            *range_handle.into() as RawHandle,
+            &mut result as *mut RawHandle,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_split_variable<H>(handle: H) -> Result<Name, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut result: Name = 0;
+
+    let status = unsafe {
+        __type_split_variable(
+            *handle.into() as RawHandle,
+            &mut result as *mut Name,
+        )
+    };
+
+    if status == 0 {
+        Ok(result)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_split_combination<H>(
+    handle: H,
+) -> Result<(Handle<tags::TypeFormer>, Vec<Handle<tags::Type>>), ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut type_former: u64 = 0;
+    let argument_base: *mut u64 = null_mut();
+    let mut argument_length: u64 = 0;
+
+    let status = unsafe {
+        __type_split_combination(
+            *handle.into() as RawHandle,
+            &mut type_former as *mut RawHandle,
+            argument_base,
+            &mut argument_length as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        let arguments = unsafe {
+            Vec::from_raw_parts(
+                argument_base,
+                argument_length as usize,
+                argument_length as usize,
+            )
+            .iter()
+            .map(|r| Handle::new(*r as usize, PhantomData))
+            .collect()
+        };
+
+        Ok((Handle::new(type_former as usize, PhantomData), arguments))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_split_function<H>(
+    handle: H,
+) -> Result<(Handle<tags::Type>, Handle<tags::Type>), ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut domain_handle: u64 = 0;
+    let mut range_handle: u64 = 0;
+
+    let status = unsafe {
+        __type_split_function(
+            *handle.into() as u64,
+            &mut domain_handle as *mut u64,
+            &mut range_handle as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok((
+            Handle::new(domain_handle as usize, PhantomData),
+            Handle::new(range_handle as usize, PhantomData),
+        ))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_test_variable<H>(handle: H) -> Result<bool, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut result: u32 = 0;
+
+    let status = unsafe {
+        __type_test_variable(*handle.into() as u64, &mut result as *mut u32)
+    };
+
+    if status == 0 {
+        Ok(result == 0)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_test_combination<H>(handle: H) -> Result<bool, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut result: u32 = 0;
+
+    let status = unsafe {
+        __type_test_combination(*handle.into() as u64, &mut result as *mut u32)
+    };
+
+    if status == 0 {
+        Ok(result == 0)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_test_function<H>(handle: H) -> Result<bool, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut result: u32 = 0;
+
+    let status = unsafe {
+        __type_test_function(*handle.into() as u64, &mut result as *mut u32)
+    };
+
+    if status == 0 {
+        Ok(result == 0)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_variables<H>(handle: H) -> Result<Vec<Name>, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let variables_base = null_mut();
+    let mut variables_length: u64 = 0;
+
+    let status = unsafe {
+        __type_variables(
+            *handle.into() as u64,
+            variables_base,
+            &mut variables_length as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(unsafe {
+            Vec::from_raw_parts(
+                variables_base,
+                variables_length as usize,
+                variables_length as usize,
+            )
+        })
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn type_substitute<H, N, T>(
+    handle: H,
+    substitution: Vec<(N, T)>,
+) -> Result<Handle<tags::Type>, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+    N: Into<Name> + Clone,
+    T: Into<Handle<tags::Type>> + Clone,
+{
+    let mut result: u64 = 0;
+    let (mut domain, mut range): (Vec<_>, Vec<_>) = substitution
+        .iter()
+        .cloned()
+        .map(|(d, r)| (d.into(), *r.into() as u64))
+        .unzip();
+
+    let status = unsafe {
+        __type_substitute(
+            *handle.into() as u64,
+            domain.as_mut_ptr() as *mut u64,
+            domain.len() as u64,
+            range.as_mut_ptr() as *mut u64,
+            range.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
 }
