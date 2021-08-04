@@ -14,7 +14,7 @@
 //! [Arm Research]: http://www.arm.com/research
 
 use libsupervisionary::type_former::{
-    type_former_is_registered, type_former_resolve,
+    type_former_is_registered, type_former_register, type_former_resolve,
     PREALLOCATED_HANDLE_TYPE_FORMER_ARROW,
     PREALLOCATED_HANDLE_TYPE_FORMER_PROP,
 };
@@ -37,4 +37,9 @@ fn main() {
         type_former_resolve(PREALLOCATED_HANDLE_TYPE_FORMER_ARROW),
         Ok(2u64)
     );
+
+    let handle = type_former_register(5u64);
+
+    assert_eq!(type_former_resolve(&handle), Ok(5u64));
+    assert!(type_former_is_registered(&handle));
 }

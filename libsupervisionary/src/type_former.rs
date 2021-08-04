@@ -37,7 +37,7 @@ pub const PREALLOCATED_HANDLE_TYPE_FORMER_ARROW: Handle<tags::TypeFormer> =
 
 extern "C" {
     /// Raw ABI binding to the `__type_former_register` function.
-    fn __type_former_register(handle: RawHandle) -> usize;
+    fn __type_former_register(handle: RawHandle) -> u64;
     /// Raw ABI binding to the `__type_former_is_registered` function.
     fn __type_former_is_registered(handle: RawHandle) -> bool;
     /// Raw ABI binding to the `__type_former_resolve` function.
@@ -57,24 +57,31 @@ where
 {
     let handle = unsafe { __type_former_register(arity.into()) };
 
-    Handle::new(handle, PhantomData)
+    Handle::new(handle as usize, PhantomData)
 }
 
 /// Returns `true` iff `handle` points-to a registered type-former in the
 /// kernel's heap.
-pub fn type_former_is_registered(handle: Handle<tags::TypeFormer>) -> bool {
-    unsafe { __type_former_is_registered(*handle as u64) }
+pub fn type_former_is_registered<H>(handle: H) -> bool
+where
+    H: AsRef<Handle<tags::TypeFormer>>,
+{
+    unsafe { __type_former_is_registered(*handle.as_ref().clone() as u64) }
 }
 
 /// Returns the arity of the type-former pointed-to by `handle` in the kernel's
 /// heap, if any.
-pub fn type_former_resolve(
-    handle: Handle<tags::TypeFormer>,
-) -> Result<Arity, ErrorCode> {
+pub fn type_former_resolve<H>(handle: H) -> Result<Arity, ErrorCode>
+where
+    H: AsRef<Handle<tags::TypeFormer>>,
+{
     let mut arity: Arity = 0u64;
 
     let result = unsafe {
-        __type_former_resolve(*handle as u64, &mut arity as *mut u64)
+        __type_former_resolve(
+            *handle.as_ref().clone() as u64,
+            &mut arity as *mut u64,
+        )
     };
 
     if result == 0 {

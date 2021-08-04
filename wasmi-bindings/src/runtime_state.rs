@@ -451,6 +451,10 @@ impl WasmiRuntimeState {
     where
         T: Into<semantic_types::Pointer>,
     {
+        let address = address.into();
+
+        info!("Reading u64 value at address {}.", address);
+
         let buffer = self.read_bytes(address, size_of::<u64>())?;
         Ok(LittleEndian::read_u64(&buffer))
     }
@@ -476,8 +480,11 @@ impl WasmiRuntimeState {
     {
         let mut accumulator = Vec::new();
         let mut address = address.into();
+        let count = count.into();
 
-        for _c in 0..count.into() {
+        info!("Reading {} u64 values at address {}.", count, address);
+
+        for _c in 0..count {
             let handle = self.read_u64(address)?;
             accumulator.push(handle);
             address += 8;
@@ -502,6 +509,10 @@ impl WasmiRuntimeState {
         T: tags::IsTag,
         U: Into<u32>,
     {
+        let address = address.into();
+
+        info!("Reading handle at address {}.", address);
+
         Ok(Handle::from(self.read_u64(address)? as usize))
     }
 
@@ -527,8 +538,11 @@ impl WasmiRuntimeState {
     {
         let mut accumulator = Vec::new();
         let mut address = address.into();
+        let count = count.into();
 
-        for _c in 0..count.into() {
+        info!("Reading {} handles at address {}.", count, address);
+
+        for _c in 0..count {
             let handle = self.read_handle(address)?;
             accumulator.push(handle);
             address += 8;

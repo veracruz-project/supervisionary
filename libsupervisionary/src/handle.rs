@@ -85,6 +85,16 @@ where
 // Trait implementations.
 ////////////////////////////////////////////////////////////////////////////////
 
+impl<T> AsRef<Handle<T>> for Handle<T>
+where
+    T: tags::IsTag,
+{
+    #[inline]
+    fn as_ref(&self) -> &Handle<T> {
+        self
+    }
+}
+
 impl<T> Deref for Handle<T>
 where
     T: tags::IsTag,
