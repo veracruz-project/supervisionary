@@ -1,4 +1,4 @@
-//! # WASMI runtime state
+//! # Wasmi runtime state
 //!
 //! This binds the kernel code, proper, to the guest WASM program-facing ABI
 //! interface, routing host-calls as appropriate.
@@ -20,9 +20,8 @@ use std::{borrow::Borrow, cell::RefCell, fmt::Debug, mem::size_of};
 
 use byteorder::{ByteOrder, LittleEndian};
 use wasmi::{
-    Error as WasmiError, Externals, FuncInstance, FuncRef, HostError,
-    MemoryInstance, ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature,
-    Trap,
+    Error as WasmiError, Externals, FuncInstance, FuncRef, MemoryRef,
+    ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap,
 };
 
 use kernel::{
@@ -161,10 +160,10 @@ use crate::{
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// The WASMI runtime state.
+// The Wasmi runtime state.
 ////////////////////////////////////////////////////////////////////////////////
 
-/// The WASMI runtime state, which is a thin wrapper around the kerne's own
+/// The Wasmi runtime state, which is a thin wrapper around the kernel's own
 /// runtime state, adding a reference to the guest WASM program's memory module,
 /// to enable host functions to read-from and write-to the memory module
 /// directly.
@@ -173,7 +172,7 @@ pub struct WasmiRuntimeState {
     /// The kernel's runtime state.
     kernel: RefCell<KernelRuntimeState>,
     /// The memory instance of the executing WASM guest program.
-    memory: Option<RefCell<MemoryInstance>>,
+    memory: Option<RefCell<MemoryRef>>,
 }
 
 impl Default for WasmiRuntimeState {
@@ -188,7 +187,7 @@ impl Default for WasmiRuntimeState {
 
 impl WasmiRuntimeState {
     /// Constructs a new instance of a `WasmiRuntimeState` with the kernel state
-    /// intitialized to its correct initial state, and the reference to the WASM
+    /// initialised to its correct initial state, and the reference to the Wasm
     /// guest's memory set to `None`.
     #[inline]
     pub fn new() -> Self {
@@ -207,7 +206,7 @@ impl WasmiRuntimeState {
 
     /// Registers the WASM guest's memory module with the runtime state.
     #[inline]
-    pub fn set_memory(&mut self, instance: MemoryInstance) -> &mut Self {
+    pub fn set_memory(&mut self, instance: MemoryRef) -> &mut Self {
         self.memory = Some(RefCell::new(instance));
         self
     }
@@ -438,16 +437,16 @@ impl WasmiRuntimeState {
         T: Into<u32>,
         U: Into<usize>,
     {
-        let mut accum = Vec::new();
+        let mut accumulator = Vec::new();
         let mut address = address.into();
 
         for _c in 0..count.into() {
             let handle = self.read_u64(address)?;
-            accum.push(handle);
+            accumulator.push(handle);
             address += 8;
         }
 
-        Ok(accum)
+        Ok(accumulator)
     }
 
     /// Reads a `Handle` from the WASM guest's memory module at a specified
@@ -489,16 +488,16 @@ impl WasmiRuntimeState {
         U: Into<u32>,
         V: Into<usize>,
     {
-        let mut accum = Vec::new();
+        let mut accumulator = Vec::new();
         let mut address = address.into();
 
         for _c in 0..count.into() {
             let handle = self.read_handle(address)?;
-            accum.push(handle);
+            accumulator.push(handle);
             address += 8;
         }
 
-        Ok(accum)
+        Ok(accumulator)
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -588,10 +587,7 @@ impl WasmiRuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        self.kernel
-            .borrow()
-            .type_split_variable(handle)
-            .map(|n| n.clone())
+        self.kernel.borrow().type_split_variable(handle).map(|n| *n)
     }
 
     /// Lifting of the `type_split_combination` function.
@@ -666,7 +662,7 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow_mut()
             .type_variables(handle)
-            .map(|v| v.iter().map(|e| *e.clone()).collect())
+            .map(|v| v.iter().map(|e| **e).collect())
     }
 
     /// Lifting of the `type_substitute` function.
@@ -907,7 +903,7 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow()
             .term_split_variable(handle)
-            .map(|(n, t)| (n.clone(), t.clone()))
+            .map(|(n, t)| (*n, t.clone()))
     }
 
     /// Lifting of the `term_split_constant` function.
@@ -952,7 +948,7 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow()
             .term_split_lambda(handle)
-            .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
+            .map(|(n, t, b)| (*n, t.clone(), b.clone()))
     }
 
     /// Lifting of the `term_split_negation` function.
@@ -1042,7 +1038,7 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow()
             .term_split_forall(handle)
-            .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
+            .map(|(n, t, b)| (*n, t.clone(), b.clone()))
     }
 
     /// Lifting of the `term_split_exists` function.
@@ -1057,7 +1053,7 @@ impl WasmiRuntimeState {
         self.kernel
             .borrow()
             .term_split_exists(handle)
-            .map(|(n, t, b)| (n.clone(), t.clone(), b.clone()))
+            .map(|(n, t, b)| (*n, t.clone(), b.clone()))
     }
 
     /// Lifting of the `term_test_variable` function.
@@ -1180,12 +1176,10 @@ impl WasmiRuntimeState {
     where
         T: Borrow<Handle<tags::Term>>,
     {
-        self.kernel.borrow().term_free_variables(handle).map(|v| {
-            v.iter()
-                .cloned()
-                .map(|(n, t)| (n.clone(), t.clone()))
-                .collect()
-        })
+        self.kernel
+            .borrow()
+            .term_free_variables(handle)
+            .map(|v| v.iter().cloned().map(|(n, t)| (*n, t.clone())).collect())
     }
 
     /// Lifting of the `term_type_variables` function.
@@ -1272,7 +1266,7 @@ impl WasmiRuntimeState {
     #[inline]
     fn theorem_register_assumption<T, U>(
         &self,
-        hyps_handles: Vec<T>,
+        hypotheses_handles: Vec<T>,
         term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
@@ -1281,14 +1275,14 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_assumption(hyps_handles, term_handle)
+            .theorem_register_assumption(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_reflexivity` function.
     #[inline]
     fn theorem_register_reflexivity<T, U>(
         &self,
-        hyps_handles: Vec<T>,
+        hypotheses_handles: Vec<T>,
         term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
@@ -1297,7 +1291,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_reflexivity(hyps_handles, term_handle)
+            .theorem_register_reflexivity(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_symmetry` function.
@@ -1334,7 +1328,7 @@ impl WasmiRuntimeState {
     #[inline]
     fn theorem_register_beta<T, U>(
         &self,
-        hyps_handles: Vec<T>,
+        hypotheses_handles: Vec<T>,
         term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
@@ -1343,14 +1337,14 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_beta(hyps_handles, term_handle)
+            .theorem_register_beta(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_eta` function.
     #[inline]
     fn theorem_register_eta<T, U>(
         &self,
-        hyps_handles: Vec<T>,
+        hypotheses_handles: Vec<T>,
         term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
@@ -1359,7 +1353,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_eta(hyps_handles, term_handle)
+            .theorem_register_eta(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_substitution` function.
@@ -1434,14 +1428,14 @@ impl WasmiRuntimeState {
     #[inline]
     fn theorem_register_truth_introduction<T>(
         &self,
-        hyps_handles: Vec<T>,
+        hypotheses_handles: Vec<T>,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_truth_introduction(hyps_handles)
+            .theorem_register_truth_introduction(hypotheses_handles)
     }
 
     /// Lifting of the `theorem_register_falsity_elimination` function.
@@ -1771,7 +1765,7 @@ impl Externals for WasmiRuntimeState {
         match index {
             ABI_TYPE_FORMER_RESOLVE_INDEX => {
                 let handle = args.nth::<semantic_types::Handle>(0);
-                let result_addr = args.nth::<semantic_types::Pointer>(1);
+                let result_address = args.nth::<semantic_types::Pointer>(1);
 
                 let arity = match self
                     .type_former_resolve(&Handle::from(handle as usize))
@@ -1781,10 +1775,10 @@ impl Externals for WasmiRuntimeState {
                             KernelErrorCode::NoSuchTypeFormerRegistered.into(),
                         )))
                     }
-                    Some(arity) => arity.clone(),
+                    Some(arity) => arity,
                 };
 
-                self.write_u64(result_addr, arity as u64)?;
+                self.write_u64(result_address, arity as u64)?;
 
                 Ok(Some(RuntimeValue::I32(KernelErrorCode::Success.into())))
             }
@@ -1887,10 +1881,7 @@ impl Externals for WasmiRuntimeState {
                 match self.type_split_combination(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((former_handle, arguments)) => {
-                        self.write_handle(
-                            former_result_ptr,
-                            former_handle.clone(),
-                        )?;
+                        self.write_handle(former_result_ptr, former_handle)?;
                         self.write_handles(
                             arguments_result_ptr,
                             arguments.clone(),
@@ -1916,14 +1907,8 @@ impl Externals for WasmiRuntimeState {
                 match self.type_split_function(type_handle) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((domain_handle, range_handle)) => {
-                        self.write_handle(
-                            domain_result_ptr,
-                            domain_handle.clone(),
-                        )?;
-                        self.write_handle(
-                            range_result_ptr,
-                            range_handle.clone(),
-                        )?;
+                        self.write_handle(domain_result_ptr, domain_handle)?;
+                        self.write_handle(range_result_ptr, range_handle)?;
 
                         Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::Success.into(),
@@ -2012,14 +1997,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self.type_substitute(type_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
@@ -2103,14 +2085,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self.term_register_constant(constant_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
@@ -2758,14 +2737,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self.term_substitution(term_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
@@ -2808,14 +2784,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self.term_type_substitution(term_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
@@ -2907,19 +2880,22 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_ASSUMPTION_INDEX => {
-                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
-                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(2) as usize,
                 );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                let hyps_handles =
-                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                match self
-                    .theorem_register_assumption(hyps_handles, term_handle)
-                {
+                match self.theorem_register_assumption(
+                    hypotheses_handles,
+                    term_handle,
+                ) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -2931,19 +2907,22 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX => {
-                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
-                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(2) as usize,
                 );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                let hyps_handles =
-                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                match self
-                    .theorem_register_reflexivity(hyps_handles, term_handle)
-                {
+                match self.theorem_register_reflexivity(
+                    hypotheses_handles,
+                    term_handle,
+                ) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -2994,17 +2973,21 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_BETA_INDEX => {
-                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
-                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(2) as usize,
                 );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                let hyps_handles =
-                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                match self.theorem_register_beta(hyps_handles, term_handle) {
+                match self
+                    .theorem_register_beta(hypotheses_handles, term_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3016,17 +2999,20 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_ETA_INDEX => {
-                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
-                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(2) as usize,
                 );
                 let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                let hyps_handles =
-                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                match self.theorem_register_eta(hyps_handles, term_handle) {
+                match self.theorem_register_eta(hypotheses_handles, term_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3094,14 +3080,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self.theorem_register_substitution(theorem_handle, subst)
                 {
@@ -3125,14 +3108,11 @@ impl Externals for WasmiRuntimeState {
                 let rng_len = args.nth::<semantic_types::Size>(4);
                 let result_ptr = args.nth::<semantic_types::Pointer>(5);
 
-                let doms = self.read_u64s(dom_ptr, dom_len as usize)?;
-                let rngs = self.read_handles(rng_ptr, rng_len as usize)?;
+                let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst = doms
-                    .iter()
-                    .zip(rngs)
-                    .map(|(d, r)| (d.clone(), r.clone()))
-                    .collect();
+                let subst =
+                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self
                     .theorem_register_type_substitution(theorem_handle, subst)
@@ -3148,14 +3128,18 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX => {
-                let hyps_ptr = args.nth::<semantic_types::Pointer>(0);
-                let hyps_len = args.nth::<semantic_types::Size>(1);
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let result_ptr = args.nth::<semantic_types::Pointer>(2);
 
-                let hyps_handles =
-                    self.read_handles(hyps_ptr, hyps_len as usize)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                match self.theorem_register_truth_introduction(hyps_handles) {
+                match self
+                    .theorem_register_truth_introduction(hypotheses_handles)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -4459,10 +4443,32 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 ))
             }
             ABI_THEOREM_REGISTER_SUBSTITUTION_NAME => {
-                unimplemented!()
+                if !type_checking::check_theorem_register_substitution_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX,
+                ))
             }
             ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME => {
-                unimplemented!()
+                if !type_checking::check_theorem_register_type_substitution_signature(
+                    signature,
+                ) {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX,
+                ))
             }
             ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME => {
                 if !type_checking::check_theorem_register_truth_introduction_signature(

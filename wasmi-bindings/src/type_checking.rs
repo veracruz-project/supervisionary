@@ -809,6 +809,44 @@ pub(crate) fn check_theorem_register_transitivity_signature(
     )
 }
 
+/// Checks the signature of the `Theorem.Register.Substitution` ABI function.
+#[inline]
+pub(crate) fn check_theorem_register_substitution_signature(
+    signature: &Signature,
+) -> bool {
+    check_signature(
+        signature,
+        &[
+            AbiType::Handle,
+            AbiType::Pointer,
+            AbiType::Size,
+            AbiType::Pointer,
+            AbiType::Size,
+            AbiType::Pointer,
+        ],
+        &Some(AbiType::ErrorCode),
+    )
+}
+
+/// Checks the signature of the `Theorem.Register.TypeSubstitution` ABI function.
+#[inline]
+pub(crate) fn check_theorem_register_type_substitution_signature(
+    signature: &Signature,
+) -> bool {
+    check_signature(
+        signature,
+        &[
+            AbiType::Handle,
+            AbiType::Pointer,
+            AbiType::Size,
+            AbiType::Pointer,
+            AbiType::Size,
+            AbiType::Pointer,
+        ],
+        &Some(AbiType::ErrorCode),
+    )
+}
+
 /// Checks the signature of the `Theorem.Register.Application` ABI function.
 #[inline]
 pub(crate) fn check_theorem_register_application_signature(
