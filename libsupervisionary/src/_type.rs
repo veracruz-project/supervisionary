@@ -55,39 +55,51 @@ pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle<tags::Type> =
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
+    /// Raw ABI binding to the `__type_is_registered` function.
     fn __type_is_registered(handle: RawHandle) -> bool;
+    /// Raw ABI binding to the `__type_register_variable` function.
     fn __type_register_variable(name: Name) -> u64;
+    /// Raw ABI binding to the `__type_register_combination` function.
     fn __type_register_combination(
         type_former_handle: RawHandle,
         argument_base: *const RawHandle,
         argument_length: u64,
         result: *mut RawHandle,
     ) -> i32;
+    /// Raw ABI binding to the `__type_register_function` function.
     fn __type_register_function(
         domain_handle: RawHandle,
         range_handle: RawHandle,
         result: *mut RawHandle,
     ) -> i32;
+    /// Raw ABI binding to the `__type_split_variable` function.
     fn __type_split_variable(handle: RawHandle, result: *mut Name) -> i32;
+    /// Raw ABI binding to the `__type_split_combination` function.
     fn __type_split_combination(
         handle: RawHandle,
         type_former: *mut RawHandle,
         argument_base: *mut RawHandle,
         argument_length: *mut u64,
     ) -> i32;
+    /// Raw ABI binding to the `__type_split_function` function.
     fn __type_split_function(
         handle: RawHandle,
         domain_handle: *mut RawHandle,
         range_handle: *mut RawHandle,
     ) -> i32;
+    /// Raw ABI binding to the `__type_test_variable` function.
     fn __type_test_variable(handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__type_test_combination` function.
     fn __type_test_combination(handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__type_test_function` function.
     fn __type_test_function(handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__type_variables` function.
     fn __type_variables(
         handle: RawHandle,
         result_base: *mut Name,
         result_length: *mut u64,
     ) -> i32;
+    /// Raw ABI binding to the `__type_substitute` function.
     fn __type_substitute(
         handle: RawHandle,
         domain_base: *const Name,
@@ -127,14 +139,14 @@ where
 ///
 /// # Errors
 ///
-/// Returns `ErrorCode::NoSuchTypeFormer` if `type_former` does not point-to an
-/// allocated type-former in the kernel's heaps.
+/// Returns `ErrorCode::NoSuchTypeFormerRegistered` if `type_former` does not
+/// point-to an allocated type-former in the kernel's heaps.
 ///
 /// Returns `ErrorCode::MismatchedArity` if the length of `arguments` does not
 /// match the registered arity of `type_former`.
 ///
-/// Returns `ErrorCode::NoSuchType` if any of the handles in `arguments` does
-/// not point-to an allocated type in the kernel's heaps.
+/// Returns `ErrorCode::NoSuchTypeRegistered` if any of the handles in
+/// `arguments` does not point-to an allocated type in the kernel's heaps.
 pub fn type_register_combination<T, A>(
     type_former: T,
     arguments: Vec<A>,
@@ -166,6 +178,14 @@ where
     }
 }
 
+/// Allocates a new function type from a domain type, pointed-to by
+/// `domain_handle`, and a range type, pointed-to by `range_handle`.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if either of the handles
+/// `domain_handle` or `range_handle` do not point-to allocated types in the
+/// kernel's heaps.
 pub fn type_register_function<D, R>(
     domain_handle: D,
     range_handle: R,
@@ -191,6 +211,15 @@ where
     }
 }
 
+/// Returns the name of the type-variable pointed-to by `handle`, if any.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
+///
+/// Returns `ErrorCode::NotATypeVariable` if `handle` does not point-to a
+/// type-variable in the kernel's heaps.
 pub fn type_split_variable<H>(handle: H) -> Result<Name, ErrorCode>
 where
     H: Into<Handle<tags::Type>>,
@@ -211,6 +240,16 @@ where
     }
 }
 
+/// Returns the type-former handle, and the list of argument handles, of the
+/// type combination pointed-to by `handle`, if any.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
+///
+/// Returns `ErrorCode::NotATypeCombination` if `handle` does not point-to a
+/// type-combination in the kernel's heaps.
 pub fn type_split_combination<H>(
     handle: H,
 ) -> Result<(Handle<tags::TypeFormer>, Vec<Handle<tags::Type>>), ErrorCode>
@@ -248,6 +287,16 @@ where
     }
 }
 
+/// Returns the handles of the domain and range types of the type pointed-to by
+/// `handle`, if any.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
+///
+/// Returns `ErrorCode::NotAFunctionType` if `handle` does not point to a
+/// function type in the kernel's heaps.
 pub fn type_split_function<H>(
     handle: H,
 ) -> Result<(Handle<tags::Type>, Handle<tags::Type>), ErrorCode>
@@ -275,6 +324,13 @@ where
     }
 }
 
+/// Returns `Ok(true)` iff `handle` points to a type-variable in the kernel's
+/// heaps.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
 pub fn type_test_variable<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: Into<Handle<tags::Type>>,
@@ -292,6 +348,13 @@ where
     }
 }
 
+/// Returns `Ok(true)` iff `handle` points to a type combination in the kernel's
+/// heaps.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
 pub fn type_test_combination<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: Into<Handle<tags::Type>>,
@@ -309,6 +372,13 @@ where
     }
 }
 
+/// Returns `Ok(true)` iff `handle` points to a function type in the kernel's
+/// heaps.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
 pub fn type_test_function<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: Into<Handle<tags::Type>>,
@@ -326,6 +396,12 @@ where
     }
 }
 
+/// Returns the set of type-variables of the type pointed-to by `handle`, if any.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
 pub fn type_variables<H>(handle: H) -> Result<Vec<Name>, ErrorCode>
 where
     H: Into<Handle<tags::Type>>,
@@ -354,6 +430,14 @@ where
     }
 }
 
+/// Performs a substitution of the variables in the type pointed-to by `handle`
+/// with `substitution`.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle`, or any of the types
+/// appearing in the range of `substitution`, do not point-to an allocated type
+/// in the kernel's heaps.
 pub fn type_substitute<H, N, T>(
     handle: H,
     substitution: Vec<(N, T)>,
