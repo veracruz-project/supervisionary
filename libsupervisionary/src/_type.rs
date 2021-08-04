@@ -56,7 +56,7 @@ pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle<tags::Type> =
 
 extern "C" {
     /// Raw ABI binding to the `__type_is_registered` function.
-    fn __type_is_registered(handle: RawHandle) -> bool;
+    fn __type_is_registered(handle: RawHandle) -> u32;
     /// Raw ABI binding to the `__type_register_variable` function.
     fn __type_register_variable(name: Name) -> u64;
     /// Raw ABI binding to the `__type_register_combination` function.
@@ -117,7 +117,10 @@ pub fn type_is_registered<H>(handle: H) -> bool
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    unsafe { __type_is_registered(*handle.as_ref().clone() as u64) }
+    let result =
+        unsafe { __type_is_registered(*handle.as_ref().clone() as u64) };
+
+    result == 0
 }
 
 /// Allocates a new type-variable with a given `name`.  Note that this function

@@ -14,6 +14,7 @@
 //! [Arm Research]: http://www.arm.com/research
 
 use crate::handle::{tags, Handle};
+use crate::RawHandle;
 use std::marker::PhantomData;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,3 +48,29 @@ pub const PREALLOCATED_HANDLE_CONSTANT_EXISTS: Handle<tags::Constant> =
 /// A pre-allocated handle used to refer to the equality constant.
 pub const PREALLOCATED_HANDLE_CONSTANT_EQUALITY: Handle<tags::Constant> =
     Handle::new(18usize, PhantomData);
+
+////////////////////////////////////////////////////////////////////////////////
+// ABI bindings.
+////////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
+    /// Raw ABI binding to the `__constant_is_registered` function.
+    fn __constant_is_registered(handle: RawHandle) -> i32;
+    /// Raw ABI binding to the `__constant_resolve` function.
+    fn __constant_resolve(handle: RawHandle, result: *mut RawHandle) -> i32;
+    /// Raw ABI binding to the `__constant_register` function.
+    fn __constant_register(
+        type_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+}
+
+#[inline]
+pub fn constant_is_registered<H>(handle: H) -> bool
+where
+    H: Into<Handle<tags::Constant>>,
+{
+    let result = unsafe { __constant_is_registered(*handle.into() as u64) };
+
+    result == 0
+}
