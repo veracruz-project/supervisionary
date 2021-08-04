@@ -51,6 +51,7 @@ extern "C" {
 /// new type-former.  Note that this function is generative, in the sense that
 /// registering two type-formers with the same arity results in two different
 /// type-formers.
+#[inline]
 pub fn type_former_register<T>(arity: T) -> Handle<tags::TypeFormer>
 where
     T: Into<Arity>,
@@ -62,6 +63,7 @@ where
 
 /// Returns `true` iff `handle` points-to a registered type-former in the
 /// kernel's heap.
+#[inline]
 pub fn type_former_is_registered<H>(handle: H) -> bool
 where
     H: AsRef<Handle<tags::TypeFormer>>,
