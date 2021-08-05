@@ -37,20 +37,18 @@ pub(crate) const ABI_TYPE_REGISTER_VARIABLE_NAME: &str =
     "__type_register_variable";
 /// The name of the `Type.Register.Combination` ABI call.
 pub(crate) const ABI_TYPE_REGISTER_COMBINATION_NAME: &str =
-    "__type_register_combination_name";
+    "__type_register_combination";
 /// The name of the `Type.Register.Function` ABI call.
 pub(crate) const ABI_TYPE_REGISTER_FUNCTION_NAME: &str =
-    "__type_register_function_name";
+    "__type_register_function";
 
 /// The name of the `Type.Split.Variable` ABI call.
-pub(crate) const ABI_TYPE_SPLIT_VARIABLE_NAME: &str =
-    "__type_split_variable_name";
+pub(crate) const ABI_TYPE_SPLIT_VARIABLE_NAME: &str = "__type_split_variable";
 /// The name of the `Type.Split.Combination` ABI call.
 pub(crate) const ABI_TYPE_SPLIT_COMBINATION_NAME: &str =
-    "__type_split_combination_name";
+    "__type_split_combination";
 /// The name of the `Type.Split.Function` ABI call.
-pub(crate) const ABI_TYPE_SPLIT_FUNCTION_NAME: &str =
-    "__type_split_function_name";
+pub(crate) const ABI_TYPE_SPLIT_FUNCTION_NAME: &str = "__type_split_function";
 
 /// The name of the `Type.Test.Variable` ABI call.
 pub(crate) const ABI_TYPE_TEST_VARIABLE_NAME: &str = "__type_test_variable";

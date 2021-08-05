@@ -1,3 +1,20 @@
+//! # Runtime traps (kernel panics)
+//!
+//! Defines the number (and name) of each hostcall.
+//!
+//! # Authors
+//!
+//! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//!
+//! # Copyright
+//!
+//! Copyright (c) Arm Limited, 2021.  All rights reserved (r).  Please see the
+//! `LICENSE.markdown` file in the *Supervisionary* root directory for licensing
+//! information.
+//!
+//! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Arm Research]: http://www.arm.com/research
+
 use std::fmt::{Display, Error as DisplayError, Formatter};
 
 use wasmi::{Error as WasmiError, HostError, Trap, TrapKind};

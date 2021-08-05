@@ -134,7 +134,7 @@ pub(crate) fn check_type_split_combination_signature(
             AbiType::Handle,
             AbiType::Pointer,
             AbiType::Pointer,
-            AbiType::Size,
+            AbiType::Pointer,
         ],
         &Some(AbiType::ErrorCode),
     )

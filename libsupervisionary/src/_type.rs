@@ -19,6 +19,7 @@ use crate::{
     Name, RawHandle,
 };
 
+use std::ptr::slice_from_raw_parts_mut;
 use std::{convert::TryFrom, marker::PhantomData, ptr::null_mut};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +57,7 @@ pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle<tags::Type> =
 
 extern "C" {
     /// Raw ABI binding to the `__type_is_registered` function.
-    fn __type_is_registered(handle: RawHandle) -> u32;
+    fn __type_is_registered(handle: RawHandle) -> bool;
     /// Raw ABI binding to the `__type_register_variable` function.
     fn __type_register_variable(name: Name) -> u64;
     /// Raw ABI binding to the `__type_register_combination` function.
@@ -88,11 +89,11 @@ extern "C" {
         range_handle: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `__type_test_variable` function.
-    fn __type_test_variable(handle: RawHandle, result: *mut u32) -> i32;
+    fn __type_test_variable(handle: RawHandle, result: *mut bool) -> i32;
     /// Raw ABI binding to the `__type_test_combination` function.
-    fn __type_test_combination(handle: RawHandle, result: *mut u32) -> i32;
+    fn __type_test_combination(handle: RawHandle, result: *mut bool) -> i32;
     /// Raw ABI binding to the `__type_test_function` function.
-    fn __type_test_function(handle: RawHandle, result: *mut u32) -> i32;
+    fn __type_test_function(handle: RawHandle, result: *mut bool) -> i32;
     /// Raw ABI binding to the `__type_variables` function.
     fn __type_variables(
         handle: RawHandle,
@@ -117,10 +118,7 @@ pub fn type_is_registered<H>(handle: H) -> bool
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    let result =
-        unsafe { __type_is_registered(*handle.as_ref().clone() as u64) };
-
-    result == 0
+    unsafe { __type_is_registered(*handle.as_ref().clone() as u64) }
 }
 
 /// Allocates a new type-variable with a given `name`.  Note that this function
@@ -273,16 +271,18 @@ where
     };
 
     if status == 0 {
-        let arguments = unsafe {
+        let mut arguments: Vec<_> = unsafe {
             Vec::from_raw_parts(
                 argument_base,
                 argument_length as usize,
                 argument_length as usize,
             )
             .iter()
-            .map(|r| Handle::new(*r as usize, PhantomData))
+            .map(|h| Handle::new(*h as usize, PhantomData))
             .collect()
         };
+
+        arguments.shrink_to_fit();
 
         Ok((Handle::new(type_former as usize, PhantomData), arguments))
     } else {
@@ -338,17 +338,17 @@ pub fn type_test_variable<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    let mut result: u32 = 0;
+    let mut result = false;
 
     let status = unsafe {
         __type_test_variable(
             *handle.as_ref().clone() as u64,
-            &mut result as *mut u32,
+            &mut result as *mut bool,
         )
     };
 
     if status == 0 {
-        Ok(result == 0)
+        Ok(result)
     } else {
         Err(ErrorCode::try_from(status).unwrap())
     }
@@ -365,17 +365,17 @@ pub fn type_test_combination<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    let mut result: u32 = 0;
+    let mut result = false;
 
     let status = unsafe {
         __type_test_combination(
             *handle.as_ref().clone() as u64,
-            &mut result as *mut u32,
+            &mut result as *mut bool,
         )
     };
 
     if status == 0 {
-        Ok(result == 0)
+        Ok(result)
     } else {
         Err(ErrorCode::try_from(status).unwrap())
     }
@@ -392,17 +392,17 @@ pub fn type_test_function<H>(handle: H) -> Result<bool, ErrorCode>
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    let mut result: u32 = 0;
+    let mut result = false;
 
     let status = unsafe {
         __type_test_function(
             *handle.as_ref().clone() as u64,
-            &mut result as *mut u32,
+            &mut result as *mut bool,
         )
     };
 
     if status == 0 {
-        Ok(result == 0)
+        Ok(result)
     } else {
         Err(ErrorCode::try_from(status).unwrap())
     }

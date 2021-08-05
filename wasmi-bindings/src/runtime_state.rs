@@ -233,7 +233,7 @@ impl WasmiRuntimeState {
     {
         let address = address.into();
 
-        info!("Writing {:?} bytes at address {}.", bytes, address);
+        info!("Writing {:?} bytes at address {:#x}.", bytes, address);
 
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
@@ -266,7 +266,7 @@ impl WasmiRuntimeState {
         let address = address.into();
         let value = value.into();
 
-        info!("Writing u64 value {} at address {}.", value, address);
+        info!("Writing u64 value {} at address {:#x}.", value, address);
 
         let mut buffer = vec![0u8; 8];
         LittleEndian::write_u64(&mut buffer, value);
@@ -296,7 +296,7 @@ impl WasmiRuntimeState {
         let mut address = address.into();
 
         info!(
-            "Writing {} u64 values starting at address {}.",
+            "Writing {} u64 values starting at address {:#x}.",
             values.len(),
             address
         );
@@ -328,7 +328,7 @@ impl WasmiRuntimeState {
         let address = address.into();
         let value = value.into();
 
-        info!("Writing bool value {} at address {}.", value, address);
+        info!("Writing bool value {} at address {:#x}.", value, address);
 
         LittleEndian::write_u32(&mut buffer, value as u32);
 
@@ -359,7 +359,7 @@ impl WasmiRuntimeState {
         let handle = handle.into();
         let address = address.into();
 
-        info!("Writing handle {:?} at address {}.", handle, address);
+        info!("Writing handle {:?} at address {:#x}.", handle, address);
 
         self.write_u64(address, *handle as u64)
     }
@@ -387,7 +387,7 @@ impl WasmiRuntimeState {
         let mut address = address.into();
 
         info!(
-            "Writing {} handles starting at address {}.",
+            "Writing {} handles starting at address {:#x}.",
             handles.len(),
             address
         );
@@ -422,7 +422,7 @@ impl WasmiRuntimeState {
         let address = address.into();
         let byte_count = byte_count.into();
 
-        info!("Reading {} bytes at address {}.", byte_count, address);
+        info!("Reading {} bytes at address {:#x}.", byte_count, address);
 
         let memory = match &self.memory {
             None => return Err(RuntimeTrap::MemoryNotRegistered),
@@ -454,7 +454,7 @@ impl WasmiRuntimeState {
     {
         let address = address.into();
 
-        info!("Reading u64 value at address {}.", address);
+        info!("Reading u64 value at address {:#x}.", address);
 
         let buffer = self.read_bytes(address, size_of::<u64>())?;
         Ok(LittleEndian::read_u64(&buffer))
@@ -483,7 +483,7 @@ impl WasmiRuntimeState {
         let mut address = address.into();
         let count = count.into();
 
-        info!("Reading {} u64 values at address {}.", count, address);
+        info!("Reading {} u64 values at address {:#x}.", count, address);
 
         for _c in 0..count {
             let handle = self.read_u64(address)?;
@@ -512,7 +512,7 @@ impl WasmiRuntimeState {
     {
         let address = address.into();
 
-        info!("Reading handle at address {}.", address);
+        info!("Reading handle at address {:#x}.", address);
 
         Ok(Handle::from(self.read_u64(address)? as usize))
     }
@@ -541,7 +541,7 @@ impl WasmiRuntimeState {
         let mut address = address.into();
         let count = count.into();
 
-        info!("Reading {} handles at address {}.", count, address);
+        info!("Reading {} handles at address {:#x}.", count, address);
 
         for _c in 0..count {
             let handle = self.read_handle(address)?;
@@ -1943,14 +1943,11 @@ impl Externals for WasmiRuntimeState {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok((former_handle, arguments)) => {
                         self.write_handle(former_result_ptr, former_handle)?;
-                        self.write_handles(
-                            arguments_result_ptr,
-                            arguments.clone(),
-                        )?;
                         self.write_u64(
                             arguments_length_result_ptr,
                             arguments.len() as u64,
                         )?;
+                        self.write_handles(arguments_result_ptr, arguments)?;
 
                         Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::Success.into(),
@@ -1960,7 +1957,7 @@ impl Externals for WasmiRuntimeState {
             }
             ABI_TYPE_SPLIT_FUNCTION_INDEX => {
                 let type_handle: Handle<tags::Type> = Handle::from(
-                    args.nth::<semantic_types::Pointer>(0) as usize,
+                    args.nth::<semantic_types::Handle>(0) as usize,
                 );
                 let domain_result_ptr = args.nth::<semantic_types::Pointer>(1);
                 let range_result_ptr = args.nth::<semantic_types::Pointer>(2);
@@ -2125,7 +2122,7 @@ impl Externals for WasmiRuntimeState {
 
                 let result = self.term_is_registered(term_handle);
 
-                Ok(Some(RuntimeValue::I32(result.into())))
+                Ok(Some(RuntimeValue::I32(if result { 0 } else { 1 })))
             }
             ABI_TERM_REGISTER_VARIABLE_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
@@ -3667,6 +3664,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
             ABI_TYPE_IS_REGISTERED_NAME => {
                 if !type_checking::check_type_is_registered_signature(signature)
                 {
+                    error!("Signature check failed when checking __type_is_registered.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3681,6 +3680,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_register_variable_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_register_variable.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3695,6 +3696,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_register_combination_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_register_combination.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3709,6 +3712,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_register_function_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_register_function.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3723,6 +3728,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_split_variable_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_split_variable.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3737,6 +3744,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_split_combination_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_split_combination.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3751,6 +3760,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_split_function_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_split_function.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3764,6 +3775,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
             ABI_TYPE_TEST_VARIABLE_NAME => {
                 if !type_checking::check_type_test_variable_signature(signature)
                 {
+                    error!("Signature check failed when checking __type_test_variable.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3778,6 +3791,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 if !type_checking::check_type_test_combination_signature(
                     signature,
                 ) {
+                    error!("Signature check failed when checking __type_test_combination.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3791,6 +3806,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
             ABI_TYPE_TEST_FUNCTION_NAME => {
                 if !type_checking::check_type_test_function_signature(signature)
                 {
+                    error!("Signature check failed when checking __type_test_function.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3803,6 +3820,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
             }
             ABI_TYPE_VARIABLES_NAME => {
                 if !type_checking::check_type_ftv_signature(signature) {
+                    error!("Signature check failed when checking __type_variables.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -3815,6 +3834,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
             }
             ABI_TYPE_SUBSTITUTE_NAME => {
                 if !type_checking::check_type_substitute_signature(signature) {
+                    error!("Signature check failed when checking __type_substitute.  Signature: {:?}.", signature);
+
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
