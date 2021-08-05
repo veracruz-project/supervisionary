@@ -172,7 +172,11 @@ impl RuntimeState {
     {
         info!("Checking type-former {} is registered.", handle.borrow());
 
-        self.type_former_resolve(handle).is_some()
+        let result = self.type_former_resolve(handle).is_some();
+
+        info!("Result: {}.", result);
+
+        result
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -224,7 +228,11 @@ impl RuntimeState {
     {
         info!("Checking type {} is registered.", handle.borrow());
 
-        self.resolve_type_handle(handle).is_some()
+        let result = self.resolve_type_handle(handle).is_some();
+
+        info!("Result: {}.", result);
+
+        result
     }
 
     /// Registers a new type in the runtime state's type-table with a given
@@ -648,7 +656,11 @@ impl RuntimeState {
     {
         info!("Checking constant {} is registered.", handle.borrow());
 
-        self.constant_resolve(handle).is_ok()
+        let result = self.constant_resolve(handle).is_ok();
+
+        info!("Result: {}.", result);
+
+        result
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -674,6 +686,23 @@ impl RuntimeState {
         let fresh = self.issue_handle();
         self.terms.insert(fresh.clone(), trm);
         fresh
+    }
+
+    /// Returns `true` iff the `handle` points to an allocated term in the
+    /// kernel's term heap.
+    pub fn term_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: Borrow<Handle<tags::Term>>,
+    {
+        let handle = handle.borrow();
+
+        info!("Checking term with handle {} is registered.", handle);
+
+        let result = self.terms.get(handle).is_some();
+
+        info!("Result: {}.", result);
+
+        result
     }
 
     /// Registers a new term variable, with name `name` and with the type
@@ -1165,9 +1194,9 @@ impl RuntimeState {
         self.resolve_term_handle(handle).is_ok()
     }
 
-    /// Returns `Some((name, _type))` if `handle` points-to a variable in the
+    /// Returns `Some((name, type))` if `handle` points-to a variable in the
     /// runtime state's term-table with name, `name`, and a handle pointing-to a
-    /// type, `_type`.
+    /// type, `type`.
     ///
     /// # Errors
     ///
@@ -1194,9 +1223,9 @@ impl RuntimeState {
         }
     }
 
-    /// Returns `Some((constant, _type))` if `handle` points-to a constant in
+    /// Returns `Some((constant, type))` if `handle` points-to a constant in
     /// the runtime state's term-table with a handle pointing to a constant,
-    /// `constant`, and a handle pointing-to a type, `_type`.
+    /// `constant`, and a handle pointing-to a type, `type`.
     ///
     /// # Errors
     ///
@@ -2997,7 +3026,7 @@ impl Default for RuntimeState {
 
 #[cfg(test)]
 mod test {
-    use crate::kernel::{
+    use crate::{
         handle::{
             PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
             PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,

@@ -13,7 +13,11 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::handle::{tags, Handle};
+use crate::{
+    error_code::ErrorCode,
+    handle::{tags, Handle},
+    Name, RawHandle,
+};
 use std::marker::PhantomData;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,3 +60,216 @@ pub const PREALLOCATED_HANDLE_TERM_FORALL: Handle<tags::Term> =
 /// existential quantifier constant lifted into a term.
 pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle<tags::Term> =
     Handle::new(27usize, PhantomData);
+
+////////////////////////////////////////////////////////////////////////////////
+// ABI bindings.
+////////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
+    /// Raw ABI binding to the `__term_is_registered` function.
+    fn __term_is_registered(handle: RawHandle) -> bool;
+    /// Raw ABI binding to the `__term_register_variable` function.
+    fn __term_register_variable(
+        name: Name,
+        type_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_constant` function.
+    fn __term_register_constant(
+        constant_handle: RawHandle,
+        domain_base: *const Name,
+        domain_length: u64,
+        range_base: *mut RawHandle,
+        range_length: u64,
+        result: *mut RawHandle,
+    ) -> i64;
+    /// Raw ABI binding to the `__term_register_application` function.
+    fn __term_register_application(
+        left_handle: RawHandle,
+        right_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_lambda` function.
+    fn __term_register_lambda(
+        bound_name: Name,
+        type_handle: RawHandle,
+        body_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_negation` function.
+    fn __term_register_negation(
+        body_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_conjunction` function.
+    fn __term_register_conjunction(
+        left_handle: RawHandle,
+        right_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_disjunction` function.
+    fn __term_register_disjunction(
+        left_handle: RawHandle,
+        right_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_implication` function.
+    fn __term_register_implication(
+        left_handle: RawHandle,
+        right_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_equality` function.
+    fn __term_register_equality(
+        left_handle: RawHandle,
+        right_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_forall` function.
+    fn __term_register_forall(
+        bound_name: Name,
+        type_handle: RawHandle,
+        body_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_register_exists` function.
+    fn __term_register_exists(
+        bound_name: Name,
+        type_handle: RawHandle,
+        body_handle: RawHandle,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_variable` function.
+    fn __term_split_variable(
+        term_handle: RawHandle,
+        result_name: *mut Name,
+        result_type: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_constant` function.
+    fn __term_split_constant(
+        term_handle: RawHandle,
+        result_domain_base: *mut Name,
+        result_domain_length: *mut u64,
+        result_range_base: *mut RawHandle,
+        result_range_length: *mut u64,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_application` function.
+    fn __term_split_application(
+        term_handle: RawHandle,
+        result_left: *mut RawHandle,
+        result_right: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_lambda` function.
+    fn __term_split_lambda(
+        term_handle: RawHandle,
+        result_name: *mut Name,
+        result_type: *mut RawHandle,
+        result_body: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_negation` function.
+    fn __term_split_negation(
+        term_handle: RawHandle,
+        result_body: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_conjunction` function.
+    fn __term_split_conjunction(
+        term_handle: RawHandle,
+        result_left: *mut RawHandle,
+        result_right: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_disjunction` function.
+    fn __term_split_disjunction(
+        term_handle: RawHandle,
+        result_left: *mut RawHandle,
+        result_right: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_implication` function.
+    fn __term_split_implication(
+        term_handle: RawHandle,
+        result_left: *mut RawHandle,
+        result_right: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_equality` function.
+    fn __term_split_equality(
+        term_handle: RawHandle,
+        result_left: *mut RawHandle,
+        result_right: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_forall` function.
+    fn __term_split_forall(
+        term_handle: RawHandle,
+        result_name: *mut Name,
+        result_type: *mut RawHandle,
+        result_body: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_split_exists` function.
+    fn __term_split_exists(
+        term_handle: RawHandle,
+        result_name: *mut Name,
+        result_type: *mut RawHandle,
+        result_body: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_test_variable` function.
+    fn __term_test_variable(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_constant` function.
+    fn __term_test_constant(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_application` function.
+    fn __term_test_application(term_handle: RawHandle, result: *mut u32)
+        -> i32;
+    /// Raw ABI binding to the `__term_test_lambda` function.
+    fn __term_test_lambda(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_negation` function.
+    fn __term_test_negation(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_conjunction` function.
+    fn __term_test_conjunction(term_handle: RawHandle, result: *mut u32)
+        -> i32;
+    /// Raw ABI binding to the `__term_test_disjunction` function.
+    fn __term_test_disjunction(term_handle: RawHandle, result: *mut u32)
+        -> i32;
+    /// Raw ABI binding to the `__term_test_implication` function.
+    fn __term_test_implication(term_handle: RawHandle, result: *mut u32)
+        -> i32;
+    /// Raw ABI binding to the `__term_test_equality` function.
+    fn __term_test_equality(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_forall` function.
+    fn __term_test_forall(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_test_exists` function.
+    fn __term_test_exists(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_free_variables` function.
+    fn __term_free_variables(
+        term_handle: RawHandle,
+        result_name_base: *mut Name,
+        result_name_length: u64,
+        result_type_base: *mut RawHandle,
+        result_type_length: u64,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_free_type_variables` function.
+    fn __term_free_type_variables(
+        term_handle: RawHandle,
+        result_type_base: *mut RawHandle,
+        result_type_length: u64,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_substitution` function.
+    fn __term_substitution(
+        term_handle: RawHandle,
+        domain_base: *const Name,
+        domain_length: u64,
+        range_base: *const RawHandle,
+        range_length: u64,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_type_substitution` function.
+    fn __term_type_substitution(
+        term_handle: RawHandle,
+        domain_base: *const Name,
+        domain_length: u64,
+        range_base: *const RawHandle,
+        range_length: u64,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `__term_type_infer` function.
+    fn __term_type_infer(term_handle: RawHandle, result: *mut RawHandle)
+        -> i32;
+    /// Raw ABI binding to the `__term_is_proposition` function.
+    fn __term_is_proposition(term_handle: RawHandle, result: *mut u32) -> i32;
+}

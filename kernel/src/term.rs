@@ -42,7 +42,7 @@ pub enum Term {
     /// explicitly typed.  Not that two variables are equal when their names and
     /// types are both equal.
     ///
-    /// Note that the kernel should ensure that the `_type` handle does not
+    /// Note that the kernel should ensure that the `type` handle does not
     /// dangle.
     Variable {
         /// The name of the variable.
@@ -51,14 +51,14 @@ pub enum Term {
         tau: Handle<tags::Type>,
     },
     /// Constants.  Constants can either be used at their declared type, in the
-    /// constant-table, in which case we set the `_type` field to be `None` to
+    /// constant-table, in which case we set the `type` field to be `None` to
     /// represent this, or can be specialized to a substitutive instance of the
-    /// declared type, in which case we set the `_type` field to be `Some(h)`
+    /// declared type, in which case we set the `type` field to be `Some(h)`
     /// where `h` is the handle for the specialized type.  Note that two
     /// constants are equal when their names are equal and their types are
     /// equal.
     ///
-    /// Note that the kernel should ensure that the `handle` and `_type` handles
+    /// Note that the kernel should ensure that the `handle` and `type` handles
     /// should not dangle.
     Constant {
         /// A handle to the declared constant.
@@ -80,9 +80,9 @@ pub enum Term {
         right: Handle<tags::Term>,
     },
     /// A lambda-abstraction, introducing a new function with argument `name`
-    /// of type `_type`, with body `body`.
+    /// of type `type`, with body `body`.
     ///
-    /// Note that the kernel must ensure that neither `_type` nor `body` handles
+    /// Note that the kernel must ensure that neither `type` nor `body` handles
     /// dangle.
     Lambda {
         /// The name of the newly-introduced function's formal parameter.

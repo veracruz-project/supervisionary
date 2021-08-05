@@ -1,0 +1,14 @@
+[package]
+name        = "type"
+version     = "0.1.0"
+authors     = ["The Supervisionary Development Team"]
+edition     = "2018"
+description = "Tests of the type ABI."
+
+[dependencies]
+libsupervisionary = {path = "../../libsupervisionary"}
+
+[profile.release]
+lto           = true
+opt-level     = 3
+codegen-units = 1

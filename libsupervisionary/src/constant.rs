@@ -13,8 +13,12 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::handle::{tags, Handle};
-use crate::RawHandle;
+use crate::{
+    error_code::ErrorCode,
+    handle::{tags, Handle},
+    RawHandle,
+};
+use std::convert::TryFrom;
 use std::marker::PhantomData;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,12 +69,68 @@ extern "C" {
     ) -> i32;
 }
 
+/// Returns `true` iff `handle` points-to an allocated constant in the kernel's
+/// heaps.
 #[inline]
 pub fn constant_is_registered<H>(handle: H) -> bool
 where
-    H: Into<Handle<tags::Constant>>,
+    H: AsRef<Handle<tags::Constant>>,
 {
-    let result = unsafe { __constant_is_registered(*handle.into() as u64) };
+    let result =
+        unsafe { __constant_is_registered(*handle.as_ref().clone() as u64) };
 
     result == 0
+}
+
+/// Returns the registered type of the constant pointed-to by `handle`, if any,
+/// in the kernel's heaps.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchConstantRegistered` if `handle` does not point-to
+/// any allocated constant in the kernel's heaps.
+pub fn constant_resolve<H>(handle: H) -> Result<Handle<tags::Type>, ErrorCode>
+where
+    H: AsRef<Handle<tags::Constant>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __constant_resolve(
+            *handle.as_ref().clone() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+/// Allocates a new constant in the kernel's heap with a registered type
+/// pointed-to by `type_handle`.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `type_handle` does not point-to
+/// an allocated type in the kernel's heaps.
+pub fn constant_register<H>(
+    type_handle: H,
+) -> Result<Handle<tags::Constant>, ErrorCode>
+where
+    H: Into<Handle<tags::Type>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __constant_register(*type_handle.into() as u64, &mut result as *mut u64)
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
 }

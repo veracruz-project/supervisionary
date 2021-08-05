@@ -336,12 +336,15 @@ where
 /// allocated type in the kernel's heaps.
 pub fn type_test_variable<H>(handle: H) -> Result<bool, ErrorCode>
 where
-    H: Into<Handle<tags::Type>>,
+    H: AsRef<Handle<tags::Type>>,
 {
     let mut result: u32 = 0;
 
     let status = unsafe {
-        __type_test_variable(*handle.into() as u64, &mut result as *mut u32)
+        __type_test_variable(
+            *handle.as_ref().clone() as u64,
+            &mut result as *mut u32,
+        )
     };
 
     if status == 0 {
@@ -360,12 +363,15 @@ where
 /// allocated type in the kernel's heaps.
 pub fn type_test_combination<H>(handle: H) -> Result<bool, ErrorCode>
 where
-    H: Into<Handle<tags::Type>>,
+    H: AsRef<Handle<tags::Type>>,
 {
     let mut result: u32 = 0;
 
     let status = unsafe {
-        __type_test_combination(*handle.into() as u64, &mut result as *mut u32)
+        __type_test_combination(
+            *handle.as_ref().clone() as u64,
+            &mut result as *mut u32,
+        )
     };
 
     if status == 0 {
@@ -384,12 +390,15 @@ where
 /// allocated type in the kernel's heaps.
 pub fn type_test_function<H>(handle: H) -> Result<bool, ErrorCode>
 where
-    H: Into<Handle<tags::Type>>,
+    H: AsRef<Handle<tags::Type>>,
 {
     let mut result: u32 = 0;
 
     let status = unsafe {
-        __type_test_function(*handle.into() as u64, &mut result as *mut u32)
+        __type_test_function(
+            *handle.as_ref().clone() as u64,
+            &mut result as *mut u32,
+        )
     };
 
     if status == 0 {
@@ -407,14 +416,14 @@ where
 /// allocated type in the kernel's heaps.
 pub fn type_variables<H>(handle: H) -> Result<Vec<Name>, ErrorCode>
 where
-    H: Into<Handle<tags::Type>>,
+    H: AsRef<Handle<tags::Type>>,
 {
     let variables_base = null_mut();
     let mut variables_length: u64 = 0;
 
     let status = unsafe {
         __type_variables(
-            *handle.into() as u64,
+            *handle.as_ref().clone() as u64,
             variables_base,
             &mut variables_length as *mut u64,
         )
@@ -446,7 +455,7 @@ pub fn type_substitute<H, N, T>(
     substitution: Vec<(N, T)>,
 ) -> Result<Handle<tags::Type>, ErrorCode>
 where
-    H: Into<Handle<tags::Type>>,
+    H: AsRef<Handle<tags::Type>>,
     N: Into<Name> + Clone,
     T: Into<Handle<tags::Type>> + Clone,
 {
@@ -459,7 +468,7 @@ where
 
     let status = unsafe {
         __type_substitute(
-            *handle.into() as u64,
+            *handle.as_ref().clone() as u64,
             domain.as_mut_ptr() as *mut u64,
             domain.len() as u64,
             range.as_mut_ptr() as *mut u64,

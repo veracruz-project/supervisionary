@@ -230,7 +230,7 @@ pub(crate) fn check_constant_register_signature(signature: &Signature) -> bool {
 pub(crate) fn check_constant_resolve_signature(signature: &Signature) -> bool {
     check_signature(
         signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
+        &[AbiType::Handle, AbiType::Pointer],
         &Some(AbiType::ErrorCode),
     )
 }
@@ -238,6 +238,14 @@ pub(crate) fn check_constant_resolve_signature(signature: &Signature) -> bool {
 /// Checks the signature of the `Constant.IsRegistered` ABI function.
 #[inline]
 pub(crate) fn check_constant_is_registered_signature(
+    signature: &Signature,
+) -> bool {
+    check_signature(signature, &[AbiType::Handle], &Some(AbiType::Boolean))
+}
+
+/// Checks the signature of the `Term.IsRegistered` ABI function.
+#[inline]
+pub(crate) fn check_term_is_registered_signature(
     signature: &Signature,
 ) -> bool {
     check_signature(signature, &[AbiType::Handle], &Some(AbiType::Boolean))

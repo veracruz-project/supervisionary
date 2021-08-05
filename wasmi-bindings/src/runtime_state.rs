@@ -39,6 +39,7 @@ use crate::{
         ABI_CONSTANT_REGISTER_INDEX, ABI_CONSTANT_REGISTER_NAME,
         ABI_CONSTANT_RESOLVE_INDEX, ABI_CONSTANT_RESOLVE_NAME,
         ABI_TERM_FREE_VARIABLES_INDEX, ABI_TERM_FREE_VARIABLES_NAME,
+        ABI_TERM_IS_REGISTERED_INDEX, ABI_TERM_IS_REGISTERED_NAME,
         ABI_TERM_REGISTER_APPLICATION_INDEX,
         ABI_TERM_REGISTER_APPLICATION_NAME,
         ABI_TERM_REGISTER_CONJUNCTION_INDEX,
@@ -765,6 +766,15 @@ impl WasmiRuntimeState {
         T: Borrow<Handle<tags::Constant>>,
     {
         self.kernel.borrow().constant_is_registered(handle)
+    }
+
+    /// Lifting of the `term_is_registered` function.
+    #[inline]
+    fn term_is_registered<T>(&self, handle: T) -> bool
+    where
+        T: Borrow<Handle<tags::Term>>,
+    {
+        self.kernel.borrow().term_is_registered(handle)
     }
 
     /// Lifting of the `term_register_variable` function.
@@ -2107,6 +2117,15 @@ impl Externals for WasmiRuntimeState {
                         )))
                     }
                 }
+            }
+            ABI_TERM_IS_REGISTERED_INDEX => {
+                let term_handle: Handle<tags::Term> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+
+                let result = self.term_is_registered(term_handle);
+
+                Ok(Some(RuntimeValue::I32(result.into())))
             }
             ABI_TERM_REGISTER_VARIABLE_INDEX => {
                 let name = args.nth::<semantic_types::Name>(0);
@@ -3843,6 +3862,19 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
                     ABI_CONSTANT_REGISTER_INDEX,
+                ))
+            }
+            ABI_TERM_IS_REGISTERED_NAME => {
+                if !type_checking::check_term_is_registered_signature(signature)
+                {
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_TERM_IS_REGISTERED_INDEX,
                 ))
             }
             ABI_TERM_REGISTER_VARIABLE_NAME => {

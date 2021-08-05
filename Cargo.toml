@@ -3,6 +3,7 @@ members = [
     "driver",
     "kernel",
     "libsupervisionary",
+    "tests/type",
     "tests/type_former",
     "wasmi-bindings"
 ]
