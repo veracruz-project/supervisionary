@@ -142,7 +142,8 @@ use crate::{
         ABI_TYPE_IS_REGISTERED_NAME, ABI_TYPE_REGISTER_COMBINATION_INDEX,
         ABI_TYPE_REGISTER_COMBINATION_NAME, ABI_TYPE_REGISTER_FUNCTION_INDEX,
         ABI_TYPE_REGISTER_FUNCTION_NAME, ABI_TYPE_REGISTER_VARIABLE_INDEX,
-        ABI_TYPE_REGISTER_VARIABLE_NAME, ABI_TYPE_SPLIT_COMBINATION_INDEX,
+        ABI_TYPE_REGISTER_VARIABLE_NAME, ABI_TYPE_SIZE_INDEX,
+        ABI_TYPE_SIZE_NAME, ABI_TYPE_SPLIT_COMBINATION_INDEX,
         ABI_TYPE_SPLIT_COMBINATION_NAME, ABI_TYPE_SPLIT_FUNCTION_INDEX,
         ABI_TYPE_SPLIT_FUNCTION_NAME, ABI_TYPE_SPLIT_VARIABLE_INDEX,
         ABI_TYPE_SPLIT_VARIABLE_NAME, ABI_TYPE_SUBSTITUTE_INDEX,
@@ -703,6 +704,15 @@ impl WasmiRuntimeState {
         T: Borrow<Handle<tags::Type>>,
     {
         self.kernel.borrow().type_test_function(handle)
+    }
+
+    /// Lifting of the `type_size` function.
+    #[inline]
+    fn type_size<T>(&self, handle: T) -> Result<u64, KernelErrorCode>
+    where
+        T: Borrow<Handle<tags::Type>>,
+    {
+        self.kernel.borrow().type_size(handle)
     }
 
     /// Lifting of the `type_variables` function.
@@ -2018,6 +2028,23 @@ impl Externals for WasmiRuntimeState {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_bool(result_ptr, result)?;
+
+                        Ok(Some(RuntimeValue::I32(
+                            KernelErrorCode::Success.into(),
+                        )))
+                    }
+                }
+            }
+            ABI_TYPE_SIZE_INDEX => {
+                let type_handle: Handle<tags::Type> = Handle::from(
+                    args.nth::<semantic_types::Handle>(0) as usize,
+                );
+                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+
+                match self.type_size(type_handle) {
+                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
+                    Ok(result) => {
+                        self.write_u64(result_ptr, result)?;
 
                         Ok(Some(RuntimeValue::I32(
                             KernelErrorCode::Success.into(),
@@ -3818,8 +3845,22 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TYPE_TEST_FUNCTION_INDEX,
                 ))
             }
+            ABI_TYPE_SIZE_NAME => {
+                if !type_checking::check_type_size_signature(signature) {
+                    error!("Signature check failed when checking __type_size.  Signature: {:?}.", signature);
+
+                    return Err(WasmiError::Trap(runtime_trap::host_trap(
+                        RuntimeTrap::SignatureFailure,
+                    )));
+                }
+
+                Ok(FuncInstance::alloc_host(
+                    signature.clone(),
+                    ABI_TYPE_SIZE_INDEX,
+                ))
+            }
             ABI_TYPE_VARIABLES_NAME => {
-                if !type_checking::check_type_ftv_signature(signature) {
+                if !type_checking::check_type_variables_signature(signature) {
                     error!("Signature check failed when checking __type_variables.  Signature: {:?}.", signature);
 
                     return Err(WasmiError::Trap(runtime_trap::host_trap(

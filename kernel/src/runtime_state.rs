@@ -485,6 +485,54 @@ impl RuntimeState {
             .is_some())
     }
 
+    /// Returns `Ok(size)` where `size` is the size of the type pointed-to by
+    /// `handle`.  Here, size is defined recursively on the structure of types
+    /// by:
+    ///
+    ///     size(Variable(n)) = 1
+    ///     size(Combination(f, a_1, ..., a_n) = 1 + size(a_1) + ... + size(a_n)
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTypeRegistered)` if `handle` does not
+    /// point-to a type in the runtime state's type-table.
+    ///
+    /// Will raise a kernel panic if the type pointed-to by `handle` is
+    /// malformed.
+    pub fn type_size<T>(&self, handle: T) -> Result<u64, ErrorCode>
+    where
+        T: Borrow<Handle<tags::Type>>,
+    {
+        info!("Computing size of type {}.", handle.borrow());
+
+        let tau = self
+            .resolve_type_handle(handle)
+            .ok_or(ErrorCode::NoSuchTypeRegistered)?;
+
+        let mut size = 0u64;
+        let mut work_list = vec![tau];
+
+        while let Some(tau) = work_list.pop() {
+            match tau {
+                Type::Variable { .. } => size += 1,
+                Type::Combination { arguments, .. } => {
+                    let mut arguments = arguments
+                        .iter()
+                        .map(|a| {
+                            self.resolve_type_handle(a).unwrap_or_else(|| {
+                                panic!("{}", DANGLING_HANDLE_ERROR)
+                            })
+                        })
+                        .collect();
+                    size += 1;
+                    work_list.append(&mut arguments);
+                }
+            }
+        }
+
+        Ok(size)
+    }
+
     /// Returns `Ok(vs)` where `vs` is the set of variables appearing in the
     /// type pointed-to by `handle` in the runtime state's type-table.
     ///
@@ -499,7 +547,7 @@ impl RuntimeState {
     where
         T: Borrow<Handle<tags::Type>>,
     {
-        info!("Computing variables of term {}.", handle.borrow());
+        info!("Computing variables of type {}.", handle.borrow());
 
         let tau = self
             .resolve_type_handle(handle)

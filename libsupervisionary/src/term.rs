@@ -235,6 +235,8 @@ extern "C" {
     fn __term_test_forall(term_handle: RawHandle, result: *mut u32) -> i32;
     /// Raw ABI binding to the `__term_test_exists` function.
     fn __term_test_exists(term_handle: RawHandle, result: *mut u32) -> i32;
+    /// Raw ABI binding to the `__term_size` function.
+    fn __term_size(handle: RawHandle, result: *mut u64) -> i32;
     /// Raw ABI binding to the `__term_free_variables` function.
     fn __term_free_variables(
         term_handle: RawHandle,

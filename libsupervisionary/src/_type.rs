@@ -19,8 +19,8 @@ use crate::{
     Name, RawHandle,
 };
 
-use std::ptr::slice_from_raw_parts_mut;
-use std::{convert::TryFrom, marker::PhantomData, ptr::null_mut};
+use std::iter::FromIterator;
+use std::{collections::HashSet, convert::TryFrom, marker::PhantomData};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated type-related handles.
@@ -56,51 +56,53 @@ pub const PREALLOCATED_HANDLE_TYPE_QUANTIFIER: Handle<tags::Type> =
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-    /// Raw ABI binding to the `__type_is_registered` function.
+    /// Raw ABI binding to the `Type.IsRegistered` function.
     fn __type_is_registered(handle: RawHandle) -> bool;
-    /// Raw ABI binding to the `__type_register_variable` function.
+    /// Raw ABI binding to the `Type.Register.Variable` function.
     fn __type_register_variable(name: Name) -> u64;
-    /// Raw ABI binding to the `__type_register_combination` function.
+    /// Raw ABI binding to the `Type.Register.Combination` function.
     fn __type_register_combination(
         type_former_handle: RawHandle,
         argument_base: *const RawHandle,
         argument_length: u64,
         result: *mut RawHandle,
     ) -> i32;
-    /// Raw ABI binding to the `__type_register_function` function.
+    /// Raw ABI binding to the `Type.Register.Function` function.
     fn __type_register_function(
         domain_handle: RawHandle,
         range_handle: RawHandle,
         result: *mut RawHandle,
     ) -> i32;
-    /// Raw ABI binding to the `__type_split_variable` function.
+    /// Raw ABI binding to the `Type.Split.Variable` function.
     fn __type_split_variable(handle: RawHandle, result: *mut Name) -> i32;
-    /// Raw ABI binding to the `__type_split_combination` function.
+    /// Raw ABI binding to the `Type.Split.Combination` function.
     fn __type_split_combination(
         handle: RawHandle,
         type_former: *mut RawHandle,
         argument_base: *mut RawHandle,
         argument_length: *mut u64,
     ) -> i32;
-    /// Raw ABI binding to the `__type_split_function` function.
+    /// Raw ABI binding to the `Type.Split.Function` function.
     fn __type_split_function(
         handle: RawHandle,
         domain_handle: *mut RawHandle,
         range_handle: *mut RawHandle,
     ) -> i32;
-    /// Raw ABI binding to the `__type_test_variable` function.
+    /// Raw ABI binding to the `Type.Test.Function` function.
     fn __type_test_variable(handle: RawHandle, result: *mut bool) -> i32;
-    /// Raw ABI binding to the `__type_test_combination` function.
+    /// Raw ABI binding to the `Type.Test.Combination` function.
     fn __type_test_combination(handle: RawHandle, result: *mut bool) -> i32;
-    /// Raw ABI binding to the `__type_test_function` function.
+    /// Raw ABI binding to the `Type.Test.Function` function.
     fn __type_test_function(handle: RawHandle, result: *mut bool) -> i32;
-    /// Raw ABI binding to the `__type_variables` function.
+    /// Raw ABI binding to the `Type.Size` function.
+    fn __type_size(handle: RawHandle, result: *mut u64) -> i32;
+    /// Raw ABI binding to the `Type.Variables` function.
     fn __type_variables(
         handle: RawHandle,
         result_base: *mut Name,
         result_length: *mut u64,
     ) -> i32;
-    /// Raw ABI binding to the `__type_substitute` function.
+    /// Raw ABI binding to the `Type.Substitute` function.
     fn __type_substitute(
         handle: RawHandle,
         domain_base: *const Name,
@@ -212,6 +214,29 @@ where
     }
 }
 
+/// Returns the "size" of the type pointed-to by handle, if any.
+///
+/// # Errors
+///
+/// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
+/// allocated type in the kernel's heaps.
+pub fn type_size<H>(handle: H) -> Result<usize, ErrorCode>
+where
+    H: AsRef<Handle<tags::Type>>,
+{
+    let mut size: u64 = 0;
+
+    let status = unsafe {
+        __type_size(*handle.as_ref().clone() as u64, &mut size as *mut u64)
+    };
+
+    if status == 0 {
+        Ok(size as usize)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
 /// Returns the name of the type-variable pointed-to by `handle`, if any.
 ///
 /// # Errors
@@ -257,32 +282,29 @@ pub fn type_split_combination<H>(
 where
     H: Into<Handle<tags::Type>>,
 {
+    let handle = handle.into();
+    let size = type_size(&handle)?;
+
     let mut type_former: u64 = 0;
-    let argument_base: *mut u64 = null_mut();
+    let mut arguments = vec![0u64; size];
     let mut argument_length: u64 = 0;
 
     let status = unsafe {
         __type_split_combination(
-            *handle.into() as RawHandle,
+            *handle as RawHandle,
             &mut type_former as *mut RawHandle,
-            argument_base,
+            arguments.as_mut_ptr() as *mut u64,
             &mut argument_length as *mut u64,
         )
     };
 
     if status == 0 {
-        let mut arguments: Vec<_> = unsafe {
-            Vec::from_raw_parts(
-                argument_base,
-                argument_length as usize,
-                argument_length as usize,
-            )
+        arguments.truncate(argument_length as usize);
+
+        let arguments = arguments
             .iter()
             .map(|h| Handle::new(*h as usize, PhantomData))
-            .collect()
-        };
-
-        arguments.shrink_to_fit();
+            .collect();
 
         Ok((Handle::new(type_former as usize, PhantomData), arguments))
     } else {
@@ -414,29 +436,27 @@ where
 ///
 /// Returns `ErrorCode::NoSuchTypeRegistered` if `handle` does not point-to an
 /// allocated type in the kernel's heaps.
-pub fn type_variables<H>(handle: H) -> Result<Vec<Name>, ErrorCode>
+pub fn type_variables<H>(handle: H) -> Result<HashSet<Name>, ErrorCode>
 where
     H: AsRef<Handle<tags::Type>>,
 {
-    let variables_base = null_mut();
+    let size = type_size(&handle)?;
+
+    let mut variables = vec![0u64; size];
     let mut variables_length: u64 = 0;
 
     let status = unsafe {
         __type_variables(
             *handle.as_ref().clone() as u64,
-            variables_base,
+            variables.as_mut_ptr() as *mut u64,
             &mut variables_length as *mut u64,
         )
     };
 
     if status == 0 {
-        Ok(unsafe {
-            Vec::from_raw_parts(
-                variables_base,
-                variables_length as usize,
-                variables_length as usize,
-            )
-        })
+        variables.truncate(variables_length as usize);
+
+        Ok(HashSet::from_iter(variables))
     } else {
         Err(ErrorCode::try_from(status).unwrap())
     }

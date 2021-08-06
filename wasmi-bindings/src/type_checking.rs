@@ -188,12 +188,22 @@ pub(crate) fn check_type_test_function_signature(
     )
 }
 
-/// Checks the signature of the `Type.FTV` ABI function.
+/// Checks the signature of the `Type.Size` ABI function.
 #[inline]
-pub(crate) fn check_type_ftv_signature(signature: &Signature) -> bool {
+pub(crate) fn check_type_size_signature(signature: &Signature) -> bool {
     check_signature(
         signature,
-        &[AbiType::Handle, AbiType::Pointer, AbiType::Size],
+        &[AbiType::Handle, AbiType::Pointer],
+        &Some(AbiType::ErrorCode),
+    )
+}
+
+/// Checks the signature of the `Type.Variables` ABI function.
+#[inline]
+pub(crate) fn check_type_variables_signature(signature: &Signature) -> bool {
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Pointer, AbiType::Pointer],
         &Some(AbiType::ErrorCode),
     )
 }

@@ -18,6 +18,7 @@
 //! [Arm Research]: http://www.arm.com/research
 
 #![feature(const_fn_trait_bound)]
+#![feature(shrink_to)]
 
 /// Bindings to the Supervisionary kernel's type ABI.
 pub mod _type;

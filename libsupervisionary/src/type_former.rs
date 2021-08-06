@@ -36,11 +36,11 @@ pub const PREALLOCATED_HANDLE_TYPE_FORMER_ARROW: Handle<tags::TypeFormer> =
 ////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-    /// Raw ABI binding to the `__type_former_register` function.
+    /// Raw ABI binding to the `TypeFormer.Register` function.
     fn __type_former_register(handle: RawHandle) -> u64;
-    /// Raw ABI binding to the `__type_former_is_registered` function.
+    /// Raw ABI binding to the `TypeFormer.IsRegistered` function.
     fn __type_former_is_registered(handle: RawHandle) -> bool;
-    /// Raw ABI binding to the `__type_former_resolve` function.
+    /// Raw ABI binding to the `TypeFormer.Resolve` function.
     fn __type_former_resolve(
         handle: RawHandle,
         out: *mut u64,
