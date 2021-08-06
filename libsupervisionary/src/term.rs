@@ -18,7 +18,9 @@ use crate::{
     handle::{tags, Handle},
     Name, RawHandle,
 };
+use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,15 +250,17 @@ extern "C" {
     fn __term_free_variables(
         term_handle: RawHandle,
         result_name_base: *mut Name,
-        result_name_length: u64,
+        result_name_length: *mut u64,
         result_type_base: *mut RawHandle,
-        result_type_length: u64,
+        result_type_length: *mut u64,
     ) -> i32;
     /// Raw ABI binding to the `Term.Substitution` function.
     fn __term_substitution(
         term_handle: RawHandle,
         domain_base: *const Name,
         domain_length: u64,
+        type_base: *const Name,
+        type_length: u64,
         range_base: *const RawHandle,
         range_length: u64,
         result: *mut RawHandle,
@@ -265,7 +269,7 @@ extern "C" {
     fn __term_free_type_variables(
         term_handle: RawHandle,
         result_type_base: *mut RawHandle,
-        result_type_length: u64,
+        result_type_length: *mut u64,
     ) -> i32;
     /// Raw ABI binding to the `Term.Type.Substitution` function.
     fn __term_type_substitution(
@@ -280,7 +284,10 @@ extern "C" {
     fn __term_type_infer(term_handle: RawHandle, result: *mut RawHandle)
         -> i32;
     /// Raw ABI binding to the `Term.Type.IsProposition` function.
-    fn __term_is_proposition(term_handle: RawHandle, result: *mut u32) -> i32;
+    fn __term_type_is_proposition(
+        term_handle: RawHandle,
+        result: *mut bool,
+    ) -> i32;
 }
 
 pub fn term_is_registered<T>(handle: T) -> bool
@@ -1116,6 +1123,196 @@ where
 
     if status == 0 {
         Ok(result as usize)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_free_variables<T>(
+    term_handle: T,
+) -> Result<HashSet<(Name, Handle<tags::Type>)>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+{
+    let size = term_size(&term_handle)?;
+
+    let mut result_domain = vec![0u64; size];
+    let mut result_range = vec![0u64; size];
+
+    let mut result_domain_size: u64 = 0;
+    let mut result_range_size: u64 = 0;
+
+    let status = unsafe {
+        __term_free_variables(
+            *term_handle.as_ref().clone() as u64,
+            result_domain.as_mut_ptr() as *mut u64,
+            &mut result_domain_size as *mut u64,
+            result_range.as_mut_ptr() as *mut u64,
+            &mut result_range_size as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        assert_eq!(result_domain_size, result_range_size);
+
+        result_domain.truncate(result_domain_size as usize);
+        result_range.truncate(result_range_size as usize);
+
+        let substitute = result_domain
+            .iter()
+            .zip(result_range)
+            .map(|(d, r)| (*d, Handle::new(r as usize, PhantomData)))
+            .collect();
+
+        Ok(substitute)
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_free_type_variables<T>(
+    term_handle: T,
+) -> Result<HashSet<Name>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+{
+    let size = term_size(&term_handle)?;
+
+    let mut result = vec![0u64; size];
+    let mut result_size: u64 = 0;
+
+    let status = unsafe {
+        __term_free_type_variables(
+            *term_handle.as_ref().clone() as u64,
+            result.as_mut_ptr() as *mut u64,
+            &mut result_size as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        result.truncate(result_size as usize);
+
+        Ok(HashSet::from_iter(result))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_type_substitute<T, N, U>(
+    term_handle: T,
+    substitution: Vec<(N, U)>,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+    N: Into<Name> + Clone,
+    U: Into<Handle<tags::Type>> + Clone,
+{
+    let mut result: u64 = 0;
+    let (domain, range): (Vec<_>, Vec<_>) = substitution
+        .iter()
+        .cloned()
+        .map(|(d, r)| (d.into(), *r.into() as u64))
+        .unzip();
+
+    let status = unsafe {
+        __term_type_substitution(
+            *term_handle.as_ref().clone() as u64,
+            domain.as_ptr() as *const u64,
+            domain.len() as u64,
+            range.as_ptr() as *const u64,
+            range.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_substitute<T, N, S, U>(
+    term_handle: T,
+    substitution: Vec<((N, S), U)>,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+    N: Into<Name> + Clone,
+    S: Into<Handle<tags::Type>> + Clone,
+    U: Into<Handle<tags::Term>> + Clone,
+{
+    let mut result: u64 = 0;
+
+    let mut domain: Vec<u64> = vec![];
+    let mut types: Vec<u64> = vec![];
+    let mut range: Vec<u64> = vec![];
+
+    for ((d, t), r) in substitution.iter() {
+        domain.push(d.clone().into());
+        types.push(*t.clone().into() as u64);
+        range.push(*r.clone().into() as u64);
+    }
+
+    let status = unsafe {
+        __term_substitution(
+            *term_handle.as_ref().clone() as u64,
+            domain.as_ptr() as *const u64,
+            domain.len() as u64,
+            types.as_ptr() as *const u64,
+            types.len() as u64,
+            range.as_ptr() as *const u64,
+            range.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_type_infer<T>(
+    term_handle: T,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __term_type_infer(
+            *term_handle.as_ref().clone() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn term_type_is_proposition<T>(
+    term_handle: T,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: AsRef<Handle<tags::Term>>,
+{
+    let mut result: bool = false;
+
+    let status = unsafe {
+        __term_type_is_proposition(
+            *term_handle.as_ref().clone() as u64,
+            &mut result as *mut bool,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
     } else {
         Err(ErrorCode::try_from(status).unwrap())
     }

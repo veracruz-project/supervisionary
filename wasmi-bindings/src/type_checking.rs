@@ -698,13 +698,15 @@ pub(crate) fn check_term_fv_signature(signature: &Signature) -> bool {
     )
 }
 
-/// Checks the signature of the `Term.Substitution` ABI function.
+/// Checks the signature of the `Term.Substitute` ABI function.
 #[inline]
-pub(crate) fn check_term_substitution_signature(signature: &Signature) -> bool {
+pub(crate) fn check_term_substitute_signature(signature: &Signature) -> bool {
     check_signature(
         signature,
         &[
             AbiType::Handle,
+            AbiType::Pointer,
+            AbiType::Size,
             AbiType::Pointer,
             AbiType::Size,
             AbiType::Pointer,
@@ -727,9 +729,9 @@ pub(crate) fn check_term_type_variables_signature(
     )
 }
 
-/// Checks the signature of the `Term.Type.Substitution` ABI function.
+/// Checks the signature of the `Term.Type.Substitute` ABI function.
 #[inline]
-pub(crate) fn check_term_type_substitution_signature(
+pub(crate) fn check_term_type_substitute_signature(
     signature: &Signature,
 ) -> bool {
     check_signature(
@@ -827,9 +829,9 @@ pub(crate) fn check_theorem_register_transitivity_signature(
     )
 }
 
-/// Checks the signature of the `Theorem.Register.Substitution` ABI function.
+/// Checks the signature of the `Theorem.Register.Substitute` ABI function.
 #[inline]
-pub(crate) fn check_theorem_register_substitution_signature(
+pub(crate) fn check_theorem_register_substitute_signature(
     signature: &Signature,
 ) -> bool {
     check_signature(
@@ -846,9 +848,9 @@ pub(crate) fn check_theorem_register_substitution_signature(
     )
 }
 
-/// Checks the signature of the `Theorem.Register.TypeSubstitution` ABI function.
+/// Checks the signature of the `Theorem.Register.TypeSubstitute` ABI function.
 #[inline]
-pub(crate) fn check_theorem_register_type_substitution_signature(
+pub(crate) fn check_theorem_register_type_substitute_signature(
     signature: &Signature,
 ) -> bool {
     check_signature(

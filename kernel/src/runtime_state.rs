@@ -966,7 +966,7 @@ impl RuntimeState {
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
-        let spec = self.term_type_substitution(
+        let spec = self.term_type_substitute(
             PREALLOCATED_HANDLE_TERM_EQUALITY,
             vec![(0_u64, ltau)],
         )?;
@@ -1146,7 +1146,7 @@ impl RuntimeState {
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
 
         let univ = self
-            .term_type_substitution(
+            .term_type_substitute(
                 PREALLOCATED_HANDLE_TERM_FORALL,
                 vec![(0_u64, tau)],
             )
@@ -1199,7 +1199,7 @@ impl RuntimeState {
             .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
 
         let univ = self
-            .term_type_substitution(
+            .term_type_substitute(
                 PREALLOCATED_HANDLE_TERM_EXISTS,
                 vec![(0_u64, tau)],
             )
@@ -1831,20 +1831,21 @@ impl RuntimeState {
         }
     }
 
-    pub fn substitution<T, U, V>(
+    pub fn substitution<T, N, U, V>(
         &mut self,
         _handle: T,
-        _sigma: Vec<(U, V)>,
+        _sigma: Vec<((N, U), V)>,
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Term>>,
-        U: Into<Name> + Clone,
+        N: Into<Name> + Clone,
+        U: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
         unimplemented!()
     }
 
-    pub fn term_type_substitution<T, U, V>(
+    pub fn term_type_substitute<T, U, V>(
         &mut self,
         _handle: T,
         _sigma: Vec<(U, V)>,
@@ -2802,7 +2803,7 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conc)))
     }
 
-    pub fn theorem_register_substitution<T, U>(
+    pub fn theorem_register_substitute<T, U>(
         &mut self,
         handle: T,
         sigma: Vec<(Name, U)>,
@@ -2827,7 +2828,7 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
     }
 
-    pub fn theorem_register_type_substitution<T, U>(
+    pub fn theorem_register_type_substitute<T, U>(
         &mut self,
         handle: T,
         sigma: Vec<(Name, U)>,
@@ -2841,12 +2842,12 @@ impl RuntimeState {
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
             .clone();
 
-        let conclusion = self
-            .term_type_substitution(thm.conclusion().clone(), sigma.clone())?;
+        let conclusion =
+            self.term_type_substitute(thm.conclusion().clone(), sigma.clone())?;
         let mut hypotheses = Vec::new();
 
         for h in thm.hypotheses().iter().cloned() {
-            hypotheses.push(self.term_type_substitution(h, sigma.clone())?);
+            hypotheses.push(self.term_type_substitute(h, sigma.clone())?);
         }
 
         Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))

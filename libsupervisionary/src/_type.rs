@@ -480,7 +480,7 @@ where
     T: Into<Handle<tags::Type>> + Clone,
 {
     let mut result: u64 = 0;
-    let (mut domain, mut range): (Vec<_>, Vec<_>) = substitution
+    let (domain, range): (Vec<_>, Vec<_>) = substitution
         .iter()
         .cloned()
         .map(|(d, r)| (d.into(), *r.into() as u64))
@@ -489,9 +489,9 @@ where
     let status = unsafe {
         __type_substitute(
             *handle.as_ref().clone() as u64,
-            domain.as_mut_ptr() as *mut u64,
+            domain.as_ptr() as *const u64,
             domain.len() as u64,
-            range.as_mut_ptr() as *mut u64,
+            range.as_ptr() as *const u64,
             range.len() as u64,
             &mut result as *mut u64,
         )

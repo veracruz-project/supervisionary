@@ -63,8 +63,8 @@ use crate::{
         ABI_TERM_SPLIT_IMPLICATION_NAME, ABI_TERM_SPLIT_LAMBDA_INDEX,
         ABI_TERM_SPLIT_LAMBDA_NAME, ABI_TERM_SPLIT_NEGATION_INDEX,
         ABI_TERM_SPLIT_NEGATION_NAME, ABI_TERM_SPLIT_VARIABLE_INDEX,
-        ABI_TERM_SPLIT_VARIABLE_NAME, ABI_TERM_SUBSTITUTION_INDEX,
-        ABI_TERM_SUBSTITUTION_NAME, ABI_TERM_TEST_APPLICATION_INDEX,
+        ABI_TERM_SPLIT_VARIABLE_NAME, ABI_TERM_SUBSTITUTE_INDEX,
+        ABI_TERM_SUBSTITUTE_NAME, ABI_TERM_TEST_APPLICATION_INDEX,
         ABI_TERM_TEST_APPLICATION_NAME, ABI_TERM_TEST_CONJUNCTION_INDEX,
         ABI_TERM_TEST_CONJUNCTION_NAME, ABI_TERM_TEST_CONSTANT_INDEX,
         ABI_TERM_TEST_CONSTANT_NAME, ABI_TERM_TEST_DISJUNCTION_INDEX,
@@ -77,8 +77,8 @@ use crate::{
         ABI_TERM_TEST_NEGATION_NAME, ABI_TERM_TEST_VARIABLE_INDEX,
         ABI_TERM_TEST_VARIABLE_NAME, ABI_TERM_TYPE_INFER_INDEX,
         ABI_TERM_TYPE_INFER_NAME, ABI_TERM_TYPE_IS_PROPOSITION_INDEX,
-        ABI_TERM_TYPE_IS_PROPOSITION_NAME, ABI_TERM_TYPE_SUBSTITUTION_INDEX,
-        ABI_TERM_TYPE_SUBSTITUTION_NAME, ABI_TERM_TYPE_VARIABLES_INDEX,
+        ABI_TERM_TYPE_IS_PROPOSITION_NAME, ABI_TERM_TYPE_SUBSTITUTE_INDEX,
+        ABI_TERM_TYPE_SUBSTITUTE_NAME, ABI_TERM_TYPE_VARIABLES_INDEX,
         ABI_TERM_TYPE_VARIABLES_NAME, ABI_THEOREM_IS_REGISTERED_INDEX,
         ABI_THEOREM_IS_REGISTERED_NAME, ABI_THEOREM_REGISTER_APPLICATION_INDEX,
         ABI_THEOREM_REGISTER_APPLICATION_NAME,
@@ -123,16 +123,16 @@ use crate::{
         ABI_THEOREM_REGISTER_NEGATION_INTRODUCTION_NAME,
         ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX,
         ABI_THEOREM_REGISTER_REFLEXIVITY_NAME,
-        ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX,
-        ABI_THEOREM_REGISTER_SUBSTITUTION_NAME,
+        ABI_THEOREM_REGISTER_SUBSTITUTE_INDEX,
+        ABI_THEOREM_REGISTER_SUBSTITUTE_NAME,
         ABI_THEOREM_REGISTER_SYMMETRY_INDEX,
         ABI_THEOREM_REGISTER_SYMMETRY_NAME,
         ABI_THEOREM_REGISTER_TRANSITIVITY_INDEX,
         ABI_THEOREM_REGISTER_TRANSITIVITY_NAME,
         ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX,
         ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME,
-        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX,
-        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME,
+        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_INDEX,
+        ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_NAME,
         ABI_THEOREM_SPLIT_CONCLUSION_INDEX, ABI_THEOREM_SPLIT_CONCLUSION_NAME,
         ABI_THEOREM_SPLIT_HYPOTHESES_INDEX, ABI_THEOREM_SPLIT_HYPOTHESES_NAME,
         ABI_TYPE_FORMER_IS_REGISTERED_INDEX,
@@ -1270,22 +1270,23 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `term_substitution` function.
     #[inline]
-    fn term_substitution<T, U, V>(
+    fn term_substitute<T, N, U, V>(
         &self,
         handle: T,
-        substitution: Vec<(U, V)>,
+        substitution: Vec<((N, U), V)>,
     ) -> Result<Handle<tags::Term>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>>,
-        U: Into<Name> + Clone,
+        N: Into<Name> + Clone,
+        V: Into<Handle<tags::Type>> + Clone,
         V: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel.borrow_mut().substitution(handle, substitution)
     }
 
-    /// Lifting of the `term_type_substitution` function.
+    /// Lifting of the `term_type_substitute` function.
     #[inline]
-    fn term_type_substitution<T, U, V>(
+    fn term_type_substitute<T, U, V>(
         &self,
         handle: T,
         substitution: Vec<(U, V)>,
@@ -1297,7 +1298,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .term_type_substitution(handle, substitution)
+            .term_type_substitute(handle, substitution)
     }
 
     /// Lifting of the `term_type_infer` function.
@@ -1427,12 +1428,12 @@ impl WasmiRuntimeState {
             .theorem_register_eta(hypotheses_handles, term_handle)
     }
 
-    /// Lifting of the `theorem_register_substitution` function.
+    /// Lifting of the `theorem_register_substitute` function.
     #[inline]
-    fn theorem_register_substitution<T, U>(
+    fn theorem_register_substitute<T, U>(
         &self,
         theorem_handle: T,
-        subst: Vec<(Name, U)>,
+        substitution: Vec<(Name, U)>,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -1440,15 +1441,15 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_substitution(theorem_handle, subst)
+            .theorem_register_substitute(theorem_handle, substitution)
     }
 
-    /// Lifting of the `theorem_register_type_substitution` function.
+    /// Lifting of the `theorem_register_type_substitute` function.
     #[inline]
-    fn theorem_register_type_substitution<T, U>(
+    fn theorem_register_type_substitute<T, U>(
         &self,
         theorem_handle: T,
-        subst: Vec<(Name, U)>,
+        substitution: Vec<(Name, U)>,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
@@ -1456,7 +1457,7 @@ impl WasmiRuntimeState {
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_type_substitution(theorem_handle, subst)
+            .theorem_register_type_substitute(theorem_handle, substitution)
     }
 
     /// Lifting of the `theorem_register_application` function.
@@ -2821,23 +2822,30 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_TERM_SUBSTITUTION_INDEX => {
+            ABI_TERM_SUBSTITUTE_INDEX => {
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(0) as usize,
                 );
                 let dom_ptr = args.nth::<semantic_types::Pointer>(1);
                 let dom_len = args.nth::<semantic_types::Size>(2);
-                let rng_ptr = args.nth::<semantic_types::Pointer>(3);
-                let rng_len = args.nth::<semantic_types::Size>(4);
-                let result_ptr = args.nth::<semantic_types::Pointer>(5);
+                let type_ptr = args.nth::<semantic_types::Pointer>(3);
+                let type_len = args.nth::<semantic_types::Size>(4);
+                let rng_ptr = args.nth::<semantic_types::Pointer>(5);
+                let rng_len = args.nth::<semantic_types::Size>(6);
+                let result_ptr = args.nth::<semantic_types::Pointer>(7);
 
                 let domains = self.read_u64s(dom_ptr, dom_len as usize)?;
+                let types = self.read_u64s(type_ptr, type_len as usize)?;
                 let ranges = self.read_handles(rng_ptr, rng_len as usize)?;
 
-                let subst =
-                    domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
+                let substitution = domains
+                    .iter()
+                    .zip(types)
+                    .zip(ranges)
+                    .map(|((d, t), r)| ((*d, t), r))
+                    .collect();
 
-                match self.term_substitution(term_handle, subst) {
+                match self.term_substitute(term_handle, substitution) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -2867,7 +2875,7 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_TERM_TYPE_SUBSTITUTION_INDEX => {
+            ABI_TERM_TYPE_SUBSTITUTE_INDEX => {
                 let term_handle: Handle<tags::Term> = Handle::from(
                     args.nth::<semantic_types::Handle>(0) as usize,
                 );
@@ -2884,7 +2892,7 @@ impl Externals for WasmiRuntimeState {
                 let subst =
                     domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
-                match self.term_type_substitution(term_handle, subst) {
+                match self.term_type_substitute(term_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3164,7 +3172,7 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX => {
+            ABI_THEOREM_REGISTER_SUBSTITUTE_INDEX => {
                 let theorem_handle: Handle<tags::Theorem> = Handle::from(
                     args.nth::<semantic_types::Handle>(0) as usize,
                 );
@@ -3180,8 +3188,7 @@ impl Externals for WasmiRuntimeState {
                 let subst =
                     domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
-                match self.theorem_register_substitution(theorem_handle, subst)
-                {
+                match self.theorem_register_substitute(theorem_handle, subst) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3192,7 +3199,7 @@ impl Externals for WasmiRuntimeState {
                     }
                 }
             }
-            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX => {
+            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_INDEX => {
                 let theorem_handle: Handle<tags::Theorem> = Handle::from(
                     args.nth::<semantic_types::Handle>(0) as usize,
                 );
@@ -3209,7 +3216,7 @@ impl Externals for WasmiRuntimeState {
                     domains.iter().zip(ranges).map(|(d, r)| (*d, r)).collect();
 
                 match self
-                    .theorem_register_type_substitution(theorem_handle, subst)
+                    .theorem_register_type_substitute(theorem_handle, subst)
                 {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
@@ -4400,9 +4407,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TERM_FREE_VARIABLES_INDEX,
                 ))
             }
-            ABI_TERM_SUBSTITUTION_NAME => {
-                if !type_checking::check_term_substitution_signature(signature)
-                {
+            ABI_TERM_SUBSTITUTE_NAME => {
+                if !type_checking::check_term_substitute_signature(signature) {
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
                         RuntimeTrap::SignatureFailure,
                     )));
@@ -4410,7 +4416,7 @@ impl ModuleImportResolver for WasmiRuntimeState {
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TERM_SUBSTITUTION_INDEX,
+                    ABI_TERM_SUBSTITUTE_INDEX,
                 ))
             }
             ABI_TERM_TYPE_VARIABLES_NAME => {
@@ -4427,8 +4433,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_TERM_TYPE_VARIABLES_INDEX,
                 ))
             }
-            ABI_TERM_TYPE_SUBSTITUTION_NAME => {
-                if !type_checking::check_term_type_substitution_signature(
+            ABI_TERM_TYPE_SUBSTITUTE_NAME => {
+                if !type_checking::check_term_type_substitute_signature(
                     signature,
                 ) {
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
@@ -4438,7 +4444,7 @@ impl ModuleImportResolver for WasmiRuntimeState {
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_TERM_TYPE_SUBSTITUTION_INDEX,
+                    ABI_TERM_TYPE_SUBSTITUTE_INDEX,
                 ))
             }
             ABI_TERM_TYPE_INFER_NAME => {
@@ -4593,8 +4599,8 @@ impl ModuleImportResolver for WasmiRuntimeState {
                     ABI_THEOREM_REGISTER_ETA_INDEX,
                 ))
             }
-            ABI_THEOREM_REGISTER_SUBSTITUTION_NAME => {
-                if !type_checking::check_theorem_register_substitution_signature(
+            ABI_THEOREM_REGISTER_SUBSTITUTE_NAME => {
+                if !type_checking::check_theorem_register_substitute_signature(
                     signature,
                 ) {
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
@@ -4604,11 +4610,11 @@ impl ModuleImportResolver for WasmiRuntimeState {
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX,
+                    ABI_THEOREM_REGISTER_SUBSTITUTE_INDEX,
                 ))
             }
-            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME => {
-                if !type_checking::check_theorem_register_type_substitution_signature(
+            ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_NAME => {
+                if !type_checking::check_theorem_register_type_substitute_signature(
                     signature,
                 ) {
                     return Err(WasmiError::Trap(runtime_trap::host_trap(
@@ -4618,7 +4624,7 @@ impl ModuleImportResolver for WasmiRuntimeState {
 
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
-                    ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX,
+                    ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_INDEX,
                 ))
             }
             ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME => {

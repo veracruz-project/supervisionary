@@ -201,13 +201,12 @@ pub(crate) const ABI_TERM_TEST_EXISTS_NAME: &str = "__term_test_exists";
 /// The name of the `Term.FreeVariables` ABI call.
 pub(crate) const ABI_TERM_FREE_VARIABLES_NAME: &str = "__term_free_variables";
 /// The name of the `Term.Substitution` ABI call.
-pub(crate) const ABI_TERM_SUBSTITUTION_NAME: &str = "__term_substitution";
+pub(crate) const ABI_TERM_SUBSTITUTE_NAME: &str = "__term_substitute";
 
 /// The name of the `Term.Type.Variables` ABI call.
 pub(crate) const ABI_TERM_TYPE_VARIABLES_NAME: &str = "__term_type_variables";
 /// The name of the `Term.Type.Substitution` ABI call.
-pub(crate) const ABI_TERM_TYPE_SUBSTITUTION_NAME: &str =
-    "__term_type_substitution";
+pub(crate) const ABI_TERM_TYPE_SUBSTITUTE_NAME: &str = "__term_type_substitute";
 /// The name of the `Term.Type.Infer` ABI call.
 pub(crate) const ABI_TERM_TYPE_INFER_NAME: &str = "__term_type_infer";
 /// The name of the `Term.Type.IsProposition` ABI call.
@@ -288,13 +287,13 @@ pub(crate) const ABI_TERM_TEST_EXISTS_INDEX: usize = 52;
 
 /// The host-call number of the `Term.FreeVariables` ABI call.
 pub(crate) const ABI_TERM_FREE_VARIABLES_INDEX: usize = 53;
-/// The host-call number of the `Term.Substitution` ABI call.
-pub(crate) const ABI_TERM_SUBSTITUTION_INDEX: usize = 54;
+/// The host-call number of the `Term.Substitute` ABI call.
+pub(crate) const ABI_TERM_SUBSTITUTE_INDEX: usize = 54;
 
 /// The host-call number of the `Term.Type.Variables` ABI call.
 pub(crate) const ABI_TERM_TYPE_VARIABLES_INDEX: usize = 55;
-/// The host-call number of the `Term.Type.Substitution` ABI call.
-pub(crate) const ABI_TERM_TYPE_SUBSTITUTION_INDEX: usize = 56;
+/// The host-call number of the `Term.Type.Substitute` ABI call.
+pub(crate) const ABI_TERM_TYPE_SUBSTITUTE_INDEX: usize = 56;
 /// The host-call number of the `Term.Type.Infer` ABI call.
 pub(crate) const ABI_TERM_TYPE_INFER_INDEX: usize = 57;
 /// The host-call number of the `Term.Type.IsProposition` ABI call.
@@ -329,12 +328,12 @@ pub(crate) const ABI_THEOREM_REGISTER_APPLICATION_NAME: &str =
 pub(crate) const ABI_THEOREM_REGISTER_LAMBDA_NAME: &str =
     "__theorem_register_lambda";
 
-/// The name of the `Theorem.Register.Substitution` ABI call.
-pub(crate) const ABI_THEOREM_REGISTER_SUBSTITUTION_NAME: &str =
-    "__theorem_register_substitution";
-/// The name of the `Theorem.Register.TypeSubstitution` ABI call.
-pub(crate) const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_NAME: &str =
-    "__theorem_register_type_substitution";
+/// The name of the `Theorem.Register.Substitute` ABI call.
+pub(crate) const ABI_THEOREM_REGISTER_SUBSTITUTE_NAME: &str =
+    "__theorem_register_substitute";
+/// The name of the `Theorem.Register.TypeSubstitute` ABI call.
+pub(crate) const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_NAME: &str =
+    "__theorem_register_type_substitute";
 
 /// The name of the `Theorem.Register.TruthIntroduction` ABI call.
 pub(crate) const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME: &str =
@@ -425,10 +424,10 @@ pub(crate) const ABI_THEOREM_REGISTER_APPLICATION_INDEX: usize = 66;
 /// The index of the `Theorem.Register.Lambda` ABI call.
 pub(crate) const ABI_THEOREM_REGISTER_LAMBDA_INDEX: usize = 67;
 
-/// The index of the `Theorem.Register.Substitution` ABI call.
-pub(crate) const ABI_THEOREM_REGISTER_SUBSTITUTION_INDEX: usize = 68;
-/// The index of the `Theorem.Register.TypeSubstitution` ABI call.
-pub(crate) const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTION_INDEX: usize = 69;
+/// The index of the `Theorem.Register.Substitute` ABI call.
+pub(crate) const ABI_THEOREM_REGISTER_SUBSTITUTE_INDEX: usize = 68;
+/// The index of the `Theorem.Register.TypeSubstitute` ABI call.
+pub(crate) const ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_INDEX: usize = 69;
 
 /// The index of the `Theorem.Register.TruthIntroduction` ABI call.
 pub(crate) const ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_INDEX: usize = 70;
