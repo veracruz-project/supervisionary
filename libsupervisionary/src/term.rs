@@ -290,6 +290,7 @@ extern "C" {
     ) -> i32;
 }
 
+#[inline]
 pub fn term_is_registered<T>(handle: T) -> bool
 where
     T: AsRef<Handle<tags::Term>>,
