@@ -18,8 +18,8 @@ use crate::{
     handle::{tags, Handle},
     Name, RawHandle,
 };
-use std::convert::TryFrom;
-use std::marker::PhantomData;
+
+use std::{convert::TryFrom, marker::PhantomData};
 
 ////////////////////////////////////////////////////////////////////////////////
 // ABI bindings.
@@ -123,6 +123,7 @@ extern "C" {
     /// Raw ABI binding to the `Theorem.Register.Falsity.Elimination` function.
     fn __theorem_register_falsity_elimination(
         theorem_handle: RawHandle,
+        term_handle: RawHandle,
         result: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `Theorem.Register.Conjunction.Introduction` function.
@@ -508,6 +509,482 @@ where
             term_handle,
             hypotheses.as_ptr() as *const u64,
             hypotheses.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_substitute<T, N, U, V>(
+    theorem_handle: T,
+    substitution: Vec<((N, U), V)>,
+) -> Result<Handle<tags::Theorem>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    N: Into<Name> + Clone,
+    U: Into<Handle<tags::Type>> + Clone,
+    V: Into<Handle<tags::Term>> + Clone,
+{
+    let mut result: u64 = 0;
+    let mut domain: Vec<u64> = vec![];
+    let mut types: Vec<u64> = vec![];
+    let mut range: Vec<u64> = vec![];
+
+    for ((d, t), r) in substitution.iter() {
+        domain.push(d.clone().into());
+        types.push(*t.clone().into() as u64);
+        range.push(*r.clone().into() as u64);
+    }
+
+    let status = unsafe {
+        __theorem_register_substitute(
+            *theorem_handle.into() as u64,
+            domain.as_ptr(),
+            domain.len() as u64,
+            types.as_ptr(),
+            types.len() as u64,
+            range.as_ptr(),
+            range.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_type_substitute<T, N, U>(
+    theorem_handle: T,
+    substitution: Vec<(N, U)>,
+) -> Result<Handle<tags::Theorem>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    N: Into<Name> + Clone,
+    U: Into<Handle<tags::Type>> + Clone,
+{
+    let mut result: u64 = 0;
+
+    let (domains, ranges): (Vec<_>, Vec<_>) = substitution
+        .iter()
+        .cloned()
+        .map(|(d, r)| (d.into(), *r.into() as u64))
+        .unzip();
+
+    let status = unsafe {
+        __theorem_register_type_substitute(
+            *theorem_handle.into() as u64,
+            domains.as_ptr(),
+            domains.len() as u64,
+            ranges.as_ptr(),
+            ranges.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_truth_introduction<T>(
+    hypotheses: Vec<T>,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Term>> + Clone,
+{
+    let mut result: u64 = 0;
+    let hypotheses: Vec<u64> = hypotheses
+        .iter()
+        .cloned()
+        .map(|h| *(h.into()) as u64)
+        .collect();
+
+    let status = unsafe {
+        __theorem_register_truth_introduction(
+            hypotheses.as_ptr(),
+            hypotheses.len() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_falsity_elimination<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_falsity_elimination(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_conjunction_introduction<T, U>(
+    left_handle: T,
+    right_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_conjunction_introduction(
+            *left_handle.into() as u64,
+            *right_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_conjunction_left_elimination<T>(
+    theorem_handle: T,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_conjunction_left_elimination(
+            *theorem_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_conjunction_right_elimination<T>(
+    theorem_handle: T,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_conjunction_right_elimination(
+            *theorem_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_disjunction_left_introduction<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_disjunction_left_introduction(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_disjunction_right_introduction<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_disjunction_right_introduction(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_disjunction_elimination<T, U, V>(
+    left_handle: T,
+    mid_handle: U,
+    right_handle: V,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Theorem>>,
+    V: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_disjunction_elimination(
+            *left_handle.into() as u64,
+            *mid_handle.into() as u64,
+            *right_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_negation_introduction<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_negation_introduction(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_negation_elimination<T, U>(
+    left_handle: T,
+    right_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_negation_elimination(
+            *left_handle.into() as u64,
+            *right_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_implication_introduction<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_implication_introduction(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_implication_elimination<T, U>(
+    left_handle: T,
+    right_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_implication_elimination(
+            *left_handle.into() as u64,
+            *right_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_iff_introduction<T, U>(
+    left_handle: T,
+    right_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_iff_introduction(
+            *left_handle.into() as u64,
+            *right_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_iff_left_elimination<T>(
+    theorem_handle: T,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_iff_left_elimination(
+            *theorem_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_forall_introduction<N, T, U>(
+    name_handle: N,
+    type_handle: T,
+    theorem_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    N: Into<Name>,
+    T: Into<Handle<tags::Type>>,
+    U: Into<Handle<tags::Theorem>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_forall_introduction(
+            name_handle.into() as u64,
+            *type_handle.into() as u64,
+            *theorem_handle.into() as u64,
+            &mut result as *mut u64,
+        )
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_forall_elimination<T, U>(
+    theorem_handle: T,
+    term_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Theorem>>,
+    U: Into<Handle<tags::Term>>,
+{
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_forall_elimination(
+            *theorem_handle.into() as u64,
+            *term_handle.into() as u64,
             &mut result as *mut u64,
         )
     };
