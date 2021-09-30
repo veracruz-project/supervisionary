@@ -13,12 +13,9 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::{
-    error_code::ErrorCode,
-    handle::{tags, Handle},
-    Arity, RawHandle, RawKernelFailureMode,
-};
 use std::{convert::TryFrom, marker::PhantomData};
+
+use crate::raw::{tags, Arity, ErrorCode, Handle, RawHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated type-former handles.
@@ -41,10 +38,7 @@ extern "C" {
     /// Raw ABI binding to the `TypeFormer.IsRegistered` function.
     fn __type_former_is_registered(handle: RawHandle) -> bool;
     /// Raw ABI binding to the `TypeFormer.Resolve` function.
-    fn __type_former_resolve(
-        handle: RawHandle,
-        out: *mut u64,
-    ) -> RawKernelFailureMode;
+    fn __type_former_resolve(handle: RawHandle, out: *mut u64) -> i32;
 }
 
 /// Registers a new type-former with a given `arity`.  Returns the handle to the

@@ -13,13 +13,9 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::{
-    error_code::ErrorCode,
-    handle::{tags, Handle},
-    Name, RawHandle,
-};
-
 use std::{convert::TryFrom, marker::PhantomData};
+
+use crate::raw::{tags, ErrorCode, Handle, Name, RawHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // ABI bindings.

@@ -13,13 +13,10 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::{
-    error_code::ErrorCode,
-    handle::{tags, Handle},
-    RawHandle,
-};
 use std::convert::TryFrom;
 use std::marker::PhantomData;
+
+use crate::raw::{tags, ErrorCode, Handle, RawHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated constant-related handles.

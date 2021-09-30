@@ -13,15 +13,12 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use crate::{
-    error_code::ErrorCode,
-    handle::{tags, Handle},
-    Name, RawHandle,
+use std::{
+    collections::HashSet, convert::TryFrom, iter::FromIterator,
+    marker::PhantomData,
 };
-use std::collections::HashSet;
-use std::convert::TryFrom;
-use std::iter::FromIterator;
-use std::marker::PhantomData;
+
+use crate::raw::{tags, ErrorCode, Handle, Name, RawHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated term-related handles.
