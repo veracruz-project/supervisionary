@@ -3,9 +3,14 @@
 
 \usepackage{prooftree}
 
+\newcommand{\deffont}[1]{\textbf{#1}}
+\newcommand{\fall}[1]{\forall{#1}.}
+\newcommand{\lam}[1]{\lambda{#1}.}
 \newcommand{\rulefont}[1]{(\ensuremath{\mathbf{#1}})}
 
 \bibliographystyle{ACM-Reference-Format}
+
+\setcopyright{none}
 
 \title{The Supervisionary proof-checking kernel}
 \subtitle{Or: toward proof-generating code}
@@ -34,6 +39,137 @@
 
 \maketitle
 
+\paragraph{Some scene setting}
+
+Modern operating systems are used for a wide array of tasks.
+We focus on just two: providing a relatively portable abstract machine interface to user-space software, and enforcing system-wide security policies.
+
+Most operating systems are architected around a \deffont{kernel}, the root of all trust within a system, which engages in a grand conspiracy with its host microprocessor to take a monopoly on direct access to the system's hardware and sensitive system configuration options.
+%Relative to user-space code, the kernel executes at a high level of \emph{privilege}, using hardware \deffont{exception levels}.
+%Hardware ensures that sensitive system configuration features, such as system registers and page tables, may only be modified by software executing at a high level of privilege---in effect, only the kernel itself.
+Using this monopoly, the kernel protects its own memory from inadvertent or malicious modification, using paged memory protection, and acts as a ``choke point'' at which security policies are enforced.
+
+%Users-space code wishing to interact with a system resource must do so by interacting with the kernel.
+
+The kernel also offers an abstract machine interface to user-space software, abstracting over the vulgarities of programming against any particular peripheral, say.
+Useful abstractions, such as sockets and a file-system, are also commonly offered.
+This interface is largely exposed as \deffont{system calls}, defining an \deffont{application binary interface}, or ABI henceforth, which user-space and kernel must understand to interact.
+%Executing a system call forces a \deffont{context switch}, within which the thread of execution enters the kernel.
+The result of a system call may be written directly into the memory of the calling code, via a pointer argument, for example.
+Note an asymmetry: in theory, the kernel can read and modify all of a user-space program's state.
+
+Code written in any language can make use of services via the kernel ABI.
+However, programs and runtimes typically make extensive use of low-level libraries---\texttt{libc} being an exemplar---that provide further abstraction over the raw ABI.
+
+This pattern of interaction between trusted and untrusted code via an ABI, wherein trusted code can read and modify the state of untrusted code, is common.
+Hypervisors, the Secure World of Arm TrustZone, and virtual machines (in the Wasm sense) are structured in this way.
+Call software designed in this pattern \deffont{supervisory software}.
+
+\paragraph{Supervisionary} is a prototype proof-checking system for Gordon's HOL structured as supervisory software, specifically as a Wasm \deffont{host environment}, which allows us to explore the consequences of the desig, without becoming entangled in e.g. a real machine's boot ceremony.
+The ideas discussed herein could be applied to a real operating system.
+
+Supervisionary is implemented in Rust which does not pose any risk to the logical soundness of the system providing we expose a well-designed ABI.
+The kernel manages various private heaps within which \deffont{kernel objects} are allocated, corresponding to the paraphenalia of any HOL implementation---type-formers, types, term constants, terms, and theorems---and never directly exposed to untrusted code.
+Kernel objects are allocated in response to system calls like:
+\begin{displaymath}
+\mathtt{Term.Handle.AllocateApplication(left, right, out)}
+\end{displaymath}
+Here, both $\mathtt{left}$ and $\mathtt{right}$ are \deffont{kernel handles}, assumed to point-to allocated terms, whilst $\mathtt{out}$ points-to a buffer in untrusted code's memory.
+If neither $\mathtt{left}$ nor $\mathtt{right}$ \deffont{dangle}, and the types of their referents match, a fresh handle is generated which points-to a new HOL term application object, with internal pointers to the functional- and argument-terms.
+This handle is returned to the caller via the $\mathtt{out}$ pointer.
+
+Modulo bugs, system calls do not panic, but rather return \deffont{error codes} to signal failure.
+If $\mathtt{left}$ or $\mathtt{right}$ above dangle, for example, then a defined code is returned.
+These checks---which all system calls perform---ensure that the kernel heaps remain \deffont{inductive}, with nodes in the kernel object graph pointing-to allocated objects at all times, a key invariant.
+Moreover, kernel objects are only ever allocated, and \emph{never} deallocated or otherwise modified once created, thus ensuring the meaning of an object remains immutable (though it is possible that some \deffont{garbage collection} could be used).
+
+%To check if a handle points-to a $\lambda$-abstraction, for example, one may use:
+%\begin{displaymath}
+%\mathtt{Term.Handle.IsLambda(handle, out)}
+%\end{displaymath}
+%This again returns a defined error code if $\mathtt{handle}$ dangles and otherwise writes $\mathtt{true}$ or $\mathtt{false}$ to $\mathtt{out}$, as appropriate.
+
+The manipulation and querying of kernel objects is performed by the kernel itself on behalf of untrusted code.
+Space constraints prevent us from describing the entire Supervisionary ABI for working with and on kernel objects.
+However, note that theorems are also constructed in an analogous way to terms.
+The HOL symmetry rule is exposed as:
+\begin{displaymath}
+\mathtt{Theorem.Handle.AllocateSym(pre, out)}
+\end{displaymath}
+Here, $\mathtt{pre}$ points-to a theorem $\Gamma \vdash r = s$ and after succeeding, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
+
+We have described the \emph{what} of Supervisionary and now turn our attention to the \emph{why}.
+This can be approached by examining Supervisionary both as a programming platform, and as a proof-assistant kernel.
+What follows is speculative, and a work-in-progress.
+
+\paragraph{Runtime monitoring}
+
+Nothing in principle stops us from extending Supervisionary's ABI with facilities for sockets, querying a hierarchical filesystem, and other similar system tasks.
+In particular, given our use of Wasm, we could implement the Wasm System Interface, a POSIX-like interface for Wasm.
+This transforms Supervisionary from a simple programmable proof-checker into a general-purpose virtual machine, capable of supporting a wide-range of programs.
+
+\emph{What happens if we blur the lines between Supervisionary's ABIs for system access and proof-checking?}
+In particular, Supervisionary could force untrusted code to prove some theorem each time it wished to open a file on the filesystem, write to a socket, or otherwise perform some side-effect on the system.
+These theorems could be arbitrary correctness or security-related theorems, corresponding to a prevailing \deffont{policy} in force.
+Moreover, as Supervisionary is supervisory software, and capable of capturing the runtime state of untrusted code, the statements of these theorems can be arbitrary HOL predicates and functions of the reified runtime state of both untrusted code, the kernel itself, and the arguments, and name of, the invoked system call.
+
+Obvious predicates of interest include $\lam{k}\lam{u}\lam{s}\top$ and $\lam{k}\lam{u}\lam{s}\bot$.
+Here, $\top$ and $\bot$ are truth and falsity, respectively, and $k$, $u$, and $s$ the kernel and untrusted code states, and packed system call meta-data, reified as HOL types, at the point the system call was invoked.
+One can always prove $\vdash \top$, trivially, and therefore $\lam{k}\lam{u}\lam{s}\top$ represents no restriction, whereas $\vdash \bot$ is never provable in a consistent context, and $\lam{k}\lam{u}\lam{s}\bot$ therefore represents a ``closing off'' of a system call.
+Note that, by making the property a function of the system call name and arguments, this ``closing off'' can be very specific: a process could be banned from calling a particular system call, or a system call with a particular set of arguments, for example.
+This would allow us to mimic existing security mechanisms, like \texttt{seccomp} from Linux.
+
+We can go further.
+Supervisionary could maintain meta-data about the behaviour of a running process, under its supervision: for example, a trace of the system calls invoked by a process, thus far.
+This meta-data could be used in forming security or correctness challenges, for example, by forcing untrusted code to prove that only a certain number of files have been written, or writes to a socket only ever happen after a read.
+Correctness or information flow properties could also be captured: by requiring a demonstration that there exists a pure HOL function that, when applied to input from a particular file, produces an output written to another file, we are able to rule out information leakage from any other file into the result.
+In short, HOL becomes a \emph{lingua franca} between kernel and untrusted code through which arbitrarily complex security and correctness policies may be expressed.
+
+\deffont{Jailing}, through which a process voluntarily sheds capabilities, is common.
+A similar pattern can be captured by allowing a change in the prevailing policy, $O$, to a new policy $N$, as long as the process is able to prove that $N$ is a refinment of $O$: $\vdash \fall{k}\fall{u}\fall{s} O\ k\ u\ s \longrightarrow N\ k\ u\ s$.
+Note that this essentially states that the machine states described by $N$ are a subset of those described by $O$.
+
+Note that \deffont{proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy which was reconstructed by the loader, prior to execution.
+The idea sketched above represents something different, where proofs are generated dynamically, as the program executes, and is perhaps more aptly described as \deffont{proof generating code}.
+
+\paragraph{Specifications}
+
+Supervisionary is an extended exercise in pointer manipulation.
+The semantics of our system calls can therefore be expressed as Hoare Triples, using formulae of \deffont{Separation Logic} as an assertion language.
+Write $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert that the handle $\mathtt{h}$ points-to a term application (of the term pointed-to by $l$ to the term pointed-to by $r$).
+Write $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$.
+Finally, write $\{ P \} C \{ Q \}$ to assert that $C$ executing in a state satisfying $P$ succeeds and produces a state satisfying $Q$.
+We then have, for example:
+\begin{gather*}
+\{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \} \\
+\mathtt{Term.Handle.IsApplication(h, out)} \\
+\{ \mathtt{out} \mapsto \mathtt{True} \}
+\end{gather*}
+Note that the structural \deffont{frame rule} captures the fact that any Supervisionary system call only manipulates or queries a particular limited ``footprint'' of the kernel state. 
+
+\paragraph{Reinventing the proof-assistant}
+
+Proof-assistants in the LCF lineage are also architected around a \deffont{kernel}.
+Ostensibly these have little in common with the kernels discussed so far, but a closer examination shows that both are tasked with preserving important system invariants in the face of unbounded interaction with untrusted code.
+Moreover, whilst operating system kernels enjoy a monopoly on direct access to the system, proof-assistant kernels likewise have a monopoly on the \deffont{authentication} of theorems.
+In short, both act as the roots of all trust in their respective domains.
+Yet the two types of kernel are implemented in very different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}---usually some functional language, a descendent of Milner's ML.
+Untrusted code interacts with the kernel via an \emph{API}, rather than an ABI.
+
+One immediate consequence of Supervisionary's design is that the meta-language is non-existent.
+Rather, as noted above, untrusted code ``driving'' the kernel can be written in any language capable of producing Wasm that is binary-compatible with our ABI.
+Arguably, the \emph{natural} choice of language for this is now not even functional, given the inherently stateful and pointer-oriented nature of the kernel.
+
+Observe also that interaction with an LCF-style proof-assistant is centred around the meta-language's REPL, or some thin GUI layer atop, itself started from an operating system shell.
+Supervisionary's design allows us to potentially dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
+Moreover, and in contrast to LCF, our kernel inherently internalises kernel objects and could make them available to browse as special files within a hierarchical filesystem, made available to untrusted code as discussed previously, in analogy to how Linux exposes its internals as special files (e.g. the \texttt{/proc/} file system).
+In this way, hierarchical theories of related material appear grouped under directories, and can be searched using Unix-like command-line utilities.
+\end{document}
+
+
+
+
+
 To enforce system-wide security policies, most operating systems implement a self-contained \emph{kernel} which serves as the root of all trust within the system.
 The kernel is the sole component able to directly interact with hardware, and provides services to executing user-space software, for example the abstraction of a hierarchical filesystem.
 Untrusted user-space code resides outside of the kernel and interacts with it through a defined \emph{ABI}.
@@ -43,32 +179,30 @@ The kernel is the sole system component able to authenticate a proof as legitima
 Untrusted code resides outside of the kernel and interacts with it through a defined \emph{API}.
 
 Though ostensibly wildly different, in \emph{some} respects the goals of operating system and proof-checking kernels are the same: the maintenance of important system invariants in the face of unbounded interaction with untrusted code.
-The mechanisms employed to protect these invariants, by each system, are different however.
-Operating systems kernels are cosseted by paged memory protection and execute at a relative level of privilege compared to untrusted code, which interacts with the kernel through a binary interface.
-On the other hand, LCF-style proof-checking kernels are typically implemented as libraries within a \emph{meta-language}---usually an ML dialect---with invariants maintained by type abstraction and module encapsulation, and linked against untrusted code typically written in the meta-language.
+The mechanisms employed to protect these invariants, by each type of system, are different however.
+For operating systems, machine-oriented notions of separation are employed, with the kernel executing at a higher prilege level than untrusted code, and cosseted by paged memory protection---hardware and privileged software work together to provide an abstract machine interface to untrusted code.
+On the other hand, LCF-style proof-checking kernels are typically implemented as libraries within a \emph{meta-language}---usually an ML dialect---with invariants maintained through type abstraction and code encapsulation behind module boundaries.
+Logical soundness follows from type-soundness of the meta-language.
 
-What happens if we structure proof-checking software like \emph{supervisory} system software---such as operating systems, hypervisors, and programming language runtimes?
+Yet, what happens if we structure proof-checking software more like supervisory system software---such as operating systems, hypervisors, and programming language runtimes?
+Now, the proof-checking kernel is not implemented as a library, but rather becomes a programming platform, exposing an abstract machine to untrusted code, in much the same way that the Linux kernel, for example, exposes an abstract machine to user-space code through its system call interface.
 We are currently developing a prototype system, \emph{Supervisionary}, implemented as a WebAssembly host, to explore the consequences of this design.
-In one sense, Supervisionary can be used as a standard proof-checker for Gordon's HOL, driven by an untrusted WebAssembly program that interacts with the kernel via a binary interface which defines an abstract machine, in much the same way that the Linux kernel exposes an abstract machine to user-space code through its system call interface, for example.
-However, in another sense, Supervisionary can be generalised to a programming environment that can host arbitrary programs.
-We briefly describe some of the consequences of Supervisionary's design below, and argue that this novel abstract machine is of interest.
 
-\paragraph{No meta-language} One immediate consequence of Supervisionary's design is the lack of any meta-language.
-Rather, Supervisionary's kernel is implemented in Rust.
-On the other hand, untrusted code which ``drives'' the Supervisionary kernel to produce an authenticated theorem may be written in any language that can be compiled to code that is binary-compatible with the Supervisionary abstract machine, or even a mixture of them, in much the same way that Linux user-space software can be written in Haskell, Ada, or any other language that can be linked together, despite the kernel being written in C.
+One immediate consequence of Supervisionary's design is the abolition of the LCF-style meta-language.
+Rather, Supervisionary's kernel is implemented in Rust---a notably \emph{unsafe} systems language.
+Moreover, untrusted code which ``drives'' the Supervisionary kernel to produce an authenticated theorem need not necessarily be written in the same language that the kernel is written in: rather any language that can be compiled to code that is binary-compatible with the Supervisionary abstract machine can be used, even a mixture of them, in much the same way that Linux user-space software can be written in Haskell, Ada, or any other language that can be linked together, despite the kernel being written in C.
 
-\paragraph{ABI design} Rust is a notably \emph{unsafe} systems programming language, yet its use in the Supervisionary kernel does not pose any risk to the logical soundness of the system, providing we expose a carefully designed ABI.
+Note that the use of Rust to implement the Supervisionary kernel does not pose any risk to the logical soundness of the system, providing we expose a carefully designed abstract machine through the Supervisionary ABI.
 The Supervisionary kernel manages various private memory spaces, or heaps, within which \emph{kernel objects} are managed.
 These kernel objects correspond to the parephenalia of a typical HOL implementation---type-formers, types, term constants, terms, and theorems---but are never directly exposed to untrusted code.
 Rather, kernel objects are allocated by the kernel in one of its private heaps, through ABI functions like the following:
 \begin{displaymath}
 \mathtt{Term.Handle.AllocateApplication(left, right, out)}
 \end{displaymath}
-Here, $\mathtt{left}$ and $\mathtt{right}$ are kernel handles, assumed to point-to allocated terms in the kernel's heaps.
-On the other hand, the $\mathtt{out}$ pointer points-into the heap of the code calling the function---the kernel can freely read from, and write to, the memory of untrusted code.
-Assuming $\mathtt{left}$ and $\mathtt{right}$ indeed point-to allocated terms, and other checks pass, a new kernel object corresponding to a term application is allocated.
-This object contains internal pointers to the functional- and argument-terms, in the kernel's heap.
-The kernel generates a fresh handle that points-to this new object, which is returned back to the caller via the $\mathtt{out}$ pointer.
+Above, both $\mathtt{left}$ and $\mathtt{right}$ passed to the function are kernel handles, assumed to point-to allocated terms.
+On the other hand, the $\mathtt{out}$ pointer points-into the heap of the code calling the function (note that the kernel can freely read from, and write to, the memory of untrusted code, given it is supervisory software).
+Providing both $\mathtt{left}$ and $\mathtt{right}$ indeed point-to allocated terms, and their types match, a new kernel object corresponding to a term application is allocated, with internal pointers to the functional- and argument-terms, in the kernel's heap.
+This new object is pointed-to by a freshly-generated handle, returned back to the caller via the $\mathtt{out}$ pointer.
 
 Note that Supervisionary ABI functions do not panic, or otherwise abort, modulo bugs in the implementation of the kernel itself.
 Rather, errors are signalled to calling code via a defined \emph{error code} which can be used to deduce the cause of failure: if either $\mathtt{left}$ or $\mathtt{right}$ above dangle, then the $\mathtt{DanglingHandle}$ code is returned, for example.
@@ -83,30 +217,28 @@ This again returns a defined error code if $\mathtt{handle}$ dangles, leaving $\
 
 Unfortunately, space constraints here prevent us from providing a pr\`{e}cis of all ABI functions for allocating, querying, destructuring, and otherwise manipulating type-formers, types, term constants, and terms.
 However, note that theorems are also gradually constructed in an analogous way to how terms are constructed.
-For example, the HOL symmetry inference rule is exposed as the ABI function
+For example, the HOL symmetry inference rule is exposed as:
 \begin{displaymath}
 \mathtt{Theorem.Handle.AllocateSym(pre, out)}
 \end{displaymath}
-where $\mathtt{pre}$ is assumed to point-to an allocated theorem $\Gamma \vdash r = s$ and $\mathtt{out}$ points-to a freshly-allocated handle that itself points-to a newly-allocated theorem $\Gamma \vdash s = r$, should the function succeed.
+Here, $\mathtt{pre}$ points-to an allocated theorem $\Gamma \vdash r = s$ and after successfully completing, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
 Note that the heap of theorem objects must only ever grow monotonically, and a theorem object must always remain immutable once allocated by the kernel.
 This immutable aspect also applies to any kernel object mentioned by any allocated theorem---terms, types, and so on: it would be decidedly \emph{inconvenient} if the meaning of the HOL truth constant were redefined, for example.
 On the other hand, it seems possible that some kernel heaps could shrink, for example allocated type-formers, types, term constants, and terms, that are not referenced transitively by any allocated theorem could be garbage collected.
 This is not yet implemented in Supervisionary.
 
-\paragraph{Specifying the ABI}
-Supervisionary is a grand exercise in pointer manipulation.
-As such, our ABI specifications can be expressed as Hoare Triples, using Separation Logic as our assertion language.
-Write $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert that the handle $\mathtt{h}$ points-to a term application (of the term pointed-to by $l$ to the term pointed-to by $r$) in the kernel's private heap.
-Write $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$ in untrusted code's heap.
-We then have:
+Note that one consequence of this style of implementation is the ability to provide concise \emph{specifications} of Supervisionary ABI functions.
+Essentially, the Supervisionary kernel is a grand exercise in pointer manipulation, and as such our ABI specifications can be expressed as Hoare Triples, using Separation Logic as our assertion language.
+Writing $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert that the handle $\mathtt{h}$ points-to a term application (of the term pointed-to by $l$ to the term pointed-to by $r$), and writing $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$, we have, for example:
 \begin{gather*}
 \{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \} \\
 \mathtt{Term.Handle.IsApplication(h, out)} \\
 \{ \mathtt{out} \mapsto \mathtt{True} \}
 \end{gather*}
-Here, the triple $\{ P \} C \{ Q \}$ asserts that if the command $C$ executes in a state concordant with $P$ then the command succeeds and produces a state concordant with $Q$.
+(Here, the triple $\{ P \} C \{ Q \}$ asserts that if the command $C$ executes in a state concordant with $P$ then the command succeeds and produces a state concordant with $Q$.)
 
-\paragraph{Runtime monitoring}
+The material presented so far is implemented in Supervisionary.
+We now speculate on opportunities for future work.
 
 First, observe that Supervisionary is not merely a rehashing of LCF, perhaps with some minor tweaks.
 In particular, Supervisionary ``internalises'' theorems as kernel objects in a way that LCF does not: the latter authenticates theorems by producing an opaque object, of a particular abstract type, which in a sense``passes out'' of the kernel.
@@ -114,7 +246,3 @@ Moreover, Supervisionary behaves like a typical operating system, or programming
 To access the filesystem, or a device for example, untrusted code generally has no choice but to interact with the operating system, which gates access based on a prevailing security policy. 
 Adding ABI functions to Supervisionary for filesystem access allows WebAssembly programs executing under Supervisionary to access the system's filesystem, at the cost of passing through the Supervisionary kernel.
 What, then, if we force code wishing to interact with the filesystem (or any other system resource) to provide a particular \emph{theorem} to the kernel before that access is granted?
-
-\paragraph{Reinventing the proof-assistant}
-
-\end{document}
