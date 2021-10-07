@@ -51,12 +51,12 @@ Using this monopoly, the kernel protects its own memory from inadvertent or mali
 
 %Users-space code wishing to interact with a system resource must do so by interacting with the kernel.
 
-The kernel also offers an abstract machine interface to user-space software, abstracting over the vulgarities of programming against any particular peripheral, say.
+The kernel also offers an abstract machine interface to user-space software, smoothing over the vulgarities of programming against any particular peripheral, say.
 Useful abstractions, such as sockets and a file-system, are also commonly offered.
 This interface is largely exposed as \deffont{system calls}, defining an \deffont{application binary interface}, or ABI henceforth, which user-space and kernel must understand to interact.
 %Executing a system call forces a \deffont{context switch}, within which the thread of execution enters the kernel.
 The result of a system call may be written directly into the memory of the calling code, via a pointer argument, for example.
-Note an asymmetry: in theory, the kernel can read and modify all of a user-space program's state.
+Note the asymmetry: in theory, the kernel can read and modify all of a user-space program's state.
 
 Code written in any language can make use of services via the kernel ABI.
 However, programs and runtimes typically make extensive use of low-level libraries---\texttt{libc} being an exemplar---that provide further abstraction over the raw ABI.
@@ -65,7 +65,7 @@ This pattern of interaction between trusted and untrusted code via an ABI, where
 Hypervisors, the Secure World of Arm TrustZone, and virtual machines (in the Wasm sense) are structured in this way.
 Call software designed in this pattern \deffont{supervisory software}.
 
-\paragraph{Supervisionary} is a prototype proof-checking system for Gordon's HOL structured as supervisory software, specifically as a Wasm \deffont{host environment}, which allows us to explore the consequences of the desig, without becoming entangled in e.g. a real machine's boot ceremony.
+\paragraph{Supervisionary} is a prototype proof-checking system for Gordon's HOL structured as supervisory software, specifically as a Wasm \deffont{host environment}, which allows us to explore the consequences of the design, without becoming entangled in e.g. a real machine's boot ceremony.
 The ideas discussed herein could be applied to a real operating system.
 
 Supervisionary is implemented in Rust which does not pose any risk to the logical soundness of the system providing we expose a well-designed ABI.
@@ -90,80 +90,79 @@ Moreover, kernel objects are only ever allocated, and \emph{never} deallocated o
 %This again returns a defined error code if $\mathtt{handle}$ dangles and otherwise writes $\mathtt{true}$ or $\mathtt{false}$ to $\mathtt{out}$, as appropriate.
 
 The manipulation and querying of kernel objects is performed by the kernel itself on behalf of untrusted code.
-Space constraints prevent us from describing the entire Supervisionary ABI for working with and on kernel objects.
-However, note that theorems are also constructed in an analogous way to terms.
-The HOL symmetry rule is exposed as:
+Space constraints prevent us from describing the entire Supervisionary ABI for working with, and on, kernel objects.
+However, note that theorems are also constructed in a similar way to terms, inductively building derivation trees.
+For example, the HOL symmetry rule is exposed as:
 \begin{displaymath}
 \mathtt{Theorem.Handle.AllocateSym(pre, out)}
 \end{displaymath}
-Here, $\mathtt{pre}$ points-to a theorem $\Gamma \vdash r = s$ and after succeeding, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
+Here, $\mathtt{pre}$ points-to a theorem $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
 
 We have described the \emph{what} of Supervisionary and now turn our attention to the \emph{why}.
 This can be approached by examining Supervisionary both as a programming platform, and as a proof-assistant kernel.
-What follows is speculative, and a work-in-progress.
+What follows is largely speculative, and a work-in-progress.
 
 \paragraph{Runtime monitoring}
 
 Nothing in principle stops us from extending Supervisionary's ABI with facilities for sockets, querying a hierarchical filesystem, and other similar system tasks.
-In particular, given our use of Wasm, we could implement the Wasm System Interface, a POSIX-like interface for Wasm.
-This transforms Supervisionary from a simple programmable proof-checker into a general-purpose virtual machine, capable of supporting a wide-range of programs.
+In particular, given our use of Wasm, we could implement the Wasm System Interface---a POSIX-like interface for Wasm---transforming Supervisionary from a programmable proof-checker into a general-purpose virtual machine, capable of supporting a wide-range of programs.
 
 \emph{What happens if we blur the lines between Supervisionary's ABIs for system access and proof-checking?}
-In particular, Supervisionary could force untrusted code to prove some theorem each time it wished to open a file on the filesystem, write to a socket, or otherwise perform some side-effect on the system.
-These theorems could be arbitrary correctness or security-related theorems, corresponding to a prevailing \deffont{policy} in force.
-Moreover, as Supervisionary is supervisory software, and capable of capturing the runtime state of untrusted code, the statements of these theorems can be arbitrary HOL predicates and functions of the reified runtime state of both untrusted code, the kernel itself, and the arguments, and name of, the invoked system call.
+Untrusted code could be challenged to prove some theorem each time it wished to open a file on the filesystem, or otherwise perform some side-effect.
+These theorems could be correctness or security-related theorems, corresponding to a prevailing \deffont{policy} in force.
+Moreover, as Supervisionary is capable of capturing the runtime state of untrusted code, these challenges can be HOL predicates---functions of the reified runtime state of untrusted code, the kernel, and the arguments, and name of, the invoked system call.
 
-Obvious predicates of interest include $\lam{k}\lam{u}\lam{s}\top$ and $\lam{k}\lam{u}\lam{s}\bot$.
-Here, $\top$ and $\bot$ are truth and falsity, respectively, and $k$, $u$, and $s$ the kernel and untrusted code states, and packed system call meta-data, reified as HOL types, at the point the system call was invoked.
-One can always prove $\vdash \top$, trivially, and therefore $\lam{k}\lam{u}\lam{s}\top$ represents no restriction, whereas $\vdash \bot$ is never provable in a consistent context, and $\lam{k}\lam{u}\lam{s}\bot$ therefore represents a ``closing off'' of a system call.
-Note that, by making the property a function of the system call name and arguments, this ``closing off'' can be very specific: a process could be banned from calling a particular system call, or a system call with a particular set of arguments, for example.
-This would allow us to mimic existing security mechanisms, like \texttt{seccomp} from Linux.
+Two predicates of interest are $\lam{k}\lam{u}\lam{s}\top$ and $\lam{k}\lam{u}\lam{s}\bot$.
+Here, $\top$ and $\bot$ are truth and falsity, and $k$, $u$, and $s$ the kernel and untrusted code states, and packed system call metadata, reified as HOL data, at the point of invocation of the system call.
+One can always prove $\{\} \vdash \top$ and therefore $\lam{k}\lam{u}\lam{s}\top$ represents no restriction, whereas $\{ \} \vdash \bot$ is never provable, absent axioms, with $\lam{k}\lam{u}\lam{s}\bot$ representing a closing off of a system call.
+By making the challenge a function of the system call name and arguments, this closing off can be specific, banning a process from calling a particular system call, or a system call with a particular set of arguments, allowing us to mimic mechanisms like \texttt{seccomp} from Linux.
 
 We can go further.
-Supervisionary could maintain meta-data about the behaviour of a running process, under its supervision: for example, a trace of the system calls invoked by a process, thus far.
-This meta-data could be used in forming security or correctness challenges, for example, by forcing untrusted code to prove that only a certain number of files have been written, or writes to a socket only ever happen after a read.
-Correctness or information flow properties could also be captured: by requiring a demonstration that there exists a pure HOL function that, when applied to input from a particular file, produces an output written to another file, we are able to rule out information leakage from any other file into the result.
-In short, HOL becomes a \emph{lingua franca} between kernel and untrusted code through which arbitrarily complex security and correctness policies may be expressed.
+Metadata about the behaviour of a running process could be maintained: for example, a trace of the system calls invoked by a process, thus far, and used in forming security or correctness challenges, for example by forcing untrusted code to prove that writes to a socket only ever happen after a read.
+Information flow policies could also be captured, for example, by forcing untrusted code to commit to a pure function, $f$, to be computed before reading any files, and later showing that a result corresponds to $f$ applied to the content of a particular input file, thereby independent of the content of any other file.
+In short, HOL acts as \emph{lingua franca} between kernel and untrusted code, through which arbitrarily complex policies may be expressed.
 
-\deffont{Jailing}, through which a process voluntarily sheds capabilities, is common.
-A similar pattern can be captured by allowing a change in the prevailing policy, $O$, to a new policy $N$, as long as the process is able to prove that $N$ is a refinment of $O$: $\vdash \fall{k}\fall{u}\fall{s} O\ k\ u\ s \longrightarrow N\ k\ u\ s$.
-Note that this essentially states that the machine states described by $N$ are a subset of those described by $O$.
+\deffont{Jailing}, wherein a process voluntarily sheds capabilities, is common.
+This can be captured by allowing a change in the prevailing policy, $\phi$, to a new policy $\psi$, as long as one can prove that $\psi$ is a refinment of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \phi\ k\ u\ s \longrightarrow \psi\ k\ u\ s$.
+Note that this expresses that the states described by $\psi$ are a subset of those described by $\phi$.
 
-Note that \deffont{proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy which was reconstructed by the loader, prior to execution.
-The idea sketched above represents something different, where proofs are generated dynamically, as the program executes, and is perhaps more aptly described as \deffont{proof generating code}.
+\deffont{Proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy, later reconstructed by the loader prior to execution.
+The ideas sketched above are different: proofs are generated dynamically, as the program executes, and perhaps more aptly called \deffont{proof generating code}. 
 
-\paragraph{Specifications}
+\paragraph{Reinventing the proof-assistant}
+
+Switching tack, proof-assistants in the LCF lineage are also architected around a \deffont{kernel}, with ostensibly little in common with the kernels discussed so far.
+A closer examination shows that both are tasked with preserving important invariants in the face of unbounded interaction with untrusted code.
+Moreover, whilst operating system kernels enjoy a monopoly on direct hardware access, proof-assistant kernels enjoy a monopoly on the \deffont{authentication} of theorems.
+In short, both act as the roots of all trust within their domains.
+Yet, the two are implemented in different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}, usually a functional language.
+Kernel interaction is via an \emph{API}, rather than an ABI.
+
+An immediate consequence of our design is that the meta-language is non-existent.
+Rather untrusted code ``driving'' the kernel can be written in any language capable of producing Wasm binary-compatible with our ABI.
+Arguably, the \emph{natural} choice for this is now not even functional, given the inherently stateful and pointer-oriented nature of the kernel.
+
+LCF-style interaction is centred around the REPL of the meta-language, or some thin layer built atop, itself started from an operating system shell---a kind of shell within a shell.
+Our design allows us to dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
+Moreover our kernel inherently internalises kernel objects, and could therefore make them available to browse as special files within a hierarchical filesystem, as discussed previously, in analogy to how Linux exposes its internals as special files---for example, the contents of \texttt{/proc/} and \texttt{/dev/}.
+In this way, hierarchical theories of related material could appear grouped under directories, and searched using Unix-like command-line utilities.
+
+\paragraph{Lastly, specifications}
 
 Supervisionary is an extended exercise in pointer manipulation.
 The semantics of our system calls can therefore be expressed as Hoare Triples, using formulae of \deffont{Separation Logic} as an assertion language.
 Write $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert that the handle $\mathtt{h}$ points-to a term application (of the term pointed-to by $l$ to the term pointed-to by $r$).
 Write $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$.
+Write $P \star Q$ for the \deffont{separating conjunction}.
 Finally, write $\{ P \} C \{ Q \}$ to assert that $C$ executing in a state satisfying $P$ succeeds and produces a state satisfying $Q$.
 We then have, for example:
 \begin{gather*}
-\{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \} \\
+\{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \star \mathtt{out} \mapsto b \} \\
 \mathtt{Term.Handle.IsApplication(h, out)} \\
-\{ \mathtt{out} \mapsto \mathtt{True} \}
+\{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \star \mathtt{out} \mapsto \mathtt{True} \}
 \end{gather*}
-Note that the structural \deffont{frame rule} captures the fact that any Supervisionary system call only manipulates or queries a particular limited ``footprint'' of the kernel state. 
+Note that the structural \deffont{frame rule} captures the fact that any system call only manipulates a defined footprint of kernel and untrusted code's memory.
 
-\paragraph{Reinventing the proof-assistant}
-
-Proof-assistants in the LCF lineage are also architected around a \deffont{kernel}.
-Ostensibly these have little in common with the kernels discussed so far, but a closer examination shows that both are tasked with preserving important system invariants in the face of unbounded interaction with untrusted code.
-Moreover, whilst operating system kernels enjoy a monopoly on direct access to the system, proof-assistant kernels likewise have a monopoly on the \deffont{authentication} of theorems.
-In short, both act as the roots of all trust in their respective domains.
-Yet the two types of kernel are implemented in very different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}---usually some functional language, a descendent of Milner's ML.
-Untrusted code interacts with the kernel via an \emph{API}, rather than an ABI.
-
-One immediate consequence of Supervisionary's design is that the meta-language is non-existent.
-Rather, as noted above, untrusted code ``driving'' the kernel can be written in any language capable of producing Wasm that is binary-compatible with our ABI.
-Arguably, the \emph{natural} choice of language for this is now not even functional, given the inherently stateful and pointer-oriented nature of the kernel.
-
-Observe also that interaction with an LCF-style proof-assistant is centred around the meta-language's REPL, or some thin GUI layer atop, itself started from an operating system shell.
-Supervisionary's design allows us to potentially dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
-Moreover, and in contrast to LCF, our kernel inherently internalises kernel objects and could make them available to browse as special files within a hierarchical filesystem, made available to untrusted code as discussed previously, in analogy to how Linux exposes its internals as special files (e.g. the \texttt{/proc/} file system).
-In this way, hierarchical theories of related material appear grouped under directories, and can be searched using Unix-like command-line utilities.
 \end{document}
 
 
