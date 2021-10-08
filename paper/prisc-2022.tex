@@ -13,7 +13,7 @@
 \setcopyright{none}
 
 \title{The Supervisionary proof-checking kernel}
-\subtitle{Or: toward proof-generating code}
+\subtitle{Or: a work-in-progress toward proof-generating code}
 
 \author{Dominic P. Mulligan}
 \orcid{}
@@ -110,7 +110,7 @@ In particular, given our use of Wasm, we could implement the Wasm System Interfa
 \emph{What happens if we blur the lines between Supervisionary's ABIs for system access and proof-checking?}
 Untrusted code could be challenged to prove some theorem each time it wished to open a file on the filesystem, or otherwise perform some side-effect.
 These theorems could be correctness or security-related theorems, corresponding to a prevailing \deffont{policy} in force.
-Moreover, as Supervisionary is capable of capturing the runtime state of untrusted code, these challenges can be HOL predicates---functions of the reified runtime state of untrusted code, the kernel, and the arguments, and name of, the invoked system call.
+Moreover, as Supervisionary is capable of capturing the runtime state of untrusted code, these challenges can be HOL predicates that are functions of the reified runtime state of untrusted code, the kernel, and the arguments, and name of, the invoked system call.
 
 Two predicates of interest are $\lam{k}\lam{u}\lam{s}\top$ and $\lam{k}\lam{u}\lam{s}\bot$.
 Here, $\top$ and $\bot$ are truth and falsity, and $k$, $u$, and $s$ the kernel and untrusted code states, and packed system call metadata, reified as HOL data, at the point of invocation of the system call.
@@ -146,7 +146,7 @@ Arguably, the \emph{natural} choice for this is now not even functional, given t
 LCF-style interaction is centred around the REPL of the meta-language, or some thin layer built atop, itself started from an operating system shell---a kind of shell within a shell.
 Our design allows us to dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
 Moreover our kernel inherently internalises kernel objects, and could therefore make them available to browse as special files within a hierarchical filesystem, as discussed previously, in analogy to how Linux exposes its internals as special files---for example, the contents of \texttt{/proc/} and \texttt{/dev/}.
-In this way, hierarchical theories of related material could appear grouped under directories, and searched using Unix-like command-line utilities.
+In this way, related material could appear grouped in directories, searched using command-line utilities, or opened by a process for use at runtime.
 
 \paragraph{Lastly, specifications}
 
