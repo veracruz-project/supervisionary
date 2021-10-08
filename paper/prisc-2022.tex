@@ -52,7 +52,7 @@ Using this monopoly, the kernel protects its own memory from inadvertent or mali
 %Users-space code wishing to interact with a system resource must do so by interacting with the kernel.
 
 The kernel also offers an abstract machine interface to user-space software, smoothing over the vulgarities of programming against any particular peripheral, say.
-Useful abstractions, such as sockets and a file-system, are also commonly offered.
+Useful abstractions, such as sockets and a filesystem, are also commonly offered.
 This interface is largely exposed as \deffont{system calls}, defining an \deffont{application binary interface}, or ABI henceforth, which user-space and kernel must understand to interact.
 %Executing a system call forces a \deffont{context switch}, within which the thread of execution enters the kernel.
 The result of a system call may be written directly into the memory of the calling code, via a pointer argument, for example.
@@ -96,7 +96,7 @@ For example, the HOL symmetry rule is exposed as:
 \begin{displaymath}
 \mathtt{Theorem.Handle.AllocateSym(pre, out)}
 \end{displaymath}
-Here, $\mathtt{pre}$ points-to a theorem $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
+Here, $\mathtt{pre}$ points-to an existing theorem object $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
 
 We have described the \emph{what} of Supervisionary and now turn our attention to the \emph{why}.
 This can be approached by examining Supervisionary both as a programming platform, and as a proof-assistant kernel.
@@ -123,18 +123,19 @@ Information flow policies could also be captured, for example, by forcing untrus
 In short, HOL acts as \emph{lingua franca} between kernel and untrusted code, through which arbitrarily complex policies may be expressed.
 
 \deffont{Jailing}, wherein a process voluntarily sheds capabilities, is common.
-This can be captured by allowing a change in the prevailing policy, $\phi$, to a new policy $\psi$, as long as one can prove that $\psi$ is a refinment of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \phi\ k\ u\ s \longrightarrow \psi\ k\ u\ s$.
+This can be captured by allowing a change in the prevailing policy, $\phi$, to a new policy $\psi$, as long as one can prove that $\psi$ is a refinment of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \psi\ k\ u\ s \longrightarrow \phi\ k\ u\ s$.
 Note that this expresses that the states described by $\psi$ are a subset of those described by $\phi$.
 
 \deffont{Proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy, later reconstructed by the loader prior to execution.
-The ideas sketched above are different: proofs are generated dynamically, as the program executes, and perhaps more aptly called \deffont{proof generating code}. 
+The ideas sketched above are different: proofs are generated dynamically, as the program executes, and more aptly called \deffont{proof generating code}.
+Moreover, theorems could be generated statically, offline, and used dynamically:
 
 \paragraph{Reinventing the proof-assistant}
 
-Switching tack, proof-assistants in the LCF lineage are also architected around a \deffont{kernel}, with ostensibly little in common with the kernels discussed so far.
-A closer examination shows that both are tasked with preserving important invariants in the face of unbounded interaction with untrusted code.
-Moreover, whilst operating system kernels enjoy a monopoly on direct hardware access, proof-assistant kernels enjoy a monopoly on the \deffont{authentication} of theorems.
-In short, both act as the roots of all trust within their domains.
+Proof-assistants in the LCF lineage are also architected around a \deffont{kernel}, with ostensibly little in common with operating system kernels.
+Examining, one sees that both are tasked with preserving invariants in the face of unbounded interaction with untrusted code.
+Moreover, whilst operating system kernels enjoy a monopoly on hardware access, proof-assistant kernels enjoy a monopoly on theorem \deffont{authentication}.
+In short, both act as roots of all trust within their domains.
 Yet, the two are implemented in different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}, usually a functional language.
 Kernel interaction is via an \emph{API}, rather than an ABI.
 
@@ -155,7 +156,7 @@ Write $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert t
 Write $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$.
 Write $P \star Q$ for the \deffont{separating conjunction}.
 Finally, write $\{ P \} C \{ Q \}$ to assert that $C$ executing in a state satisfying $P$ succeeds and produces a state satisfying $Q$.
-We then have, for example:
+We then have the following example \deffont{local axiom}:
 \begin{gather*}
 \{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \star \mathtt{out} \mapsto b \} \\
 \mathtt{Term.Handle.IsApplication(h, out)} \\
