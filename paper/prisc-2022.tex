@@ -99,8 +99,26 @@ For example, the HOL symmetry rule is exposed as:
 Here, $\mathtt{pre}$ points-to an existing theorem object $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
 
 We have described the \emph{what} of Supervisionary and now turn our attention to the \emph{why}.
-This can be approached by examining Supervisionary both as a programming platform, and as a proof-assistant kernel.
+This can be approached by examining Supervisionary both as a proof-assistant kernel, and as a programming platform.
 What follows is largely speculative, and a work-in-progress.
+
+\paragraph{Reinventing the proof-assistant}
+
+Proof-assistants in the LCF lineage are also architected around a \deffont{kernel}, with ostensibly little in common with operating system kernels.
+Examining, one sees that both are tasked with preserving invariants in the face of unbounded interaction with untrusted code.
+Moreover, whilst operating system kernels enjoy a monopoly on hardware access, proof-assistant kernels enjoy a monopoly on theorem \deffont{authentication}.
+In short, both act as roots of all trust within their domains.
+Yet, the two are implemented in different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}, usually a functional language.
+Kernel interaction is via an \emph{API}, rather than an ABI.
+
+An immediate consequence of our design is that the meta-language is non-existent.
+Rather untrusted code ``driving'' the kernel can be written in any language capable of producing Wasm binary-compatible with our ABI.
+Arguably, the \emph{natural} choice for this is now not even functional, given the inherently stateful and pointer-oriented nature of the kernel.
+
+LCF-style interaction is centred around the REPL of the meta-language, or some thin layer built atop, itself started from an operating system shell---a kind of shell within a shell.
+Our design allows us to dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
+Moreover our kernel inherently internalises kernel objects, and could therefore make them available to browse as special files within a hierarchical filesystem, as discussed below, in analogy to how Linux exposes its internals as special files---for example, the contents of \texttt{/proc/} and \texttt{/dev/}.
+In this way, related material could appear grouped in directories, searched using command-line utilities, or opened by a process for use at runtime.
 
 \paragraph{Runtime monitoring}
 
@@ -129,24 +147,6 @@ Note that this expresses that the states described by $\psi$ are a subset of tho
 \deffont{Proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy, later reconstructed by the loader prior to execution.
 The ideas sketched above are different: proofs are generated dynamically, as the program executes, and more aptly called \deffont{proof generating code}.
 Moreover, theorems could be generated statically, offline, and used dynamically:
-
-\paragraph{Reinventing the proof-assistant}
-
-Proof-assistants in the LCF lineage are also architected around a \deffont{kernel}, with ostensibly little in common with operating system kernels.
-Examining, one sees that both are tasked with preserving invariants in the face of unbounded interaction with untrusted code.
-Moreover, whilst operating system kernels enjoy a monopoly on hardware access, proof-assistant kernels enjoy a monopoly on theorem \deffont{authentication}.
-In short, both act as roots of all trust within their domains.
-Yet, the two are implemented in different ways, with LCF kernels implemented as libraries in a \deffont{meta-language}, usually a functional language.
-Kernel interaction is via an \emph{API}, rather than an ABI.
-
-An immediate consequence of our design is that the meta-language is non-existent.
-Rather untrusted code ``driving'' the kernel can be written in any language capable of producing Wasm binary-compatible with our ABI.
-Arguably, the \emph{natural} choice for this is now not even functional, given the inherently stateful and pointer-oriented nature of the kernel.
-
-LCF-style interaction is centred around the REPL of the meta-language, or some thin layer built atop, itself started from an operating system shell---a kind of shell within a shell.
-Our design allows us to dispense with this middle-man, and develop proofs interactively directly in a shell implemented on top of our kernel.
-Moreover our kernel inherently internalises kernel objects, and could therefore make them available to browse as special files within a hierarchical filesystem, as discussed previously, in analogy to how Linux exposes its internals as special files---for example, the contents of \texttt{/proc/} and \texttt{/dev/}.
-In this way, related material could appear grouped in directories, searched using command-line utilities, or opened by a process for use at runtime.
 
 \paragraph{Lastly, specifications}
 
