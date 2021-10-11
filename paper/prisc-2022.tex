@@ -63,7 +63,7 @@ However, programs and runtimes typically make extensive use of low-level librari
 
 This pattern of interaction between trusted and untrusted code via an ABI, wherein trusted code can read and modify the state of untrusted code, is common.
 Hypervisors, the Secure World of Arm TrustZone, and virtual machines (in the Wasm sense) are structured in this way.
-Call software designed in this pattern \deffont{supervisory software}.
+We call software designed in this pattern \deffont{supervisory software}.
 
 \paragraph{Supervisionary} is a prototype proof-checking system for Gordon's HOL structured as supervisory software, specifically as a Wasm \deffont{host environment}, which allows us to explore the consequences of the design, without becoming entangled in e.g. a real machine's boot ceremony.
 The ideas discussed herein could be applied to a real operating system.
@@ -123,7 +123,7 @@ In this way, related material could appear grouped in directories, searched usin
 \paragraph{Runtime monitoring}
 
 Nothing in principle stops us from extending Supervisionary's ABI with facilities for sockets, querying a hierarchical filesystem, and other similar system tasks.
-In particular, given our use of Wasm, we could implement the Wasm System Interface---a POSIX-like interface for Wasm---transforming Supervisionary from a programmable proof-checker into a general-purpose virtual machine, capable of supporting a wide-range of programs.
+In particular, given our use of Wasm, we could implement the Wasm System Interface---a POSIX-like interface for Wasm---transforming Supervisionary from a programmable proof-checker into a general-purpose virtual machine, capable of supporting a wide range of programs.
 
 \emph{What happens if we blur the lines between Supervisionary's ABIs for system access and proof-checking?}
 Untrusted code could be challenged to prove some theorem each time it wished to open a file on the filesystem, or otherwise perform some side-effect.
