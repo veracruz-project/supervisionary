@@ -140,8 +140,8 @@ Metadata about the behaviour of a running process could be maintained: for examp
 Information flow policies could also be captured, for example, by forcing untrusted code to commit to a pure function, $f$, to be computed before reading any files, and later showing that a result corresponds to $f$ applied to the content of a particular input file, thereby independent of the content of any other file.
 In short, HOL acts as \emph{lingua franca} between kernel and untrusted code, through which arbitrarily complex policies may be expressed.
 
-\deffont{Jailing}, wherein a process voluntarily sheds capabilities, is common.
-This can be captured by allowing a change in the prevailing policy, $\phi$, to a new policy $\psi$, as long as one can prove that $\psi$ is a refinment of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \psi\ k\ u\ s \longrightarrow \phi\ k\ u\ s$.
+\deffont{Jailing}, wherein a process voluntarily sheds capabilities, is common in existing operating systems.
+This can be captured in Supervisionary by allowing a process to replace the prevailing policy, $\phi$, with a new policy $\psi$, after proving that $\psi$ is a refinment of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \psi\ k\ u\ s \longrightarrow \phi\ k\ u\ s$.
 Note that this expresses that the states described by $\psi$ are a subset of those described by $\phi$.
 
 \deffont{Proof carrying code} modified the operating system loader, and endowed binaries with skeleton proofs of adherence to some policy, later reconstructed by the loader prior to execution.
