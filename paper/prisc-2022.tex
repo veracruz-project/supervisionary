@@ -41,6 +41,74 @@
 
 \paragraph{Some scene setting}
 
+Interactive theorem proving software is typically designed around a proof-checking \emph{kernel}.
+Proofs are constructed by submitting theorem derivations to the kernel for authentication, and then composing them with other authentic theorems.
+A proof may be large and complex, as may be the software components, both interactive and automated, used to construct it.
+However, the small and simple kernel is soley responsible for validating it.
+This implementation strategy---known as the ``LCF-style'', after Milner's system that first implemented it---is a reliability mechanism, aiming to ensure that any purported theorem produced by the system is indeed a theorem.
+
+In an operating system, the \emph{kernel} is the most privileged component, responsible for mediating interaction by less privileged components with the hardware and with each other.
+An unpriviledged process interacts with the rest of the system by issuing \emph{system calls} accross a hardware privilege boundary to the operating system kernel, which may contain requests for hardware resources, accesses to shared system services such as the filesystem, or messages addressed to other processes.
+In this way, the operating system kernel \emph{supervises} less priviledged processes.
+
+In a typical proof assistant, the boundary between a proof-checking kernel and the rest of the system is a programming-language level module boundary.
+In this work, we explore the implications of a proof-checking kernel which acts as a supervisor to the rest of theorem proving system, across a more concrete privilege boundary.
+
+\paragraph{The Supervisionary system interface}
+
+\emph{Supervisionary} is the name of our prototype implementation of a proof-checking system for Gordon's HOL structured as supervisory software, for expressing and experimenting with the ideas presented in this paper.
+In particular, our prototype specifies a \emph{system interface} to the proof-checking kernel which serve as the substance of communication across any of the concrete privilege boundries described in the body of this paper.
+
+% this bit is copied mostly verbatim from the previous version
+
+The kernel manages various private heaps within which \emph{kernel objects} are allocated, corresponding to the paraphenalia of any HOL implementation---type-formers, types, term constants, terms, and theorems---and never directly exposed to untrusted code.
+Kernel objects are allocated in response to system calls like:
+\begin{displaymath}
+\mathtt{Term.Handle.AllocateApplication(left, right, out)}
+\end{displaymath}
+Here, both $\mathtt{left}$ and $\mathtt{right}$ are \emph{kernel handles}, assumed to point-to allocated terms, whilst $\mathtt{out}$ points-to a buffer in untrusted code's memory.
+If neither $\mathtt{left}$ nor $\mathtt{right}$ \emph{dangle}, and the types of their referents match, a fresh handle is generated which points-to a new HOL term application object, with internal pointers to the functional- and argument-terms.
+This handle is returned to the caller via the $\mathtt{out}$ pointer.
+
+The manipulation and querying of kernel objects is performed defensively by the kernel itself on behalf of untrusted code.
+The kernel is careful to maintain invariants such as the \emph{inductivity} of its heaps, with nodes in the kernel object graph pointing-to allocated objects at all times.
+
+Space constraints prevent us from describing the entire Supervisionary ABI for working with, and on, kernel objects.
+However, note that theorems are also constructed in a similar way to terms, inductively building derivation trees.
+For example, the HOL symmetry rule is exposed as:
+\begin{displaymath}
+\mathtt{Theorem.Handle.AllocateSym(pre, out)}
+\end{displaymath}
+Here, $\mathtt{pre}$ points-to an existing theorem object $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
+
+\paragraph{More flexible theorem proving tools}
+
+Immediately, we can re-imagine the implementation of the foundations of familiar theorem proving tools.
+For this case, the unpriviledged bulk of the theorem proving system runs inside of a WebAssembly (Wasm) sandbox, supervised by the proof-checking kernel which runs as native code in the process hosting the sandbox.
+In the case of a typical LCF-style proof assistant such as HOL4, the entire system could be compiled to Wasm, and the module implementing the kernel could be modified to act as a proxy in front of the Supervisionary kernel outside of the sandbox.
+This modification has immediate implications for the reliability and auditability of the system, because the only critical component now isolated from the bulk of the system by a priviledged boundary.
+
+% versus just type system
+% even memory corruption vulns in bulk aren't a problem
+% next step: polyglot theorem proving software
+% another benefit: strong isolation boundaries within your proof: isolate important spec from the large proof
+
+\paragraph{Generalized runtime verification}
+
+% I can draft this section on Saturday.
+
+\paragraph{More}
+
+TODO
+
+% VM/PA
+
+% more about our prototype?
+
+\iffalse
+
+\paragraph{Some scene setting}
+
 Modern operating systems are used for a wide array of tasks.
 We focus on just two: providing a relatively portable abstract machine interface to user-space software, and enforcing system-wide security policies.
 
@@ -163,6 +231,8 @@ We then have the following example \deffont{local axiom}:
 \{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \star \mathtt{out} \mapsto \mathtt{True} \}
 \end{gather*}
 Note that the structural \deffont{frame rule} captures the fact that any system call only manipulates a defined footprint of kernel and untrusted code's memory.
+
+\fi
 
 \end{document}
 
