@@ -56,7 +56,7 @@ In this abstract, we explore designing proof-checking kernels as \emph{superviso
 
 \emph{Supervisionary} is a proof-checking system for Gordon's HOL, structured as supervisory software.
 Supervisionary provides a \emph{system interface} to untrusted code similar to an operating system's system call interface.
-We have implemented Supervisionary as a Wasm host, which allows us to rapidly explore the most important ideas.
+We have implemented Supervisionary as a WebAssembly (Wasm henceforth) host, which allows us to rapidly explore the most important ideas.
 Moreover, we use Rust as the system's implementation language---an unusual choice, albeit one that entails no risk of system unsoundness, providing the kernel's system call interface is carefully designed.
 
 In particular, the kernel manages various private heaps within which \emph{kernel objects} are allocated, corresponding to the paraphenalia of any HOL implementation---type-formers, types, term constants, terms, and theorems---and never directly exposed to untrusted code.
@@ -92,17 +92,18 @@ Writing $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert
 We now turn our attention to describing some potential uses of the Supervisionary kernel.
 Exploring what follows is still a work-in-progress.
 
-\paragraph{More flexible theorem proving tools}
+\paragraph{Robust and flexible theorem proving tools}
 
-Immediately, we can re-imagine the implementation of the foundations of familiar theorem proving tools.
-For this case, the unpriviledged bulk of the theorem proving system runs inside of a WebAssembly (Wasm) sandbox, supervised by the proof-checking kernel which runs as native code in the process hosting the sandbox.
-In the case of a typical LCF-style proof assistant such as HOL4, the entire system could be compiled to Wasm, and the module implementing the kernel could be modified to act as a proxy in front of the Supervisionary kernel outside of the sandbox.
-This modification has immediate implications for the reliability and auditability of the system, because the only critical component now isolated from the bulk of the system by a priviledged boundary.
+Immediately, we can improve the robustness and flexibility of familiar theorem proving software by restructuring it around the Supervisionary kernel.
+For example, we can refactor a typical LCF-style proof assistant so that the source-level module implementing its proof-checking kernel acts as frontend for the Supervisionary kernel, proxying derivations across an isolation boundary such as a process boundary or Wasm sandbox boundary.
+Before, we relied on the ML type system to protect the soundness of our system from errors outside of the kernel.
+Now, we rely on a stronger system-level boundary, meaning that even memory corruption in the rich portion of our system does not pose a threat to its soundness.
 
-% versus just type system
-% even memory corruption vulns in bulk aren't a problem
-% next step: polyglot theorem proving software
-% another benefit: strong isolation boundaries within your proof: isolate important spec from the large proof
+Stepping further, we can design less familiar theorem proving systems where the rich portion itself contains internal system-level isolation boundaries.
+For example, under a single instance of the Supervisionary kernel, a group of distinct theorem proving clients could construct a proof in concert.
+Furthermore, in certain cases, isolating specification from proof might allow for more confidence in the correctness of a specification's expression.
+
+% note: explicitly mention polyglot theorem proving software?
 
 \paragraph{Runtime verification}
 
