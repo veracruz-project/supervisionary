@@ -49,7 +49,7 @@
 Interactive theorem proving software is typically designed around a trusted proof-checking \deffont{kernel}, the sole system component capable of authenticating theorems.
 Untrusted automation procedures reside outside of the kernel, and drives it to deduce new theorems via an API.
 Kernel and untrusted automation are typically implemented in the same programming language---the ``meta-language''---usually some functional programming language in the ML family.
-This strategy---introduced by Milner in his LCF proof assistant~\cite{Milner1972LogicFC}---is a reliability mechanism, aiming to ensure that any purported theorem produced by the system is indeed a legitimate entailment from the theory within the logic.
+This strategy---introduced by Milner in his LCF proof assistant~\cite{Milner1972LogicFC}---is a reliability mechanism, aiming to ensure that any purported theorem produced by the system is indeed entailed by the theory within the logic.
 
 Changing tack, operating systems are also typically designed around a trusted kernel, a privileged component responsible for---amongst other things---mediating interaction betwixt user-space software and hardware.
 Untrusted processes interact with the system by issuing kernel \deffont{system calls} across a hardware privilege boundary.
@@ -87,7 +87,7 @@ For example, the HOL symmetry rule is exposed as:
 Here, $\mathtt{pre}$ points-to an existing theorem object $\Gamma \vdash r = s$ and after succeeding, passing obvious checks, $\mathtt{out}$ contains a handle that points-to a newly-allocated theorem $\Gamma \vdash s = r$.
 
 Note that one interesting consequence of this style of implementation is the ability to provide concise specifications of Supervisionary's system interface functions.
-Essentially, the Supervisionary kernel is a grand exercise in pointer manipulation, and as such our ABI specifications can be expressed as Hoare Triples, using Separation Logic as our assertion language.
+Essentially, the Supervisionary kernel is a grand exercise in pointer manipulation, and as such our system call specifications can be expressed as Hoare Triples, using Separation Logic~\cite{DBLP:conf/lics/Reynolds02} as our assertion language.
 Writing $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert that the handle $\mathtt{h}$ points-to a term application (of the term pointed-to by $l$ to the term pointed-to by $r$), and writing $\mathtt{out} \mapsto \mathtt{b}$ to assert that $\mathtt{out}$ points-to the Boolean value $\mathtt{b}$, we have:
 \begin{gather*}
 \{ h \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)} \} \\
@@ -99,17 +99,17 @@ Writing $\mathtt{h} \mapsto_{\mathtt{trm}} \mathtt{Application(l, r)}$ to assert
 Note that Supervisionary lacks any analogue of the traditional LCF meta-language.
 Kernel and automation are now decoupled, and code written in \emph{any} language can ``drive'' the kernel, providing it produces binary-compatible executables.
 
+\vspace{\baselineskip}
 We now turn to speculation around potential uses of Supervisionary.
 Exploring what follows is still a work-in-progress.
-
-% note: explicitly mention polyglot theorem proving software?
-
 \paragraph{Runtime verification}
 
 Given our use of Wasm, we could extend our system interface by also implementing the Wasm System Interface~\cite{Wasi}---a POSIX-like interface for Wasm.
 This would transform Supervisionary from a mere programmable proof-checker into a general-purpose sandbox, capable of executing arbitrary programs, albeit with an unusual interface for constructing proofs.
 
+\vspace{\baselineskip}
 But: \emph{what happens if we blur the lines between Supervisionary's interfaces for system access and proof-checking?}
+\vspace{\baselineskip}
 
 Untrusted code executing under Supervisionary's supervision could be challenged to prove some theorem each time it wished to open a file on the filesystem, or otherwise perform some side-effect.
 These theorems could be correctness or security-related theorems, corresponding to a prevailing \deffont{policy} in force.
@@ -128,8 +128,9 @@ In short, HOL acts as \emph{lingua franca} between kernel and untrusted code, th
 This can be captured in Supervisionary by allowing a process to dynamically replace the prevailing policy, $\phi$, with a new policy $\psi$, after proving that $\psi$ is a refinement of $\phi$: $\{\} \vdash \fall{k}\fall{u}\fall{s} \psi\ k\ u\ s \longrightarrow \phi\ k\ u\ s$.
 Note that this expresses that the states described by $\psi$ are a subset of those described by $\phi$.
 
-Note that this idea shares some similarities with \deffont{proof carrying code}, wherein binaries are accompanied with (skeleton) proofs of their adherence to some policy, and these proofs checked by the operating system prior to execution.
+Note that this idea shares some similarities with \deffont{proof carrying code}, wherein binaries are accompanied with (skeleton) proofs of their adherence to some policy, and these proofs checked by the operating system prior to execution~\cite{DBLP:conf/popl/Necula97}.
 However, the ideas sketched above generalise this: proofs can be generated dynamically, as the program executes, and could more aptly be called \deffont{proof generating code}.
+Processes and the Supervisionary kernel work together to come to a ``mutual understanding'' that the behaviour of the process is indeed concordant with the prevailing policy. 
 
 \paragraph{Restructuring proof-checking tools}
 
@@ -148,7 +149,7 @@ For example, libraries of mathematical theorems and definitions could be present
 Supervisionary's dual interpretation as sandbox and proof-checker blurs the boundary between static and runtime verification, and between proof-checker and sandbox.
 Whilst proofs can be generated by executables themselves at runtime, they could also be generated interactively by users, prior to the execution of a program, or even generated for use by a program by other programs.
 
-For example, the operational semantics and instruction decoding functionality of Wasm is clearly embeddable in HOL.
+For example, the operational semantics and instruction decoding functionality of Wasm is clearly embeddable in HOL~\cite{DBLP:conf/cpp/Watt18}.
 Using this, properties of a program $P$ to be executed under Supervisionary could be established statically, and registered with the kernel, perhaps interactively by a user or by another program executing before $P$ executes.
 This theorem can then be used by $P$ in closing challenges from Supervisionary, issued at runtime, tying the correctness of $P$ to its execution.
 
