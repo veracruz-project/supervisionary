@@ -1,8 +1,14 @@
-//! # WASMI host interface
+//! # WASMI binding
+//!
+//! This module binds the kernel's runtime state to the WASMI execution engine
+//! (an interpreter for Wasm code).  Note that this binding process is fairly
+//! specific to WASMI, and if we were to implement another binding for e.g.
+//! Wasmtime, we'd need another module to handle it.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,17 +17,11 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
-/// Type-aliases and other functionality related to passing values acrossed the
-/// ABI boundary.
-mod abi_types;
-/// The numbers (and names) of hostcall functions exposed to the running WASM
-/// program.
-mod hostcall_number;
-/// Binding the kernel's functionality to the WASMI host interface.
 pub mod runtime_state;
-/// Functionality related to runtime traps (an analogue of a traditional "kernel
-/// panic").
 mod runtime_trap;
+mod system_call_numbers;
+mod system_interface_types;
 mod type_checking;

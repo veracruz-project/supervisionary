@@ -1,8 +1,12 @@
-//! # Type-checking for host-calls
+//! # System call type-checking
+//!
+//! Type-checks the arguments to system calls and makes sure that they are
+//! well-formed.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,11 +15,11 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
+use crate::system_interface_types::AbiType;
 use wasmi::Signature;
-
-use crate::abi_types::AbiType;
 
 /// Returns `true` iff the semantic function signature type described by
 /// `params` and `ret` is implemented by the WASM type described by
@@ -788,6 +792,18 @@ pub(crate) fn check_theorem_register_assumption_signature(
     )
 }
 
+/// Checks the signature of the `Theorem.Register.Weaken` ABI function.
+#[inline]
+pub(crate) fn check_theorem_register_weaken_signature(
+    signature: &Signature,
+) -> bool {
+    check_signature(
+        signature,
+        &[AbiType::Handle, AbiType::Handle, AbiType::Pointer],
+        &Some(AbiType::ErrorCode),
+    )
+}
+
 /// Checks the signature of the `Theorem.Register.Reflexivity` ABI function.
 #[inline]
 pub(crate) fn check_theorem_register_reflexivity_signature(
@@ -795,12 +811,7 @@ pub(crate) fn check_theorem_register_reflexivity_signature(
 ) -> bool {
     check_signature(
         signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
+        &[AbiType::Handle, AbiType::Pointer],
         &Some(AbiType::ErrorCode),
     )
 }
@@ -903,12 +914,7 @@ pub(crate) fn check_theorem_register_beta_signature(
 ) -> bool {
     check_signature(
         signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
+        &[AbiType::Handle, AbiType::Pointer],
         &Some(AbiType::ErrorCode),
     )
 }
@@ -920,12 +926,7 @@ pub(crate) fn check_theorem_register_eta_signature(
 ) -> bool {
     check_signature(
         signature,
-        &[
-            AbiType::Handle,
-            AbiType::Pointer,
-            AbiType::Size,
-            AbiType::Pointer,
-        ],
+        &[AbiType::Handle, AbiType::Pointer],
         &Some(AbiType::ErrorCode),
     )
 }
@@ -935,11 +936,7 @@ pub(crate) fn check_theorem_register_eta_signature(
 pub(crate) fn check_theorem_register_truth_introduction_signature(
     signature: &Signature,
 ) -> bool {
-    check_signature(
-        signature,
-        &[AbiType::Pointer, AbiType::Size, AbiType::Pointer],
-        &Some(AbiType::ErrorCode),
-    )
+    check_signature(signature, &[AbiType::Pointer], &Some(AbiType::ErrorCode))
 }
 
 /// Checks the signature of the `Theorem.Register.FalsityElimination` ABI function.

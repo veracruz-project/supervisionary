@@ -1,8 +1,9 @@
-//! # Bindings to Supervisionary's type ABI
+//! # Bindings to Supervisionary's type interface
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,14 +12,14 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
+use crate::raw::{tags, ErrorCode, Handle, Name, RawHandle};
 use std::{
     collections::HashSet, convert::TryFrom, iter::FromIterator,
     marker::PhantomData,
 };
-
-use crate::raw::{tags, ErrorCode, Handle, Name, RawHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pre-allocated type-related handles.

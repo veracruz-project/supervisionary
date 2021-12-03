@@ -1,8 +1,52 @@
-//! # HOL types
+//! # HOL terms
+//!
+//! HOL's terms are the terms of the explicitly-typed λ-calculus, extended with
+//! constants.  The grammar is recursively-defined, as follows:
+//!
+//! ```
+//!     r,s,t ::= x:τ | C:τ | rs | λx:τ. r
+//! ```
+//!
+//! Here, to each type `τ` we associate a countably-infinite set of *variables*.
+//! We use `x:τ`, `y:τ`, and so on, to range arbitratily over the variables
+//! associated with type `τ`.
+//!
+//! We use `C` to range arbitrarily over constants.  Note that constants have a
+//! *declared* type, which is registered with the kernel when they are first
+//! created.  We allow constants to be used with a type that is more constrained
+//! than the declared type.  This will allow us to declare e.g. a polymorphic
+//! list cons function, with type `⍺ ⭢ List ⍺ ⭢ List ⍺` but then later use that
+//! constant at the monomorphic type `Nat ⭢ List Nat ⭢ List Nat`, for example.
+//! As a result, constants are explicitly decorated with a type `C:τ` which
+//! should always be a type-refinement of the declared type of the constant.
+//!
+//! Applications and λ-abstractions follow their usual interpretation.
+//!
+//! Note that we assume a range of built-in constants.  These include the full
+//! gamut of logical connectives and quantifiers with their most-general (read:
+//! polymorphic) types.  These will be used to construct theorems, later.
+//!
+//! Lastly, note that terms are constructed recursively, via a process which
+//! builds bigger terms out of existing ones.  We need to break this recursion
+//! in Supervisionary.  We do this by making any recursive reference to another
+//! term an indirection through the kernel's heaps, instead, through the use of
+//! a kernel handle.  This pattern can be seen in e.g. the `Application`
+//! constructor, which contains two handles pointing-to other objects in the
+//! heaps.  It is a basic kernel invariant that these sorts of internal pointers
+//! never "dangle", and always remain pointing-to some valid object of an
+//! appropriate type.
+//!
+//! As a consequence of this design pattern, the majority of term-related
+//! functionality (especially functionality, like substitution and free-variable
+//! calculation, which is recursive) is not implemented in this module, but is
+//! moved "up" into the runtime state, where reference to the kernel's heaps
+//! can be made.  This module therefore contains basic functionality for
+//! building and decomposing terms.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,6 +55,7 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale] https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 use crate::{
@@ -36,6 +81,8 @@ use crate::{
 // Terms, proper.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// HOL terms.  These are either variables, constants, applications, or
+/// λ-abstractions.
 #[derive(Clone, Debug, Hash)]
 pub enum Term {
     /// Variables of the simply-typed lambda-calculus.  All variables are
@@ -95,6 +142,7 @@ pub enum Term {
 }
 
 impl Term {
+    /// Creates a new term variable from a `name` and a type, `tau`.
     #[inline]
     pub fn variable<T, U>(name: T, tau: U) -> Self
     where
@@ -107,6 +155,11 @@ impl Term {
         }
     }
 
+    /// Creates a new term variable from a `name` and a type, `tau`.  Note that
+    /// this function does not check that the handle to the constant points-to a
+    /// valid constant, nor does it check that the type of the constant, `tau`,
+    /// is actually a refinement of the declared type of `handle`.  This is
+    /// assumed to be done "upstream" of this function.
     #[inline]
     pub fn constant<T, U>(handle: T, tau: U) -> Self
     where
@@ -119,6 +172,11 @@ impl Term {
         }
     }
 
+    /// Creates a new term application from a function `left` and an argument
+    /// term `right`.  Note that this function does not check that `left` and
+    /// `right` point-to valid terms in the kernel's heaps, nor does it check
+    /// the types of the terms to ensure well-typedness of the resulting term
+    /// application.  This is assumed to be done "upstream" of this function.
     #[inline]
     pub fn application<T, U>(left: T, right: U) -> Self
     where
@@ -131,6 +189,11 @@ impl Term {
         }
     }
 
+    /// Creates a new λ-abstraction, or single-argument function, from a bound
+    /// name, `name`, an explicit argument type, `tau`, and a body term, `body`.
+    /// Note that this function does not check that `tau` and `body` point-to
+    /// registered types and terms in the kernel's heaps, respectively.  This is
+    /// assumed to be done "upstream" of this function.
     #[inline]
     pub fn lambda<T, U, V>(name: T, tau: U, body: V) -> Self
     where
@@ -224,46 +287,55 @@ impl Term {
 // Useful constants.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// The truth constant, lifted into a term.
 pub const TERM_TRUE_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_TRUE,
     tau: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
+/// The falsity constant, lifted into a term.
 pub const TERM_FALSE_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_FALSE,
     tau: PREALLOCATED_HANDLE_TYPE_PROP,
 };
 
+/// The negation constant, lifted into a term.
 pub const TERM_NEGATION_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_NEGATION,
     tau: PREALLOCATED_HANDLE_TYPE_UNARY_CONNECTIVE,
 };
 
+/// The conjunction constant, lifted into a term.
 pub const TERM_CONJUNCTION_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_CONJUNCTION,
     tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
+/// The disjunction constant, lifted into a term.
 pub const TERM_DISJUNCTION_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_DISJUNCTION,
     tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
+/// The implication constant, lifted into a term.
 pub const TERM_IMPLICATION_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_IMPLICATION,
     tau: PREALLOCATED_HANDLE_TYPE_BINARY_CONNECTIVE,
 };
 
+/// The universal quantifier constant, at polymorphic type, lifted into a term.
 pub const TERM_FORALL_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_FORALL,
     tau: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
 };
 
+/// The existential quantifier constant, at polymorphic type, lifted into a term.
 pub const TERM_EXISTS_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_EXISTS,
     tau: PREALLOCATED_HANDLE_TYPE_QUANTIFIER,
 };
 
+/// The equality constant, at polymorphic type, lifted into a term.
 pub const TERM_EQUALITY_CONSTANT: Term = Term::Constant {
     constant: PREALLOCATED_HANDLE_CONSTANT_EQUALITY,
     tau: PREALLOCATED_HANDLE_TYPE_BINARY_PREDICATE,

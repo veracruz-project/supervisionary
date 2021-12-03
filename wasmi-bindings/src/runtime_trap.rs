@@ -1,10 +1,13 @@
-//! # Runtime traps (kernel panics)
+//! # Runtime traps (or: kernel panics)
 //!
-//! Defines the number (and name) of each hostcall.
+//! Defines various types of runtime traps/kernel panics that are specific to
+//! the WASMI execution engine binding.  Note that these represent unrecoverable
+//! errors that cause a system abort.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -13,13 +16,12 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
-use std::fmt::{Display, Error as DisplayError, Formatter};
-
-use wasmi::{Error as WasmiError, HostError, Trap, TrapKind};
-
 use kernel::error_code::ErrorCode;
+use std::fmt::{Display, Error as DisplayError, Formatter};
+use wasmi::{Error as WasmiError, HostError, Trap, TrapKind};
 
 /// Runtime traps are unrecoverable errors raised by the WASM program host.
 /// These are equivalent, essentially, to kernel panics in a typical operating

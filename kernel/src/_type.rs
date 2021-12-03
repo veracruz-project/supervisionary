@@ -1,8 +1,27 @@
 //! # HOL types
 //!
+//! HOL uses simple-types with top-level polymorphism.  The grammar of types
+//! is recursively defined as follows:
+//!
+//! ```
+//!     τ, τʹ, ... ::= ⍺ | F(τ₁, ..., τₙ)
+//! ```
+//!
+//! Here, ⍺ ranges arbitrarily over a set of *type variables* whilst `F` ranges
+//! arbitrarily over type-formers.  Note that each type-former has an associated
+//! *arity*, intuitively describing how many type arguments it must be applied
+//! to in order to produce a well-formed type.  It is a basic invariant of the
+//! Supervisionary kernel that we only ever work with well-formed types.
+//!
+//! We assume the existence of two primitive type-formers: `bool` of arity `0`
+//! and `⭢`, the *function-space arrow* of arity `2`.  As the name suggests,
+//! `bool` "carves out" the formulae of HOL and also acts as the two-element
+//! datatype.
+//!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,6 +30,7 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 use crate::{
@@ -230,6 +250,7 @@ lazy_static! {
 // Tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Tests for type-related functionality.
 #[cfg(test)]
 mod test {
     use crate::{

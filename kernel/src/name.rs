@@ -1,8 +1,17 @@
 //! # Fresh name generation
 //!
+//! Supervisionary uses an explicit name-carrying syntax for its implementation
+//! of the simply-typed λ-calculus, in a similar vein to HOL Light.  (An
+//! alternative would have been to use De Bruijn indices, which is the strategy
+//! used by Isabelle.)  One consequence of this design decision is the need to
+//! sometimes generate a "fresh" name, distinct from a set of existing names,
+//! for example when performing a capture-avoiding substitution.  This module
+//! implements that functionality.
+//!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,12 +20,14 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 ////////////////////////////////////////////////////////////////////////////////
 // Miscellaneous material.
 ////////////////////////////////////////////////////////////////////////////////
 
+use crate::kernel_panic::FRESH_NAME_GENERATION_FAILED;
 use log::info;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +51,7 @@ where
             if let Some(next) = counter.checked_add(1) {
                 counter = next;
             } else {
-                panic!("Exhausted fresh name generation.");
+                panic!(FRESH_NAME_GENERATION_FAILED);
             }
         } else {
             info!("Fresh name generated: {}.", counter);
@@ -53,9 +64,10 @@ where
 // Tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Tests for fresh name generation-related functionality.
 #[cfg(test)]
 mod test {
-    use crate::kernel::name::fresh;
+    use crate::name::fresh;
 
     /// Tests that fresh-name generation is indeed fresh.
     #[test]

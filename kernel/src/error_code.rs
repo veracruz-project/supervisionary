@@ -1,13 +1,22 @@
 //! # Error codes
 //!
 //! In most LCF-style proof assistants, errors are signalled via exceptions.  We
-//! cannot use exceptions in Supervisionary, so use error codes instead.  Note
-//! that the contents of this file must also be mirror in prover-space, as it
-//! forms part of the ABI contract between kernel and prover.
+//! cannot use exceptions in Supervisionary, so we use error codes instead.
+//! Note that the contents of this file must also be mirrored in untrusted
+//! "prover-space", as it forms part of the system interface between kernel and
+//! prover.
+//!
+//! Note: there is a bit of a design kludge in this file regarding dependencies,
+//! as we're forced to either have an-almost false dependency on WASMI in this
+//! crate to declare `ErrorCode` to be an instantiation of the `HostError`
+//! crate.  The alternative is to have a duplicate copy of the `HostError` type
+//! in the `wasmi-bindings` crate to work around the rules about trait
+//! instantiations in Rust.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -16,6 +25,7 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 use std::{
@@ -116,6 +126,7 @@ pub enum ErrorCode {
 // Trait implementations.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Pretty-printing for kernel errors.
 impl Display for ErrorCode {
     fn fmt(&self, f: &mut Formatter) -> Result<(), DisplayError> {
         match self {
@@ -250,6 +261,7 @@ impl TryFrom<i32> for ErrorCode {
 // Tests.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Tests for error code-related functionality.
 #[cfg(test)]
 mod test {
     use crate::error_code::{ErrorCode, ERRORCODE_ENCODING_UPPER_BOUND};

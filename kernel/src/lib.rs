@@ -1,10 +1,20 @@
-//! # Integration with WASMI
+//! # The Supervisionary kernel
 //!
-//! *Note that this is trusted code.*
+//! Supervisionary is a proof-checker for HOL.  The novelty of this
+//! proof-checker lies in how it protects itself from untrusted code: unlike
+//! other implementations of HOL, such as Isabelle/HOL and HOL4, where the
+//! kernel is isolated using linguistic mechanisms, such as programming language
+//! module boundaries and type-abstraction, Supervisionary uses machine-oriented
+//! notions of isolation more typically-found in operating systems, namely
+//! privilege levels and different memory spaces.
+//!
+//! Note: this library defines the Supervisionary kernel and is therefore
+//! trusted code.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -13,14 +23,11 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 pub mod _type;
-/// Error codes used to indicate errors across the ABI boundary.
 pub mod error_code;
-/// Handles used to uniquely identify kernel objects.  Various pre-allocated
-/// handles are also defined in this module, used to refer to primitive kernel
-/// objects.
 pub mod handle;
 pub mod kernel_panic;
 pub mod name;

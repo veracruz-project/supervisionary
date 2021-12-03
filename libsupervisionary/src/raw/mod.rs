@@ -1,8 +1,9 @@
-//! # Bindings to Supervisionary's ABI
+//! # Supervisionary system interface bindings
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,14 +12,15 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
-use std::marker::PhantomData;
-use std::ops::Deref;
 use std::{
     convert::TryFrom,
     fmt,
     fmt::{Display, Error as DisplayError, Formatter},
+    marker::PhantomData,
+    ops::Deref,
 };
 
 pub mod _type;

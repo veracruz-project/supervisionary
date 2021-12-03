@@ -13,9 +13,8 @@
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
 //! [Arm Research]: http://www.arm.com/research
 
-use std::{convert::TryFrom, marker::PhantomData};
-
 use crate::raw::{tags, ErrorCode, Handle, Name, RawHandle};
+use std::{convert::TryFrom, marker::PhantomData};
 
 ////////////////////////////////////////////////////////////////////////////////
 // ABI bindings.
@@ -41,15 +40,17 @@ extern "C" {
     /// Raw ABI binding to the `Theorem.Register.Assumption` function.
     fn __theorem_register_assumption(
         term_handle: RawHandle,
-        hypotheses_base: *const RawHandle,
-        hypotheses_length: u64,
+        result: *mut RawHandle,
+    ) -> i32;
+    /// Raw ABI binding to the `Theorem.Register.Weaken` function.
+    fn __theorem_register_weaken(
+        term_handle: RawHandle,
+        theorem_handle: RawHandle,
         result: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `Theorem.Register.Reflexivity` function.
     fn __theorem_register_reflexivity(
         term_handle: RawHandle,
-        hypotheses_base: *const RawHandle,
-        hypotheses_length: u64,
         result: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `Theorem.Register.Symmetry` function.
@@ -79,15 +80,11 @@ extern "C" {
     /// Raw ABI binding to the `Theorem.Register.Beta` function.
     fn __theorem_register_beta(
         term_handle: RawHandle,
-        hypotheses_base: *const RawHandle,
-        hypotheses_length: u64,
         result: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `Theorem.Register.Eta` function.
     fn __theorem_register_eta(
         term_handle: RawHandle,
-        hypotheses_base: *const RawHandle,
-        hypotheses_length: u64,
         result: *mut RawHandle,
     ) -> i32;
     /// Raw ABI binding to the `Theorem.Register.Substitute` function.
@@ -288,27 +285,42 @@ where
     }
 }
 
-pub fn theorem_register_assumption<T, U>(
+pub fn theorem_register_assumption<T>(
     term_handle: T,
-    hypotheses: Vec<U>,
 ) -> Result<Handle<tags::Term>, ErrorCode>
 where
     T: Into<Handle<tags::Term>>,
-    U: Into<Handle<tags::Term>> + Clone,
 {
     let term_handle = *term_handle.into() as u64;
-    let hypotheses: Vec<u64> = hypotheses
-        .iter()
-        .cloned()
-        .map(|h| *(h.into()) as u64)
-        .collect();
     let mut result: u64 = 0;
 
     let status = unsafe {
-        __theorem_register_assumption(
+        __theorem_register_assumption(term_handle, &mut result as *mut u64)
+    };
+
+    if status == 0 {
+        Ok(Handle::new(result as usize, PhantomData))
+    } else {
+        Err(ErrorCode::try_from(status).unwrap())
+    }
+}
+
+pub fn theorem_register_weaken<T, U>(
+    term_handle: T,
+    theorem_handle: U,
+) -> Result<Handle<tags::Term>, ErrorCode>
+where
+    T: Into<Handle<tags::Term>>,
+    T: Into<Handle<tags::Theorem>>,
+{
+    let term_handle = *term_handle.into() as u64;
+    let theorem_handle = *theorem_handle.into() as u64;
+    let mut result: u64 = 0;
+
+    let status = unsafe {
+        __theorem_register_weaken(
             term_handle,
-            hypotheses.as_ptr() as *const u64,
-            hypotheses.len() as u64,
+            theorem_handle,
             &mut result as *mut u64,
         )
     };
@@ -320,29 +332,17 @@ where
     }
 }
 
-pub fn theorem_register_reflexivity<T, U>(
+pub fn theorem_register_reflexivity<T>(
     term_handle: T,
-    hypotheses: Vec<U>,
 ) -> Result<Handle<tags::Term>, ErrorCode>
 where
     T: Into<Handle<tags::Term>>,
-    U: Into<Handle<tags::Term>> + Clone,
 {
     let term_handle = *term_handle.into() as u64;
-    let hypotheses: Vec<u64> = hypotheses
-        .iter()
-        .cloned()
-        .map(|h| *(h.into()) as u64)
-        .collect();
     let mut result: u64 = 0;
 
     let status = unsafe {
-        __theorem_register_reflexivity(
-            term_handle,
-            hypotheses.as_ptr() as *const u64,
-            hypotheses.len() as u64,
-            &mut result as *mut u64,
-        )
+        __theorem_register_reflexivity(term_handle, &mut result as *mut u64)
     };
 
     if status == 0 {
@@ -452,29 +452,17 @@ where
     }
 }
 
-pub fn theorem_register_beta<T, U>(
+pub fn theorem_register_beta<T>(
     term_handle: T,
-    hypotheses: Vec<U>,
 ) -> Result<Handle<tags::Term>, ErrorCode>
 where
     T: Into<Handle<tags::Term>>,
-    U: Into<Handle<tags::Term>> + Clone,
 {
     let term_handle = *term_handle.into() as u64;
-    let hypotheses: Vec<u64> = hypotheses
-        .iter()
-        .cloned()
-        .map(|h| *(h.into()) as u64)
-        .collect();
     let mut result: u64 = 0;
 
     let status = unsafe {
-        __theorem_register_beta(
-            term_handle,
-            hypotheses.as_ptr() as *const u64,
-            hypotheses.len() as u64,
-            &mut result as *mut u64,
-        )
+        __theorem_register_beta(term_handle, &mut result as *mut u64)
     };
 
     if status == 0 {
@@ -484,30 +472,17 @@ where
     }
 }
 
-pub fn theorem_register_eta<T, U>(
+pub fn theorem_register_eta<T>(
     term_handle: T,
-    hypotheses: Vec<U>,
 ) -> Result<Handle<tags::Term>, ErrorCode>
 where
     T: Into<Handle<tags::Term>>,
-    U: Into<Handle<tags::Term>> + Clone,
 {
     let term_handle = *term_handle.into() as u64;
-    let hypotheses: Vec<u64> = hypotheses
-        .iter()
-        .cloned()
-        .map(|h| *(h.into()) as u64)
-        .collect();
     let mut result: u64 = 0;
 
-    let status = unsafe {
-        __theorem_register_eta(
-            term_handle,
-            hypotheses.as_ptr() as *const u64,
-            hypotheses.len() as u64,
-            &mut result as *mut u64,
-        )
-    };
+    let status =
+        unsafe { __theorem_register_eta(term_handle, &mut result as *mut u64) };
 
     if status == 0 {
         Ok(Handle::new(result as usize, PhantomData))

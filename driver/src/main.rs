@@ -1,8 +1,13 @@
-//! # Entry point for the driver application
+//! # Driver application
+//!
+//! This module defines a top-level "driver" application which takes a path to a
+//! Wasm binary, as a command-line argument, and executes the binary under the
+//! Supervisionary kernel's supervision.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -11,34 +16,34 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 use clap::{App, Arg};
 use log::info;
-use wasmi::{
-    ExternVal, ImportsBuilder, MemoryRef, Module, ModuleInstance, ModuleRef,
-    RuntimeValue,
-};
-
-use wasmi_bindings::runtime_state::WasmiRuntimeState;
-
 use std::{
     fs::File,
     io::Read,
     path::{Path, PathBuf},
     process::exit,
 };
+use wasmi::{
+    ExternVal, ImportsBuilder, MemoryRef, Module, ModuleInstance, ModuleRef,
+    RuntimeValue,
+};
+use wasmi_bindings::runtime_state::WasmiRuntimeState;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Useful constants.
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An about message/header for the help menu of the driver application.
-const ABOUT_MESSAGE: &str = "Main driver application for Supervisionary tests.";
+const ABOUT_MESSAGE: &str = "Driver application for Supervisionary tests.";
 /// Name of the driver application.
 const APPLICATION_NAME: &str = "Supervisionary driver.";
 /// Authors of the driver application.
-const AUTHOR_LIST: &str = "The Supervisionary Development Team.";
+const AUTHOR_LIST: &str =
+    "Dominic P. Mulligan and Nick Spinale, Arm Research, Cambridge.";
 /// The name of the Wasm module's heap.
 const LINEAR_MEMORY_NAME: &str = "memory";
 /// The version number of the driver application.

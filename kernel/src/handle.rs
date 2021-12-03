@@ -1,14 +1,15 @@
 //! # Kernel object handles
 //!
-//! Kernel objects are manipulated only by the kernel, so prover-space code
-//! needs some way of naming the object that should be manipulated by the
-//! kernel.  In Supervisionary, we use *handles* for this purpose, which are
-//! simply machine words suitable for passing across the kernel/prover-space ABI
-//! boundary.
+//! Kernel objects are manipulated only by the kernel, so untrusted
+//! "prover-space" code needs some way of naming the object that should be
+//! manipulated by the kernel.  In Supervisionary, we use *handles* for this
+//! purpose, which are simply machine words suitable for passing across the
+//! kernel/prover-space system call boundary.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -17,6 +18,7 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 use std::{
@@ -30,22 +32,35 @@ use std::{
 // Handle tags.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// This module contains dummy types that are used as type-parameters to the
+/// parameterized `Handle` struct, defined below, which allow us to distinguish
+/// between handles used for different purposes within the kernel.  This, though
+/// handles are really just represented as machine words, allow us to statically
+/// avoid mixing up handles that are assumed to point to e.g. a HOL type, with
+/// those assumed to point to a HOL theorem.
 pub mod tags {
+    /// The handle tag for type-formers.
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct TypeFormer;
 
+    /// The handle tag for types.
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Type;
 
+    /// The handle tag for constants.
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Constant;
 
+    /// The handle tag for terms.
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Term;
 
+    /// The handle tag for theorems.
     #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Theorem;
 
+    /// This is a dummy trait which will allow us to assert that a particular
+    /// type parameter may indeed be instantiated exclusively with a handle tag.
     pub trait IsTag {}
 
     impl IsTag for TypeFormer {}
@@ -63,6 +78,12 @@ pub mod tags {
 // Tagged handles.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Kernel handles consist of a machine word, which acts as the handle-proper,
+/// along with some phantom data which binds the `T` type-parameter to the
+/// machine word, and which is used to tag the handle with, using some instance
+/// of the `IsTag` trait.  This allows us to statically distinguish between
+/// handles that e.g. are assumed to point to HOL terms from those that are e.g.
+/// assumed to point to theorems, within the kernel.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Handle<T>
 where
@@ -104,12 +125,12 @@ pub const PREALLOCATED_HANDLE_TYPE_FORMER_ARROW: Handle<tags::TypeFormer> =
         handle: 1,
         marker: PhantomData,
     };
-/// A pre-allocated handle used to refer to the type-variable `A`.
+/// A pre-allocated handle used to refer to the type-variable `⍺`.
 pub const PREALLOCATED_HANDLE_TYPE_ALPHA: Handle<tags::Type> = Handle {
     handle: 2,
     marker: PhantomData,
 };
-/// A pre-allocated handle used to refer to the type-variable `B`.
+/// A pre-allocated handle used to refer to the type-variable `β`.
 pub const PREALLOCATED_HANDLE_TYPE_BETA: Handle<tags::Type> = Handle {
     handle: 3,
     marker: PhantomData,
@@ -259,6 +280,7 @@ pub const PREALLOCATED_HANDLE_TERM_EXISTS: Handle<tags::Term> = Handle {
 // Trait implementations.
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Dereferencing a `Handle` simply returns its associated machine word.
 impl<T> Deref for Handle<T>
 where
     T: tags::IsTag,
@@ -271,6 +293,7 @@ where
     }
 }
 
+/// Injection from machine words into the `Handle` type.
 impl<T> From<usize> for Handle<T>
 where
     T: tags::IsTag,
@@ -284,26 +307,42 @@ where
     }
 }
 
+/// Pretty-printing for term handles.
 impl Display for Handle<tags::Term> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{} (term handle)", self.handle)
     }
 }
 
+/// Pretty-printing for constant handles.
 impl Display for Handle<tags::Constant> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{} (constant handle)", self.handle)
     }
 }
 
+/// Pretty-printing for type-former handles.
 impl Display for Handle<tags::TypeFormer> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{} (type-former handle)", self.handle)
     }
 }
 
+/// Pretty-printing for type handles.
 impl Display for Handle<tags::Type> {
+    #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{} (type handle)", self.handle)
+    }
+}
+
+/// Pretty-printing for theorem handles.
+impl Display for Handle<tags::Theorem> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} (theorem handle)", self.handle)
     }
 }

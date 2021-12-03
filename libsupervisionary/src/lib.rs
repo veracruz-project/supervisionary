@@ -7,6 +7,7 @@
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
+//! [Nick Spinale], Systems Research Group, [Arm Research] Cambridge.
 //!
 //! # Copyright
 //!
@@ -15,9 +16,10 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
+//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
 #![feature(const_fn_trait_bound)]
 
-/// Raw bindings to the Supervisionary kernel ABI.
+pub mod build;
 pub mod raw;
