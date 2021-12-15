@@ -1,13 +1,11 @@
-//! # WASMI runtime state
+//! # Wasmi runtime state
 //!
-//! This binds the kernel code, proper, to the guest WASM program-facing system
-//! interface, via the WASMI execution engine, routing system calls as
-//! appropriate.
+//! This binds the kernel code, proper, to the guest WASM program-facing ABI
+//! interface, routing host-calls as appropriate.
 //!
 //! # Authors
 //!
 //! [Dominic Mulligan], Systems Research Group, [Arm Research] Cambridge.
-//! [Nick Spinale], Systems Research Group, [Arm Research], Cambridge.
 //!
 //! # Copyright
 //!
@@ -16,13 +14,27 @@
 //! information.
 //!
 //! [Dominic Mulligan]: https://dominic-mulligan.co.uk
-//! [Nick Spinale]: https://nickspinale.com
 //! [Arm Research]: http://www.arm.com/research
 
+use std::{borrow::Borrow, cell::RefCell, fmt::Debug, mem::size_of};
+
+use byteorder::{ByteOrder, LittleEndian};
+use log::{error, info};
+use wasmi::{
+    Error as WasmiError, Externals, FuncInstance, FuncRef, MemoryRef,
+    ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap,
+};
+
+use kernel::{
+    error_code::ErrorCode as KernelErrorCode,
+    handle::{tags, Handle},
+    name::Name,
+    runtime_state::RuntimeState as KernelRuntimeState,
+};
+
 use crate::{
-    runtime_trap,
-    runtime_trap::RuntimeTrap,
-    system_call_numbers::{
+    abi_types::semantic_types,
+    hostcall_number::{
         ABI_CONSTANT_IS_REGISTERED_INDEX, ABI_CONSTANT_IS_REGISTERED_NAME,
         ABI_CONSTANT_REGISTER_INDEX, ABI_CONSTANT_REGISTER_NAME,
         ABI_CONSTANT_RESOLVE_INDEX, ABI_CONSTANT_RESOLVE_NAME,
@@ -121,7 +133,6 @@ use crate::{
         ABI_THEOREM_REGISTER_TRUTH_INTRODUCTION_NAME,
         ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_INDEX,
         ABI_THEOREM_REGISTER_TYPE_SUBSTITUTE_NAME,
-        ABI_THEOREM_REGISTER_WEAKEN_INDEX, ABI_THEOREM_REGISTER_WEAKEN_NAME,
         ABI_THEOREM_SPLIT_CONCLUSION_INDEX, ABI_THEOREM_SPLIT_CONCLUSION_NAME,
         ABI_THEOREM_SPLIT_HYPOTHESES_INDEX, ABI_THEOREM_SPLIT_HYPOTHESES_NAME,
         ABI_TYPE_FORMER_IS_REGISTERED_INDEX,
@@ -142,22 +153,14 @@ use crate::{
         ABI_TYPE_TEST_VARIABLE_NAME, ABI_TYPE_VARIABLES_INDEX,
         ABI_TYPE_VARIABLES_NAME,
     },
-    system_interface_types::semantic_types,
+    runtime_trap,
+    runtime_trap::RuntimeTrap,
     type_checking,
 };
-use byteorder::{ByteOrder, LittleEndian};
-use kernel::{
-    error_code::ErrorCode as KernelErrorCode,
-    handle::{tags, Handle},
-    name::Name,
-    runtime_state::RuntimeState as KernelRuntimeState,
-};
-use log::{error, info};
-use std::{borrow::Borrow, cell::RefCell, fmt::Debug, mem::size_of};
-use wasmi::{
-    Error as WasmiError, Externals, FuncInstance, FuncRef, MemoryRef,
-    ModuleImportResolver, RuntimeArgs, RuntimeValue, Signature, Trap,
-};
+
+////////////////////////////////////////////////////////////////////////////////
+// Errors and traps.
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // The Wasmi runtime state.
@@ -175,8 +178,6 @@ pub struct WasmiRuntimeState {
     memory: Option<RefCell<MemoryRef>>,
 }
 
-/// Creates a new, empty `WasmiRuntimeState` with a default kernel state and no
-/// module memory registered.
 impl Default for WasmiRuntimeState {
     #[inline]
     fn default() -> Self {
@@ -1333,48 +1334,36 @@ impl WasmiRuntimeState {
         self.kernel.borrow().theorem_is_registered(handle)
     }
 
-    /// Lifting of the `theorem_register_weaken` function.
-    #[inline]
-    fn theorem_register_weaken<T, U>(
-        &self,
-        term_handle: T,
-        theorem_handle: U,
-    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
-    where
-        T: Into<Handle<tags::Term>> + Clone,
-        U: Into<Handle<tags::Theorem>> + Clone,
-    {
-        self.kernel
-            .borrow_mut()
-            .theorem_register_weaken(term_handle, theorem_handle)
-    }
-
     /// Lifting of the `theorem_register_assumption` function.
     #[inline]
-    fn theorem_register_assumption<T>(
+    fn theorem_register_assumption<T, U>(
         &self,
-        term_handle: T,
-    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
-    where
-        T: Into<Handle<tags::Term>> + Clone,
-    {
-        self.kernel
-            .borrow_mut()
-            .theorem_register_assumption(term_handle)
-    }
-
-    /// Lifting of the `theorem_register_reflexivity` function.
-    #[inline]
-    fn theorem_register_reflexivity<T>(
-        &self,
+        hypotheses_handles: Vec<T>,
         term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
         self.kernel
             .borrow_mut()
-            .theorem_register_reflexivity(term_handle)
+            .theorem_register_assumption(hypotheses_handles, term_handle)
+    }
+
+    /// Lifting of the `theorem_register_reflexivity` function.
+    #[inline]
+    fn theorem_register_reflexivity<T, U>(
+        &self,
+        hypotheses_handles: Vec<T>,
+        term_handle: U,
+    ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
+    where
+        T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
+    {
+        self.kernel
+            .borrow_mut()
+            .theorem_register_reflexivity(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_symmetry` function.
@@ -1409,26 +1398,34 @@ impl WasmiRuntimeState {
 
     /// Lifting of the `theorem_register_beta` function.
     #[inline]
-    fn theorem_register_beta<T>(
+    fn theorem_register_beta<T, U>(
         &self,
-        term_handle: T,
+        hypotheses_handles: Vec<T>,
+        term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
-        self.kernel.borrow_mut().theorem_register_beta(term_handle)
+        self.kernel
+            .borrow_mut()
+            .theorem_register_beta(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_eta` function.
     #[inline]
-    fn theorem_register_eta<T>(
+    fn theorem_register_eta<T, U>(
         &self,
-        term_handle: T,
+        hypotheses_handles: Vec<T>,
+        term_handle: U,
     ) -> Result<Handle<tags::Theorem>, KernelErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Term>> + Clone,
     {
-        self.kernel.borrow_mut().theorem_register_eta(term_handle)
+        self.kernel
+            .borrow_mut()
+            .theorem_register_eta(hypotheses_handles, term_handle)
     }
 
     /// Lifting of the `theorem_register_substitute` function.
@@ -1821,7 +1818,7 @@ impl WasmiRuntimeState {
     where
         T: Borrow<Handle<tags::Theorem>>,
     {
-        self.kernel.borrow().theorem_split_premisses(handle)
+        self.kernel.borrow().theorem_split_hypotheses(handle)
     }
 }
 
@@ -2985,33 +2982,22 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_ASSUMPTION_INDEX => {
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
-                    args.nth::<semantic_types::Handle>(0) as usize,
+                    args.nth::<semantic_types::Handle>(2) as usize,
                 );
-                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.theorem_register_assumption(term_handle) {
-                    Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
-                    Ok(result) => {
-                        self.write_handle(result_ptr, result)?;
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
 
-                        Ok(Some(RuntimeValue::I32(
-                            KernelErrorCode::Success.into(),
-                        )))
-                    }
-                }
-            }
-            ABI_THEOREM_REGISTER_WEAKEN_INDEX => {
-                let term_handle: Handle<tags::Term> = Handle::from(
-                    args.nth::<semantic_types::Handle>(0) as usize,
-                );
-                let theorem_handle: Handle<tags::Theorem> = Handle::from(
-                    args.nth::<semantic_types::Handle>(1) as usize,
-                );
-                let result_ptr = args.nth::<semantic_types::Pointer>(2);
-
-                match self.theorem_register_weaken(term_handle, theorem_handle)
-                {
+                match self.theorem_register_assumption(
+                    hypotheses_handles,
+                    term_handle,
+                ) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3023,12 +3009,22 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_REFLEXIVITY_INDEX => {
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
-                    args.nth::<semantic_types::Handle>(0) as usize,
+                    args.nth::<semantic_types::Handle>(2) as usize,
                 );
-                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.theorem_register_reflexivity(term_handle) {
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
+
+                match self.theorem_register_reflexivity(
+                    hypotheses_handles,
+                    term_handle,
+                ) {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3079,12 +3075,21 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_BETA_INDEX => {
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
-                    args.nth::<semantic_types::Handle>(0) as usize,
+                    args.nth::<semantic_types::Handle>(2) as usize,
                 );
-                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.theorem_register_beta(term_handle) {
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
+
+                match self
+                    .theorem_register_beta(hypotheses_handles, term_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -3096,12 +3101,20 @@ impl Externals for WasmiRuntimeState {
                 }
             }
             ABI_THEOREM_REGISTER_ETA_INDEX => {
+                let hypotheses_pointer = args.nth::<semantic_types::Pointer>(0);
+                let hypotheses_length = args.nth::<semantic_types::Size>(1);
                 let term_handle: Handle<tags::Term> = Handle::from(
-                    args.nth::<semantic_types::Handle>(0) as usize,
+                    args.nth::<semantic_types::Handle>(2) as usize,
                 );
-                let result_ptr = args.nth::<semantic_types::Pointer>(1);
+                let result_ptr = args.nth::<semantic_types::Pointer>(3);
 
-                match self.theorem_register_eta(term_handle) {
+                let hypotheses_handles = self.read_handles(
+                    hypotheses_pointer,
+                    hypotheses_length as usize,
+                )?;
+
+                match self.theorem_register_eta(hypotheses_handles, term_handle)
+                {
                     Err(e) => Ok(Some(RuntimeValue::I32(e as i32))),
                     Ok(result) => {
                         self.write_handle(result_ptr, result)?;
@@ -4486,20 +4499,6 @@ impl ModuleImportResolver for WasmiRuntimeState {
                 Ok(FuncInstance::alloc_host(
                     signature.clone(),
                     ABI_THEOREM_REGISTER_ASSUMPTION_INDEX,
-                ))
-            }
-            ABI_THEOREM_REGISTER_WEAKEN_NAME => {
-                if !type_checking::check_theorem_register_weaken_signature(
-                    signature,
-                ) {
-                    return Err(WasmiError::Trap(runtime_trap::host_trap(
-                        RuntimeTrap::SignatureFailure,
-                    )));
-                }
-
-                Ok(FuncInstance::alloc_host(
-                    signature.clone(),
-                    ABI_THEOREM_REGISTER_WEAKEN_INDEX,
                 ))
             }
             ABI_THEOREM_REGISTER_REFLEXIVITY_NAME => {
