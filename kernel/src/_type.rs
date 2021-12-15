@@ -13,10 +13,10 @@
 //! to in order to produce a well-formed type.  It is a basic invariant of the
 //! Supervisionary kernel that we only ever work with well-formed types.
 //!
-//! We assume the existence of two primitive type-formers: `bool` of arity `0`
+//! We assume the existence of two primitive type-formers: `prop` of arity `0`
 //! and `⭢`, the *function-space arrow* of arity `2`.  As the name suggests,
-//! `bool` "carves out" the formulae of HOL and also acts as the two-element
-//! datatype.
+//! `prop` "carves out" the formulae of HOL and also acts as the two-element
+//! Boolean datatype.
 //!
 //! # Authors
 //!
