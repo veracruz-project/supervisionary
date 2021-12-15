@@ -2614,7 +2614,6 @@ impl RuntimeState {
 
         let mut premisses = left.premisses().clone();
         premisses.append(&mut right.premisses().clone());
-
         premisses.sort();
         premisses.dedup();
 
@@ -2756,6 +2755,22 @@ impl RuntimeState {
             .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
+    /// Registers a new theorem object, `{} ⊢ (λx:τ. r)t = r[x:τ ↦ t]` in the
+    /// kernel's theorem-table iff `application` points-to the term `(λx:τ. r)t`
+    /// in the kernel's term-table.  Returns `Ok(handle)` if this process is
+    /// successful, where `handle` is the newly-allocated handle pointing-to the
+    /// new theorem object.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `application` does not
+    /// point-to a registered term in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAnApplication)` if `application` does not
+    /// point-to a term application in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotALambda)` if `application` does not
+    /// point-to a term application between a λ-abstraction and an argument.
     pub fn theorem_register_beta<T>(
         &mut self,
         application: T,
@@ -2768,16 +2783,47 @@ impl RuntimeState {
 
         let (name, _type, body) = self.term_split_lambda(lhs)?;
 
-        let subst = self.substitution(
-            body.clone(),
-            vec![((name.clone(), _type.clone()), rhs.clone())],
-        )?;
-        let conclusion = self.term_register_equality(application, subst)?;
+        // NB: these should never fail as `body` originates from a well-typed
+        // term obtained from the kernel's term-table.  Moreover, a meta-theorem
+        // of HOL asserts that the construction of the equality, below, is
+        // well-typed.
+        let subst = self
+            .substitution(
+                body.clone(),
+                vec![((name.clone(), _type.clone()), rhs.clone())],
+            )
+            .expect(DANGLING_HANDLE_ERROR);
+        let conclusion = self
+            .term_register_equality(application, subst)
+            .expect(PRIMITIVE_CONSTRUCTION_ERROR);
+
         let premisses: Vec<Handle<tags::Term>> = Vec::new();
 
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
+    /// Registers a new theorem object, `{} ⊢ λx:τ. f x = f` in the
+    /// kernel's theorem-table iff `lambda` points-to the term `λx:τ. f x`
+    /// in the kernel's term-table and `x ∉ fv f`.  Returns `Ok(handle)` if this
+    /// process is successful, where `handle` is the newly-allocated handle
+    /// pointing-to the new theorem object.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `lambda` does not
+    /// point-to a registered term in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotALambda)` if `lambda` does not
+    /// point-to a λ-abstraction in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAnApplication)` if `lambda` does not
+    /// point-to a λ-abstraction with a term application as a body, in the
+    /// runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::ShapeMismatch)` if `lambda` does not point-to
+    /// λ-abstraction with a term application between an argument term and the
+    /// bound variable in the runtime state's term-table.  Alternatively, if
+    /// the bound variable appears in the free-variables of the functional term.
     pub fn theorem_register_eta<T>(
         &mut self,
         lambda: T,
@@ -2814,6 +2860,22 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
+    /// Registers a new theorem object, `Γ ∪ Δ ⊢ ɸ = ψ` in the kernel's
+    /// theorem-table iff `left` points-to the theorem `Γ ⊢ ɸ ⟶ ψ` and `right`
+    /// points-to the theorem `Δ ⊢ ψ ⟶ ɸ` in the kernel's theorem-table.
+    /// Returns `Ok(handle)` if this process is successful, where `handle` is
+    /// the newly-allocated handle pointing-to the new theorem object.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `left` or `right` do
+    /// not point-to a registered term in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAnImplication)` if `left` or `right` are not
+    /// implicational theorems registered in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::ShapeMismatch)` if `left` and `right` are not
+    /// implications between the same two terms (up-to ⍺-equivalence).
     pub fn theorem_register_iff_introduction<T, U>(
         &mut self,
         left: T,
@@ -2853,6 +2915,23 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
+    /// Registers a new theorem object, `Γ ⊢ ɸ ⟶ ψ` in the kernel's
+    /// theorem-table iff `handle` points-to the theorem `Γ ⊢ ɸ = ψ` in the
+    /// kernel's theorem-table.  Returns `Ok(handle)` if this process is
+    /// successful, where `handle` is the newly-allocated handle pointing-to the
+    /// new theorem object.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTheoremRegistered)` if `handle` does
+    /// not point-to a registered theorem in the runtime state's theorem-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAnEquality)` if `handle` does not point-to an
+    /// equational theorem registered in the runtime state's theorem-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAProposition)` if `handle` does not point-to
+    /// an equational theorem between formulae, registered in the runtime
+    /// state's theorem-table.
     pub fn theorem_register_iff_left_elimination<T>(
         &mut self,
         handle: T,
@@ -2865,44 +2944,71 @@ impl RuntimeState {
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
             .clone();
 
-        let (left, right) = self
-            .term_split_equality(thm.conclusion())
-            .map_err(|_e| ErrorCode::ShapeMismatch)?;
+        let (left, right) = self.term_split_equality(thm.conclusion())?;
 
-        let left = left.clone();
-        let right = right.clone();
-
-        if !self.term_type_is_proposition(&left)? {
+        if !self
+            .term_type_is_proposition(left)
+            .expect(DANGLING_HANDLE_ERROR)
+        {
             return Err(ErrorCode::NotAProposition);
         }
 
-        let conclusion = self.term_register_implication(left, right)?;
-        let hypotheses = thm.premisses().clone();
+        // NB: this should never fail as we've already checked that the equality
+        // is an equality between two formulae.
+        let conclusion = self
+            .term_register_implication(left.clone(), right.clone())
+            .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self
+            .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
+    /// Registers a new theorem object, `{} ⊢ True` in the kernel's
+    /// theorem-table.  Returns `Ok(handle)` where `handle` is the
+    /// newly-allocated handle pointing-to the new theorem object.
+    ///
+    /// # Errors
+    ///
+    /// Does not error: returns `Result<Handle<tags::Theorem>, ErrorCode>` for
+    /// uniformity with other axioms/rules.
     pub fn theorem_register_truth_introduction<T>(
         &mut self,
-        hypotheses: Vec<T>,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Into<Handle<tags::Term>> + Clone,
     {
-        for c in hypotheses.iter().cloned() {
-            if !self.is_term_registered(c.into()) {
-                return Err(ErrorCode::NoSuchTermRegistered);
-            }
-        }
+        let identity: Vec<(Name, Handle<tags::Type>)> = Vec::new();
 
-        let empty: Vec<(Name, Handle<tags::Type>)> = Vec::new();
-
+        // NB: this should never fail if the initial theory is properly
+        // initialized.
         let conclusion = self
-            .term_register_constant(PREALLOCATED_HANDLE_CONSTANT_TRUE, empty)?;
+            .term_register_constant(PREALLOCATED_HANDLE_CONSTANT_TRUE, identity)
+            .expect(PRIMITIVE_CONSTRUCTION_ERROR);
+        let premisses: Vec<Handle<tags::Term>> = Vec::new();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
+    /// Registers a new theorem object, `Γ ⊢ ɸ` in the kernel's theorem-table
+    /// iff `thm` points-to the theorem `Γ ⊢ False` in the kernel's
+    /// theorem-table and `conclusion` points-to the formula `ɸ` in the kernel's
+    /// term-table.  Returns `Ok(handle)` if this process is successful,
+    /// where `handle` is the newly-allocated handle pointing-to the new theorem
+    /// object.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTheoremRegistered)` if `thm` does
+    /// not point-to a registered theorem in the runtime state's theorem-table.
+    ///
+    /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `conclusion` does
+    /// not point-to a registered term in the runtime state's term-table.
+    ///
+    /// Returns `Err(ErrorCode::NotAProposition)` if `conclusion` does not
+    /// point-to a formula, registered in the runtime state's theorem-table.
+    ///
+    /// Returns `Err(ErrorCode::ShapeMismatch)` if `thm` does not point-to a
+    /// proof of falsity.
     pub fn theorem_register_falsity_elimination<T, U>(
         &mut self,
         thm: T,
@@ -2912,26 +3018,34 @@ impl RuntimeState {
         T: Borrow<Handle<tags::Theorem>>,
         U: Into<Handle<tags::Term>> + Clone,
     {
+        let conclusion = conclusion.into();
+        let thm = thm.borrow();
+
         let thm = self
             .resolve_theorem_handle(thm)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
             .clone();
 
-        if !self.is_term_registered(conclusion.clone().into()) {
+        if !self.is_term_registered(&conclusion) {
             return Err(ErrorCode::NoSuchTermRegistered);
         }
 
-        if !self.term_type_is_proposition(conclusion.clone().into())? {
+        if !self
+            .term_type_is_proposition(&conclusion)
+            .expect(DANGLING_HANDLE_ERROR)
+        {
             return Err(ErrorCode::NotAProposition);
         }
 
-        if !self.is_false(thm.conclusion())? {
+        if !self
+            .is_false(thm.conclusion())
+            .expect(DANGLING_HANDLE_ERROR)
+        {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        let hypotheses = thm.premisses().clone();
-
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self
+            .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
     pub fn theorem_register_conjunction_introduction<T, U>(
@@ -3189,14 +3303,15 @@ impl RuntimeState {
         Ok(self.admit_theorem(Theorem::new(hypotheses, conc)))
     }
 
-    pub fn theorem_register_substitute<T, U>(
+    pub fn theorem_register_substitute<T, U, V>(
         &mut self,
         handle: T,
-        sigma: Vec<(Name, U)>,
+        sigma: Vec<((Name, U), V)>,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
-        U: Into<Handle<tags::Term>> + Clone,
+        U: Into<Handle<tags::Type>> + Clone,
+        V: Into<Handle<tags::Term>> + Clone,
     {
         let thm = self
             .resolve_theorem_handle(handle)
@@ -3241,14 +3356,40 @@ impl RuntimeState {
 
     pub fn theorem_register_negation_introduction<T, U>(
         &mut self,
-        _theorem_handle: T,
-        _term_handle: U,
+        thm: T,
+        trm: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
         U: Into<Handle<tags::Term>>,
     {
-        unimplemented!()
+        let thm = thm.borrow();
+        let trm = trm.into();
+
+        let thm = self
+            .resolve_theorem_handle(thm)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?
+            .clone();
+
+        if !self.term_type_is_proposition(&trm)? {
+            return Err(ErrorCode::NotAProposition);
+        }
+
+        if !thm.premisses().contains(&trm) {
+            return Err(ErrorCode::ShapeMismatch);
+        }
+
+        let mut premisses = thm
+            .premisses()
+            .iter()
+            .filter(|e| *e != &trm)
+            .cloned()
+            .collect();
+        let conclusion = self
+            .term_register_negation(trm)
+            .expect(PRIMITIVE_CONSTRUCTION_ERROR);
+
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_negation_elimination<T, U>(

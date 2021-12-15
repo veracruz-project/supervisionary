@@ -1,7 +1,8 @@
 //! # WASMI runtime state
 //!
 //! This binds the kernel code, proper, to the guest WASM program-facing system
-//! interface, routing system calls as appropriate.
+//! interface, via the WASMI execution engine, routing system calls as
+//! appropriate.
 //!
 //! # Authors
 //!
@@ -159,10 +160,6 @@ use wasmi::{
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// Errors and traps.
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 // The Wasmi runtime state.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -178,6 +175,8 @@ pub struct WasmiRuntimeState {
     memory: Option<RefCell<MemoryRef>>,
 }
 
+/// Creates a new, empty `WasmiRuntimeState` with a default kernel state and no
+/// module memory registered.
 impl Default for WasmiRuntimeState {
     #[inline]
     fn default() -> Self {
