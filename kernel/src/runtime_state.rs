@@ -2045,15 +2045,46 @@ impl RuntimeState {
 
     pub fn term_type_substitute<T, U, V>(
         &mut self,
-        _handle: T,
-        _sigma: Vec<(U, V)>,
+        handle: T,
+        sigma: Vec<(U, V)>,
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Term>>,
         U: Into<Name> + Clone,
         V: Into<Handle<tags::Type>> + Clone,
     {
-        unimplemented!()
+        let handle = handle.into();
+
+        info!("Substituting types in term with handle {}.", handle);
+
+        let trm = self.resolve_term_handle(&handle)?;
+
+        /* NB: these can fail is `sigma` contains dangling handles. */
+        let result = match trm {
+            Term::Variable { name, tau } => {
+                let name = name.clone();
+                let tau = self.type_substitute(tau, sigma.clone())?;
+                Term::Variable { name, tau }
+            }
+            Term::Constant { constant, tau } => {
+                let constant = constant.clone();
+                let tau = self.type_substitute(tau, sigma.clone())?;
+                Term::Constant { constant, tau }
+            }
+            Term::Application { left, right } => {
+                let left = self.term_type_substitute(left, sigma.clone())?;
+                let right = self.term_type_substitute(right, sigma.clone())?;
+                Term::Application { left, right }
+            }
+            Term::Lambda { name, tau, body } => {
+                let name = name.clone();
+                let tau = self.type_substitute(tau, sigma.clone())?;
+                let body = self.term_type_substitute(body, sigma.clone())?'
+                Term::Lambda {name, tau, body}
+            },
+        };
+
+        Ok(self.admit_term(result))
     }
 
     /// Computes the type of a term pointed-to by `handle` in the kernel's
@@ -3394,26 +3425,59 @@ impl RuntimeState {
 
     pub fn theorem_register_negation_elimination<T, U>(
         &mut self,
-        _left_handle: T,
-        _right_handle: U,
+        left_handle: T,
+        right_handle: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
         U: Borrow<Handle<tags::Theorem>>,
     {
-        unimplemented!()
+        let left = self.resolve_theorem_handle(left_handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?
+            .clone();
+        let right = self.resolve_theorem_handle(right_handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?.clone();
+
+        let right_concl = self.term_split_negation(right.conclusion()).map_err(|_| ErrorCode::ShapeMismatch)?;
+
+        if left.conclusion() == right_concl {
+            return Err(ErrorCode::ShapeMismatch);
+        }
+
+        let mut premisses = left.premisses().clone();
+        premisses.append(&mut right.premisses().clone());
+        premisses.sort();
+        premisses.dedup();
+
+        Ok(self.admit_theorem(Theorem::new(premisses, PREALLOCATED_HANDLE_TERM_FALSE)))
     }
 
     pub fn theorem_register_forall_elimination<T, U>(
         &mut self,
-        _handle: T,
-        _trm: U,
+        handle: T,
+        trm: U,
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
         U: Into<Handle<tags::Term>>,
     {
-        unimplemented!()
+        let thm = self.resolve_theorem_handle(handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?;
+        let trm = trm.into();
+
+        let (name, tau, body) = self.term_split_forall(thm.conclusion()).map_err(|_| ErrorCode::ShapeMismatch)?;
+
+        let typ = self.term_type_infer(&trm)?;
+
+        if tau != &typ {
+            return Err(ErrorCode::DomainTypeMismatch);
+        }
+
+        /* NB: this should never fail, as everything has either been checked at
+         * this point, or derives from a pre-existing kernel object which should
+         * not contain dangling handles.
+         */
+        let conclusion = self.substitution(body, vec![((name.clone(), typ), trm)]).expect(DANGLING_HANDLE_ERROR);
+        let premisses = thm.premisses().clone();
+
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_forall_introduction<T, U>(
