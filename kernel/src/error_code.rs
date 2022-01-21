@@ -271,7 +271,7 @@ mod test {
     /// started.
     #[test]
     pub fn errorcode_test0() {
-        for i in 0..29 {
+        for i in 0..27 {
             assert_eq!(ErrorCode::try_from(i).unwrap().try_into(), Ok(i));
         }
     }
