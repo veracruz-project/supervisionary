@@ -140,7 +140,7 @@ impl RuntimeState {
 
         info!("Generating fresh handle: {}.", next);
 
-        return Handle::from(next);
+        Handle::from(next)
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -289,8 +289,7 @@ impl RuntimeState {
     {
         info!(
             "Registering type-former {} applied to arguments {:?}.",
-            former.clone(),
-            arguments.clone()
+            former, arguments
         );
 
         let former = former.into();
@@ -737,7 +736,7 @@ impl RuntimeState {
     fn admit_term(&mut self, trm: Term) -> Handle<tags::Term> {
         for (handle, registered) in self.terms.clone().iter() {
             if self
-                .is_alpha_equivalent_inner(&trm, &registered)
+                .alpha_equivalent_inner(&trm, registered)
                 .expect(DANGLING_HANDLE_ERROR)
             {
                 return handle.clone();
@@ -2063,9 +2062,8 @@ impl RuntimeState {
         let result = match trm {
             Term::Variable { name, tau } => {
                 // Appease the borrow-checker gods...
-                let name = name.clone();
+                let name = *name;
                 let tau = tau.clone();
-                let sigma = sigma.clone();
                 let tau = self.type_substitute(tau, sigma)?;
                 Term::Variable { name, tau }
             }
@@ -2079,7 +2077,6 @@ impl RuntimeState {
             Term::Application { left, right } => {
                 // Appease the borrow-checker gods...
                 let left = left.clone();
-                let sigma = sigma.clone();
                 let right = right.clone();
                 let left = self.term_type_substitute(left, sigma.clone())?;
                 let right = self.term_type_substitute(right, sigma)?;
@@ -2087,9 +2084,8 @@ impl RuntimeState {
             }
             Term::Lambda { name, tau, body } => {
                 // Appease the borrow-checker gods...
-                let name = name.clone();
+                let name = *name;
                 let tau = tau.clone();
-                let sigma = sigma.clone();
                 let body = body.clone();
                 let tau = self.type_substitute(tau, sigma.clone())?;
                 let body = self.term_type_substitute(body, sigma)?;
@@ -2129,8 +2125,8 @@ impl RuntimeState {
         let trm = trm.clone();
 
         match trm {
-            Term::Variable { tau: _type, .. } => Ok(_type.clone()),
-            Term::Constant { tau: _type, .. } => Ok(_type.clone()),
+            Term::Variable { tau: _type, .. } => Ok(_type),
+            Term::Constant { tau: _type, .. } => Ok(_type),
             Term::Application { left, right } => {
                 let ltau = self.term_type_infer(&left)?;
                 let rtau = self.term_type_infer(&right)?;
@@ -2216,14 +2212,14 @@ impl RuntimeState {
         match trm {
             Term::Variable { name, tau: _type } => {
                 if name == a.clone().into() {
-                    Ok(self.admit_term(Term::variable(b, _type.clone())))
+                    Ok(self.admit_term(Term::variable(b, _type)))
                 } else if name == b.into() {
-                    Ok(self.admit_term(Term::variable(a, _type.clone())))
+                    Ok(self.admit_term(Term::variable(a, _type)))
                 } else {
                     Ok(handle.borrow().clone())
                 }
             }
-            Term::Constant { .. } => Ok(handle.clone().borrow().clone()),
+            Term::Constant { .. } => Ok(handle.borrow().clone()),
             Term::Application { left, right } => {
                 let left = self
                     .swap(&left, a.clone(), atau, b.clone(), btau)
@@ -2243,17 +2239,17 @@ impl RuntimeState {
                     .swap(&body, a.clone(), atau, b.clone(), btau)
                     .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
                 if name == a.clone().into() && &_type == atau {
-                    Ok(self.admit_term(Term::lambda(b, _type.clone(), body)))
+                    Ok(self.admit_term(Term::lambda(b, _type, body)))
                 } else if name == b.into() && &_type == btau {
-                    Ok(self.admit_term(Term::lambda(a, _type.clone(), body)))
+                    Ok(self.admit_term(Term::lambda(a, _type, body)))
                 } else {
-                    Ok(self.admit_term(Term::lambda(name, _type.clone(), body)))
+                    Ok(self.admit_term(Term::lambda(name, _type, body)))
                 }
             }
         }
     }
 
-    fn is_alpha_equivalent_inner(
+    fn alpha_equivalent_inner(
         &mut self,
         left: &Term,
         right: &Term,
@@ -2320,13 +2316,7 @@ impl RuntimeState {
                     Ok(false)
                 } else {
                     let body1 = self
-                        .swap(
-                            body1,
-                            name0.clone(),
-                            _type0,
-                            name1.clone(),
-                            _type1,
-                        )
+                        .swap(body1, *name0, _type0, *name1, _type1)
                         .unwrap_or_else(|_e| {
                             panic!("{}", DANGLING_HANDLE_ERROR)
                         });
@@ -2368,7 +2358,7 @@ impl RuntimeState {
         let left = self.resolve_term_handle(left)?.clone();
         let right = self.resolve_term_handle(right)?.clone();
 
-        self.is_alpha_equivalent_inner(&left, &right)
+        self.alpha_equivalent_inner(&left, &right)
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -2469,9 +2459,7 @@ impl RuntimeState {
             .resolve_theorem_handle(handle)
             .ok_or(ErrorCode::NoSuchTheoremRegistered)?
             .premisses()
-            .iter()
-            .cloned()
-            .collect())
+            .to_vec())
     }
 
     /// Registers a new theorem object, `{ɸ} ⊢ ɸ` in the kernel's theorem-table
@@ -2804,8 +2792,6 @@ impl RuntimeState {
         let (left, right) = self.term_split_equality(thm.conclusion())?;
 
         // Appease the borrow-checker gods...
-        let name = name.clone();
-        let tau = tau.clone();
         let left = left.clone();
         let right = right.clone();
 
@@ -2817,7 +2803,7 @@ impl RuntimeState {
             .term_register_lambda(name.clone(), tau.clone(), left)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
         let rhandle = self
-            .term_register_lambda(name, tau, right.clone())
+            .term_register_lambda(name, tau, right)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
         let conclusion = self
             .term_register_equality(lhandle, rhandle)
@@ -2857,7 +2843,7 @@ impl RuntimeState {
 
         // Appease the borrow-checker gods...
         let body = body.clone();
-        let name = name.clone();
+        let name = *name;
         let _type = _type.clone();
         let rhs = rhs.clone();
 
@@ -3543,8 +3529,7 @@ impl RuntimeState {
 
         // Appease the borrow-checker gods...
         let body = body.clone();
-        let name = name.clone();
-        let typ = typ.clone();
+        let name = *name;
         let trm = trm.clone();
         let premisses = thm.premisses().clone();
 
@@ -3611,7 +3596,7 @@ impl RuntimeState {
 
         /* 2. Add the new constant, giving it the type inferred previously. */
         let cnst_handle = self.issue_handle();
-        self.constants.insert(cnst_handle.clone(), tau.clone());
+        self.constants.insert(cnst_handle.clone(), tau);
 
         let empty: Vec<(Name, Handle<tags::Type>)> = Vec::new();
 
@@ -3622,7 +3607,7 @@ impl RuntimeState {
 
         /* 4. Construct the definitional theorem. */
         let stmt = self
-            .term_register_equality(cnst.clone(), defn.clone())
+            .term_register_equality(cnst.clone(), defn)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         /* 5. Register the definitional theorem. */
@@ -4077,7 +4062,7 @@ mod test {
                 v0.clone(),
             )
             .unwrap();
-        let c0 = state.term_register_application(l0, v0).unwrap();
+        let c0 = state.term_register_application(l0, v0.clone()).unwrap();
 
         let v1 = state
             .term_register_variable(1_u64, PREALLOCATED_HANDLE_TYPE_PROP)
@@ -4089,7 +4074,7 @@ mod test {
                 v1.clone(),
             )
             .unwrap();
-        let c1 = state.term_register_application(l1, v1).unwrap();
+        let c1 = state.term_register_application(l1, v0.clone()).unwrap();
 
         assert!(state.is_alpha_equivalent(&c0, &c1).unwrap());
     }
