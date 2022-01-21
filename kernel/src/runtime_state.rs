@@ -2180,23 +2180,27 @@ impl RuntimeState {
         Ok(self.term_type_infer(handle)? == PREALLOCATED_HANDLE_TYPE_PROP)
     }
 
-    /// Permutes the names `a` and `b` throughout the term pointed-to by
+    /// Permutes the variable `a` and `b` throughout the term pointed-to by
     /// `handle` in the kernel's term-table.  Leaves all other names fixed.
     ///
     /// # Errors
     ///
     /// Returns `Err(ErrorCode::NoSuchTermRegistered)` if `handle` does not
     /// point-to a term in the runtime state's term-table.
-    fn swap<T, U, V>(
+    fn swap<T, U, V, Q, R>(
         &mut self,
         handle: T,
         a: U,
-        b: V,
+        atau: V,
+        b: Q,
+        btau: R,
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Borrow<Handle<tags::Term>> + Clone,
         U: Into<Name> + Clone,
-        V: Into<Name> + Clone,
+        V: Borrow<Handle<tags::Type>>,
+        Q: Into<Name> + Clone,
+        R: Borrow<Handle<tags::Type>>,
     {
         info!(
             "Swapping name: {} for name: {} in term with handle: {}.",
@@ -2206,6 +2210,8 @@ impl RuntimeState {
         );
 
         let trm = self.resolve_term_handle(handle.clone())?.clone();
+        let atau = atau.borrow();
+        let btau = btau.borrow();
 
         match trm {
             Term::Variable { name, tau: _type } => {
@@ -2220,10 +2226,10 @@ impl RuntimeState {
             Term::Constant { .. } => Ok(handle.clone().borrow().clone()),
             Term::Application { left, right } => {
                 let left = self
-                    .swap(&left, a.clone(), b.clone())
+                    .swap(&left, a.clone(), atau, b.clone(), btau)
                     .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
                 let right = self
-                    .swap(&right, a, b)
+                    .swap(&right, a, atau, b, btau)
                     .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
 
                 Ok(self.admit_term(Term::application(left, right)))
@@ -2234,11 +2240,11 @@ impl RuntimeState {
                 body,
             } => {
                 let body = self
-                    .swap(&body, a.clone(), b.clone())
+                    .swap(&body, a.clone(), atau, b.clone(), btau)
                     .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR));
-                if name == a.clone().into() {
+                if name == a.clone().into() && &_type == atau {
                     Ok(self.admit_term(Term::lambda(b, _type.clone(), body)))
-                } else if name == b.into() {
+                } else if name == b.into() && &_type == btau {
                     Ok(self.admit_term(Term::lambda(a, _type.clone(), body)))
                 } else {
                     Ok(self.admit_term(Term::lambda(name, _type.clone(), body)))
@@ -2314,7 +2320,13 @@ impl RuntimeState {
                     Ok(false)
                 } else {
                     let body1 = self
-                        .swap(body1, name0.clone(), name1.clone())
+                        .swap(
+                            body1,
+                            name0.clone(),
+                            _type0,
+                            name1.clone(),
+                            _type1,
+                        )
                         .unwrap_or_else(|_e| {
                             panic!("{}", DANGLING_HANDLE_ERROR)
                         });
