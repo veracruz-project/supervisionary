@@ -51,7 +51,7 @@ where
             if let Some(next) = counter.checked_add(1) {
                 counter = next;
             } else {
-                panic!(FRESH_NAME_GENERATION_FAILED);
+                panic!("{}", FRESH_NAME_GENERATION_FAILED);
             }
         } else {
             info!("Fresh name generated: {}.", counter);

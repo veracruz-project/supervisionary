@@ -1136,7 +1136,7 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name> + Clone,
-        U: Into<Handle<tags::Type>> + Clone,
+        U: Into<Handle<tags::Type>> + Clone + Debug,
         V: Into<Handle<tags::Term>> + Clone,
     {
         info!(
@@ -1189,7 +1189,7 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Name> + Clone,
-        U: Into<Handle<tags::Type>> + Clone,
+        U: Into<Handle<tags::Type>> + Clone + Debug,
         V: Into<Handle<tags::Term>> + Clone,
     {
         info!(
@@ -2050,8 +2050,8 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Term>, ErrorCode>
     where
         T: Into<Handle<tags::Term>>,
-        U: Into<Name> + Clone,
-        V: Into<Handle<tags::Type>> + Clone,
+        U: Into<Name> + Clone + Debug,
+        V: Into<Handle<tags::Type>> + Clone + Debug,
     {
         let handle = handle.into();
 
@@ -2062,26 +2062,39 @@ impl RuntimeState {
         /* NB: these can fail is `sigma` contains dangling handles. */
         let result = match trm {
             Term::Variable { name, tau } => {
+                // Appease the borrow-checker gods...
                 let name = name.clone();
-                let tau = self.type_substitute(tau, sigma.clone())?;
+                let tau = tau.clone();
+                let sigma = sigma.clone();
+                let tau = self.type_substitute(tau, sigma)?;
                 Term::Variable { name, tau }
             }
             Term::Constant { constant, tau } => {
+                // Appease the borrow-checker gods...
                 let constant = constant.clone();
-                let tau = self.type_substitute(tau, sigma.clone())?;
+                let tau = tau.clone();
+                let tau = self.type_substitute(tau, sigma)?;
                 Term::Constant { constant, tau }
             }
             Term::Application { left, right } => {
+                // Appease the borrow-checker gods...
+                let left = left.clone();
+                let sigma = sigma.clone();
+                let right = right.clone();
                 let left = self.term_type_substitute(left, sigma.clone())?;
-                let right = self.term_type_substitute(right, sigma.clone())?;
+                let right = self.term_type_substitute(right, sigma)?;
                 Term::Application { left, right }
             }
             Term::Lambda { name, tau, body } => {
+                // Appease the borrow-checker gods...
                 let name = name.clone();
+                let tau = tau.clone();
+                let sigma = sigma.clone();
+                let body = body.clone();
                 let tau = self.type_substitute(tau, sigma.clone())?;
-                let body = self.term_type_substitute(body, sigma.clone())?'
-                Term::Lambda {name, tau, body}
-            },
+                let body = self.term_type_substitute(body, sigma)?;
+                Term::Lambda { name, tau, body }
+            }
         };
 
         Ok(self.admit_term(result))
@@ -2290,9 +2303,9 @@ impl RuntimeState {
                     body: body1,
                 },
             ) => {
-                if name0 == name1 {
+                if name0 == name1 && _type0 == _type1 {
                     let body = self.is_alpha_equivalent(body0, body1)?;
-                    Ok(body && _type0 == _type1)
+                    Ok(body)
                 } else if self
                     .term_free_variables(body1)
                     .unwrap_or_else(|_e| panic!("{}", DANGLING_HANDLE_ERROR))
@@ -2594,12 +2607,16 @@ impl RuntimeState {
 
         let (left, right) = self.term_split_equality(thm.conclusion())?;
 
+        // Appease the borrow-checker gods...
+        let left = left.clone();
+        let right = right.clone();
+
         // NB: this should never fail as the terms are split from an existing
         // equality, which is the conclusion of a theorem.  It's a general
         // invariant that theorems only ever contain well-typed terms in their
         // premisses and conclusion.
         let conclusion = self
-            .term_register_equality(right.clone(), left.clone())
+            .term_register_equality(right, left)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
         let premisses = thm.premisses().clone();
 
@@ -2655,13 +2672,17 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
+        // Appease the borrow-checker gods...
+        let left = left.clone();
+        let right = right.clone();
+
         // NB: this should never fail as the terms are split from a pair of
         // existing equalities, between terms of the same type (due to the
         // existence of the interpolating term in common), which are the
         // conclusion of a theorem.  It's a general invariant that theorems only
         // ever contain well-typed terms in their premisses and conclusion.
         let conclusion = self
-            .term_register_equality(left.clone(), right.clone())
+            .term_register_equality(left, right)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
@@ -2716,16 +2737,18 @@ impl RuntimeState {
         let (arg_left, arg_right) =
             self.term_split_equality(right.conclusion())?;
 
-        // NB: these *can* fail due to a type-mismatch in the equalities.
-        let left =
-            self.term_register_application(fun_left.clone(), arg_left.clone())?;
-        let right = self
-            .term_register_application(fun_right.clone(), arg_right.clone())?;
+        // Appease the borrow-checker gods...
+        let fun_left = fun_left.clone();
+        let fun_right = fun_right.clone();
+        let arg_left = arg_left.clone();
+        let arg_right = arg_right.clone();
 
-        Ok(self.admit_theorem(Theorem::new(
-            premisses.clone(),
-            self.term_register_equality(left, right)?,
-        )))
+        // NB: these *can* fail due to a type-mismatch in the equalities.
+        let left = self.term_register_application(fun_left, arg_left)?;
+        let right = self.term_register_application(fun_right, arg_right)?;
+        let conclusion = self.term_register_equality(left, right)?;
+
+        Ok(self.admit_theorem(Theorem::new(premisses.clone(), conclusion)))
     }
 
     /// Registers a new theorem object, `Γ ⊢ λx:τ. r = λx:τ. s` in the kernel's
@@ -2768,12 +2791,18 @@ impl RuntimeState {
 
         let (left, right) = self.term_split_equality(thm.conclusion())?;
 
+        // Appease the borrow-checker gods...
+        let name = name.clone();
+        let tau = tau.clone();
+        let left = left.clone();
+        let right = right.clone();
+
         // NB: none of these can fail as we obtained the terms from the
         // conclusion of a theorem, which is an equality, and we therefore know
         // that everything is well-typed, and that both side of the equality
         // have the same type.
         let lhandle = self
-            .term_register_lambda(name.clone(), tau.clone(), left.clone())
+            .term_register_lambda(name.clone(), tau.clone(), left)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
         let rhandle = self
             .term_register_lambda(name, tau, right.clone())
@@ -2814,15 +2843,18 @@ impl RuntimeState {
 
         let (name, _type, body) = self.term_split_lambda(lhs)?;
 
+        // Appease the borrow-checker gods...
+        let body = body.clone();
+        let name = name.clone();
+        let _type = _type.clone();
+        let rhs = rhs.clone();
+
         // NB: these should never fail as `body` originates from a well-typed
         // term obtained from the kernel's term-table.  Moreover, a meta-theorem
         // of HOL asserts that the construction of the equality, below, is
         // well-typed.
         let subst = self
-            .substitution(
-                body.clone(),
-                vec![((name.clone(), _type.clone()), rhs.clone())],
-            )
+            .substitution(body, vec![((name, _type), rhs)])
             .expect(DANGLING_HANDLE_ERROR);
         let conclusion = self
             .term_register_equality(application, subst)
@@ -2883,8 +2915,11 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
+        // Appease the borrow-checker gods...
+        let body = body.clone();
+
         let conclusion = self
-            .term_register_equality(lambda, body.clone())
+            .term_register_equality(lambda, body)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
         let premisses: Vec<Handle<tags::Term>> = Vec::new();
 
@@ -2938,9 +2973,13 @@ impl RuntimeState {
         premisses.sort();
         premisses.dedup();
 
+        // Appease the borrow-checker gods...
+        let left0 = left0.clone();
+        let right1 = right1.clone();
+
         // NB: this shouldn't fail as we know that everything is now a proposition.
         let conclusion = self
-            .term_register_equality(left0.clone(), right1.clone())
+            .term_register_equality(left0, right1)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
@@ -2977,8 +3016,12 @@ impl RuntimeState {
 
         let (left, right) = self.term_split_equality(thm.conclusion())?;
 
+        // Appease the borrow-checker gods...
+        let left = left.clone();
+        let right = right.clone();
+
         if !self
-            .term_type_is_proposition(left)
+            .term_type_is_proposition(left.clone())
             .expect(DANGLING_HANDLE_ERROR)
         {
             return Err(ErrorCode::NotAProposition);
@@ -2987,7 +3030,7 @@ impl RuntimeState {
         // NB: this should never fail as we've already checked that the equality
         // is an equality between two formulae.
         let conclusion = self
-            .term_register_implication(left.clone(), right.clone())
+            .term_register_implication(left, right)
             .expect(PRIMITIVE_CONSTRUCTION_ERROR);
 
         Ok(self
@@ -3102,12 +3145,12 @@ impl RuntimeState {
             right.conclusion().clone(),
         )?;
 
-        let mut hypotheses = left.premisses().clone();
-        let mut merge = right.premisses().clone();
+        let mut premisses = left.premisses().clone();
+        premisses.append(&mut right.premisses().clone());
+        premisses.sort();
+        premisses.dedup();
 
-        hypotheses.append(&mut merge);
-
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_conjunction_left_elimination<T>(
@@ -3126,10 +3169,10 @@ impl RuntimeState {
             .term_split_conjunction(thm.conclusion())
             .map_err(|_e| ErrorCode::ShapeMismatch)?;
 
-        let conclusion = left.clone();
-        let hypotheses = thm.premisses().clone();
+        // Appease the borrow-checker gods...
+        let left = left.clone();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(thm.premisses().clone(), left)))
     }
 
     pub fn theorem_register_conjunction_right_elimination<T>(
@@ -3148,10 +3191,11 @@ impl RuntimeState {
             .term_split_conjunction(thm.conclusion())
             .map_err(|_e| ErrorCode::ShapeMismatch)?;
 
+        // Appease the borrow-checker gods...
         let conclusion = right.clone();
-        let hypotheses = thm.premisses().clone();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self
+            .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
     pub fn theorem_register_disjunction_left_introduction<T, U>(
@@ -3174,9 +3218,9 @@ impl RuntimeState {
 
         let conclusion =
             self.term_register_disjunction(thm.conclusion().clone(), term)?;
-        let hypotheses = thm.premisses().clone();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self
+            .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
     pub fn theorem_register_disjunction_right_introduction<T, U>(
@@ -3199,9 +3243,9 @@ impl RuntimeState {
 
         let conclusion =
             self.term_register_disjunction(term, thm.conclusion().clone())?;
-        let hypotheses = thm.premisses().clone();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self
+            .admit_theorem(Theorem::new(thm.premisses().clone(), conclusion)))
     }
 
     pub fn theorem_register_disjunction_elimination<T, U, V>(
@@ -3256,10 +3300,10 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        let conclusion = right.conclusion().clone();
-        let hypotheses = left.premisses().clone();
-
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(
+            left.premisses().clone(),
+            right.conclusion().clone(),
+        )))
     }
 
     pub fn theorem_register_implication_introduction<T, U>(
@@ -3288,14 +3332,14 @@ impl RuntimeState {
             intro.clone(),
             thm.conclusion().clone(),
         )?;
-        let hypotheses = thm
+        let premisses = thm
             .premisses()
             .iter()
             .filter(|h| **h != intro.clone().into())
             .cloned()
             .collect();
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_implication_elimination<T, U>(
@@ -3324,14 +3368,15 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
+        // Appease the borrow-checker gods...
         let conc = conc.clone();
 
-        let mut hypotheses = left.premisses().clone();
-        let mut merge = right.premisses().clone();
+        let mut premisses = left.premisses().clone();
+        premisses.append(&mut right.premisses().clone());
+        premisses.sort();
+        premisses.dedup();
 
-        hypotheses.append(&mut merge);
-
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conc)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conc)))
     }
 
     pub fn theorem_register_substitute<T, U, V>(
@@ -3351,13 +3396,13 @@ impl RuntimeState {
 
         let conclusion =
             self.substitution(thm.conclusion().clone(), sigma.clone())?;
-        let mut hypotheses = vec![];
+        let mut premisses = vec![];
 
         for h in thm.premisses().iter().cloned() {
-            hypotheses.push(self.substitution(h, sigma.clone())?);
+            premisses.push(self.substitution(h, sigma.clone())?);
         }
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_type_substitute<T, U>(
@@ -3367,7 +3412,7 @@ impl RuntimeState {
     ) -> Result<Handle<tags::Theorem>, ErrorCode>
     where
         T: Borrow<Handle<tags::Theorem>>,
-        U: Into<Handle<tags::Type>> + Clone,
+        U: Into<Handle<tags::Type>> + Clone + Debug,
     {
         let thm = self
             .resolve_theorem_handle(handle)
@@ -3376,13 +3421,13 @@ impl RuntimeState {
 
         let conclusion =
             self.term_type_substitute(thm.conclusion().clone(), sigma.clone())?;
-        let mut hypotheses = Vec::new();
+        let mut premisses = Vec::new();
 
         for h in thm.premisses().iter().cloned() {
-            hypotheses.push(self.term_type_substitute(h, sigma.clone())?);
+            premisses.push(self.term_type_substitute(h, sigma.clone())?);
         }
 
-        Ok(self.admit_theorem(Theorem::new(hypotheses, conclusion)))
+        Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
 
     pub fn theorem_register_negation_introduction<T, U>(
@@ -3410,7 +3455,7 @@ impl RuntimeState {
             return Err(ErrorCode::ShapeMismatch);
         }
 
-        let mut premisses = thm
+        let premisses = thm
             .premisses()
             .iter()
             .filter(|e| *e != &trm)
@@ -3432,11 +3477,18 @@ impl RuntimeState {
         T: Borrow<Handle<tags::Theorem>>,
         U: Borrow<Handle<tags::Theorem>>,
     {
-        let left = self.resolve_theorem_handle(left_handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?
+        let left = self
+            .resolve_theorem_handle(left_handle)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?
             .clone();
-        let right = self.resolve_theorem_handle(right_handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?.clone();
+        let right = self
+            .resolve_theorem_handle(right_handle)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?
+            .clone();
 
-        let right_concl = self.term_split_negation(right.conclusion()).map_err(|_| ErrorCode::ShapeMismatch)?;
+        let right_concl = self
+            .term_split_negation(right.conclusion())
+            .map_err(|_| ErrorCode::ShapeMismatch)?;
 
         if left.conclusion() == right_concl {
             return Err(ErrorCode::ShapeMismatch);
@@ -3447,7 +3499,10 @@ impl RuntimeState {
         premisses.sort();
         premisses.dedup();
 
-        Ok(self.admit_theorem(Theorem::new(premisses, PREALLOCATED_HANDLE_TERM_FALSE)))
+        Ok(self.admit_theorem(Theorem::new(
+            premisses,
+            PREALLOCATED_HANDLE_TERM_FALSE,
+        )))
     }
 
     pub fn theorem_register_forall_elimination<T, U>(
@@ -3459,23 +3514,35 @@ impl RuntimeState {
         T: Borrow<Handle<tags::Theorem>>,
         U: Into<Handle<tags::Term>>,
     {
-        let thm = self.resolve_theorem_handle(handle).ok_or(ErrorCode::NoSuchTheoremRegistered)?;
+        let thm = self
+            .resolve_theorem_handle(handle)
+            .ok_or(ErrorCode::NoSuchTheoremRegistered)?;
         let trm = trm.into();
-
-        let (name, tau, body) = self.term_split_forall(thm.conclusion()).map_err(|_| ErrorCode::ShapeMismatch)?;
+        let thm = thm.clone();
 
         let typ = self.term_type_infer(&trm)?;
+        let (name, tau, body) = self
+            .term_split_forall(thm.conclusion())
+            .map_err(|_| ErrorCode::ShapeMismatch)?;
 
         if tau != &typ {
             return Err(ErrorCode::DomainTypeMismatch);
         }
 
+        // Appease the borrow-checker gods...
+        let body = body.clone();
+        let name = name.clone();
+        let typ = typ.clone();
+        let trm = trm.clone();
+        let premisses = thm.premisses().clone();
+
         /* NB: this should never fail, as everything has either been checked at
          * this point, or derives from a pre-existing kernel object which should
          * not contain dangling handles.
          */
-        let conclusion = self.substitution(body, vec![((name.clone(), typ), trm)]).expect(DANGLING_HANDLE_ERROR);
-        let premisses = thm.premisses().clone();
+        let conclusion = self
+            .substitution(body, vec![((name, typ), trm)])
+            .expect(DANGLING_HANDLE_ERROR);
 
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }
