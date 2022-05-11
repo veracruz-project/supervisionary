@@ -3540,6 +3540,7 @@ impl RuntimeState {
         let conclusion = self
             .substitution(body, vec![((name, typ), trm)])
             .expect(DANGLING_HANDLE_ERROR);
+        let premisses = thm.premisses().clone();
 
         Ok(self.admit_theorem(Theorem::new(premisses, conclusion)))
     }

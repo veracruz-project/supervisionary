@@ -1,0 +1,128 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{6}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{}, \showDOI{}, and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showDOI}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showDOI #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showDOI      \undefined \def \showDOI       #1{#1}\fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{Haas, Rossberg, Schuff, Titzer, Holman,
+  Gohman, Wagner, Zakai, and Bastien}{Haas et~al\mbox{.}}{2017}]%
+        {DBLP:conf/pldi/HaasRSTHGWZB17}
+\bibfield{author}{\bibinfo{person}{Andreas Haas}, \bibinfo{person}{Andreas
+  Rossberg}, \bibinfo{person}{Derek~L. Schuff}, \bibinfo{person}{Ben~L.
+  Titzer}, \bibinfo{person}{Michael Holman}, \bibinfo{person}{Dan Gohman},
+  \bibinfo{person}{Luke Wagner}, \bibinfo{person}{Alon Zakai}, {and}
+  \bibinfo{person}{J.~F. Bastien}.} \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Bringing the web up to speed with WebAssembly}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the 38th {ACM} {SIGPLAN} Conference
+  on Programming Language Design and Implementation, {PLDI} 2017}},
+  \bibfield{editor}{\bibinfo{person}{Albert Cohen} {and}
+  \bibinfo{person}{Martin~T. Vechev}} (Eds.). \bibinfo{publisher}{{ACM}},
+  \bibinfo{pages}{185--200}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3062341.3062363}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Milner}{Milner}{1972}]%
+        {Milner1972LogicFC}
+\bibfield{author}{\bibinfo{person}{Robin Milner}.}
+  \bibinfo{year}{1972}\natexlab{}.
+\newblock \showarticletitle{Logic for Computable Functions: description of a
+  machine implementation.}
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Necula}{Necula}{1997}]%
+        {DBLP:conf/popl/Necula97}
+\bibfield{author}{\bibinfo{person}{George~C. Necula}.}
+  \bibinfo{year}{1997}\natexlab{}.
+\newblock \showarticletitle{Proof-Carrying Code}. In
+  \bibinfo{booktitle}{\emph{Conference Record of POPL'97: The 24th {ACM}
+  {SIGPLAN-SIGACT} Symposium on Principles of Programming Languages, Papers
+  Presented at the Symposium, Paris, France, 15-17 January 1997}},
+  \bibfield{editor}{\bibinfo{person}{Peter Lee}, \bibinfo{person}{Fritz
+  Henglein}, {and} \bibinfo{person}{Neil~D. Jones}} (Eds.).
+  \bibinfo{publisher}{{ACM} Press}, \bibinfo{pages}{106--119}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1145/263699.263712}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{Reynolds}{Reynolds}{2002}]%
+        {DBLP:conf/lics/Reynolds02}
+\bibfield{author}{\bibinfo{person}{John~C. Reynolds}.}
+  \bibinfo{year}{2002}\natexlab{}.
+\newblock \showarticletitle{Separation Logic: {A} Logic for Shared Mutable Data
+  Structures}. In \bibinfo{booktitle}{\emph{17th {IEEE} Symposium on Logic in
+  Computer Science {(LICS} 2002), 22-25 July 2002, Copenhagen, Denmark,
+  Proceedings}}. \bibinfo{publisher}{{IEEE} Computer Society},
+  \bibinfo{pages}{55--74}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1109/LICS.2002.1029817}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{{The WebAssembly working group}}{{The
+  WebAssembly working group}}{2021}]%
+        {Wasi}
+\bibfield{author}{\bibinfo{person}{{The WebAssembly working group}}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \bibinfo{title}{The {WebAssembly} System Interface ({WASI})}.
+\newblock \bibinfo{howpublished}{\url{https://wasi.dev}}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Watt}{Watt}{2018}]%
+        {DBLP:conf/cpp/Watt18}
+\bibfield{author}{\bibinfo{person}{Conrad Watt}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Mechanising and verifying the WebAssembly
+  specification}. In \bibinfo{booktitle}{\emph{Proceedings of the 7th {ACM}
+  {SIGPLAN} International Conference on Certified Programs and Proofs, {CPP}
+  2018, Los Angeles, CA, USA, January 8-9, 2018}},
+  \bibfield{editor}{\bibinfo{person}{June Andronick} {and}
+  \bibinfo{person}{Amy~P. Felty}} (Eds.). \bibinfo{publisher}{{ACM}},
+  \bibinfo{pages}{53--65}.
+\newblock
+\urldef\tempurl%
+\url{https://doi.org/10.1145/3167082}
+\showDOI{\tempurl}
+
+
+\end{thebibliography}
